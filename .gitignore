@@ -10,3 +10,5 @@ node_modules/
 tests/screenshots/*.png
 video/
 models/
+tests/screenshots/**/*.png
+tests/screenshots/**/*.jpg

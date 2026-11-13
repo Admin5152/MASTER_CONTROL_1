@@ -106,6 +106,7 @@ async function start() {
   $("app").hidden = false;
   await mountApp();
   await stages.go("assistant");
+  world.remove("intro");
   if (navigator.mediaDevices?.getUserMedia) {
     try {
       const id = settings.get("mic");

@@ -1,0 +1,48 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#04070f;overflow:hidden}</style>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/jsm/"}}</script></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+const q = new URLSearchParams(location.search), sex = q.get('sex') || 'male', view = q.get('view') || 'front';
+const W = innerWidth, H = innerHeight;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(W, H); document.body.appendChild(r.domElement);
+const s = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(22, W / H, 0.1, 50);
+const draco = new DRACOLoader().setDecoderPath('../vendor/three/jsm/libs/draco/gltf/');
+const L = new GLTFLoader().setDRACOLoader(draco);
+const mode = q.get('mode') || 'anatomy', focus = q.get('focus');
+const fres = (col, power, base, rim, additive) => new THREE.ShaderMaterial({ transparent: true, depthWrite: false,
+  blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending, side: THREE.DoubleSide,
+  uniforms: { c: { value: new THREE.Color(col) }, p: { value: power }, b: { value: base }, k: { value: rim } },
+  vertexShader: 'varying vec3 n; varying vec3 v; void main(){ vec4 mv = modelViewMatrix*vec4(position,1.); n = normalize(normalMatrix*normal); v = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }',
+  fragmentShader: 'uniform vec3 c; uniform float p; uniform float b; uniform float k; varying vec3 n; varying vec3 v; void main(){ float f = pow(1.-abs(dot(n,v)), p); float a = clamp(b + k*f, 0., 1.); gl_FragColor = vec4(c*(0.55+0.9*f), a); }' });
+const BONES = ['skull','spine','ribcage','shoulders','pelvis','limbs'];
+const COL = { brain:'#ff8fa6', eyes:'#8fe3ff', heart:'#ff2e4a', lungs:'#5fb2ff', airway:'#9fd6ff', liver:'#b4503f', stomach:'#ff9a5c',
+  intestines:'#ffb877', pancreas_spleen:'#d9826a', kidneys:'#d65a4c', arteries:'#ff2a40', veins:'#2f63ff' };
+const ZONE = { heart:['heart'], lungs:['lungs','airway'], head:['brain'], eyes:['eyes'], gut:['stomach','intestines','liver','pancreas_spleen'] };
+const lit = focus ? ZONE[focus] || [focus] : null;
+const bodyFile = sex === 'male' ? 'human.glb' : 'human_female.glb';
+const [body, anat] = await Promise.all([L.loadAsync('../assets/body3d/' + bodyFile), L.loadAsync(`../assets/body3d/anatomy_${sex}.glb`)]);
+body.scene.traverse(o => { if (o.isMesh) { o.material = fres(mode === 'radiograph' ? '#9fb9d6' : '#4f9dff', 2.0, 0.02, 0.35, true); o.renderOrder = 10; } });
+const names = [];
+anat.scene.traverse(o => { if (!o.isMesh) return; const g = o.name; names.push(g);
+  const bone = BONES.includes(g);
+  if (mode === 'radiograph') {
+    o.material = bone ? fres('#eef5ff', 1.2, 0.30, 0.55, true) : fres('#7f95ad', 2.0, 0.015, 0.10, true);
+    o.visible = bone || !['arteries','veins'].includes(g);
+  } else {
+    const dim = lit && !lit.includes(g);
+    if (bone) o.material = fres('#dfe9ff', 1.3, dim ? 0.05 : 0.10, dim ? 0.25 : 0.45, true);
+    else o.material = fres(COL[g] || '#fff', 1.6, dim ? 0.03 : 0.55, dim ? 0.1 : 0.45, dim);
+    o.renderOrder = bone ? 5 : 1;
+  } });
+s.add(body.scene, anat.scene);
+const box = new THREE.Box3().setFromObject(body.scene), c = box.getCenter(new THREE.Vector3()), h = box.max.y - box.min.y;
+const zoom = q.get('zoom'); const d = zoom ? h * 0.9 : h * 2.75;
+const ty = zoom === 'chest' ? box.min.y + h * 0.72 : zoom === 'head' ? box.min.y + h * 0.92 : c.y;
+const dir = view === 'side' ? new THREE.Vector3(1, 0, 0) : view === 'three' ? new THREE.Vector3(0.7, 0, 0.7) : new THREE.Vector3(0, 0, 1);
+cam.position.set(c.x + dir.x * d, ty, c.z + dir.z * d); cam.lookAt(c.x, ty, c.z);
+r.render(s, cam);
+document.title = 'READY ' + names.length + ' ' + names.join(',');
+</script></body></html>

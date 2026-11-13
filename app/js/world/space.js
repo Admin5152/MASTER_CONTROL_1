@@ -78,7 +78,8 @@ export function createSpace(world, { tablet = false } = {}) {
   const gpuName = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : "";
   const software = /swiftshader|llvmpipe|software|basic render/i.test(gpuName);
   // brief: 2k Earth on tablets, 8k on the laptop (only with a real GPU; loaded after the 2k is showing)
-  const useHi = !tablet && !software && maxTex >= 8192;
+  // the 8k texture is opt-in (?hires=1): on this laptop's shared-memory GPU it ran the GPU out of memory
+  const useHi = !tablet && !software && maxTex >= 8192 && /[?&]hires=1/.test(location.search);
   const tex = (name, srgb = true) => {
     const t = loader.load(TEX + name);
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;

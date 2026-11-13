@@ -140,6 +140,7 @@ export function createWorld(canvas) {
     get active() { return active; },
     add(name, def) { scenes.set(name, def); def.resize?.(W, H); return def; },
     get(name) { return scenes.get(name); },
+    remove(name) { const s = scenes.get(name); if (!s || name === active) return; scenes.delete(name); s.dispose?.(); },
     /** Show a content scene, cross-fading through the sky. */
     async show(name, { fade = true } = {}) {
       if (name === active || !scenes.has(name)) return;

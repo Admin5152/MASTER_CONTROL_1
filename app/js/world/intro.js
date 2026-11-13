@@ -135,5 +135,14 @@ export function createIntro(world) {
     };
   }
 
-  return { scene, camera, update, resize, run, bodies };
+  /** Free the intro's GPU memory once Sentinel has formed (textures, geometry). */
+  function dispose() {
+    scene.traverse((o) => {
+      o.geometry?.dispose?.();
+      const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      for (const m of ms) { m.map?.dispose?.(); m.dispose?.(); }
+    });
+  }
+
+  return { scene, camera, update, resize, run, bodies, dispose };
 }
