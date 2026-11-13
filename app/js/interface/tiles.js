@@ -45,8 +45,7 @@ function cardHTML(t) {
 }
 
 export function mountTiles(host, onOpen) {
-  host.innerHTML = TILES.filter((t) => !t.mini && !t.external).map(cardHTML).join("") +
-    `<div class="vmini">${TILES.filter((t) => t.mini).map(cardHTML).join("")}</div>`;
+  host.innerHTML = TILES.filter((t) => !t.mini && !t.external).map(cardHTML).join("");
   host.querySelectorAll(".tile").forEach((el) => el.addEventListener("click", () => onOpen(el.dataset.tile)));
 }
 

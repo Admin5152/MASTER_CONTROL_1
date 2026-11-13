@@ -1,83 +1,73 @@
-// Stage manager: the five full stages (assistant, mission, body, vision, radiation). A stage change is a
-// cross-fade of the stage plus a camera move or scene cross-fade in the world window (600-900 ms).
-// The orb floats over everything: large in the assistant window, small in the dock porthole.
+// Stage manager (brief section 8). Stages are camera moves and cross-fades inside the one world;
+// panels arrive around the subject. The orb is Sentinel: centred on home, gliding to a corner when
+// Sentinel opens something, back to the centre on "go back" or a tap.
 import { emit } from "./bus.js";
 
 export const STAGES = ["assistant", "mission", "body", "vision", "radiation"];
-const VIEW = { assistant: "assistant", mission: "mission", radiation: "radiation" };
+const SCENE = { assistant: "space", mission: "space", radiation: "space", vision: "space", body: "body" };
+const VIEW = { assistant: "home", mission: "mission", radiation: "radiation", vision: "calm" };
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-export function createStages({ world, space, orb, orbLayer }) {
+export function createStages({ world, space, orb }) {
   let current = null;
-  let orbMode = "start";      // start | assistant | porthole | calm | off
-  let orbBig = false;         // speaking/listening on a non-assistant stage
-  const tabs = document.querySelectorAll("#tabbar [data-go]");
+  let mode = "intro";   // intro | home | corner | calm | off
+  let big = false;      // speaking or listening while in the corner
+  const hit = document.getElementById("orb-hit");
+  const css = (n) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(n)) || 0;
 
-  function orbTarget() {
-    const rectOf = (sel) => document.querySelector(sel)?.getBoundingClientRect();
-    let cx, cy, D;
-    if (orbMode === "start") {
-      const r = rectOf(".start-inner"); if (!r) return null;
-      cx = r.left + r.width / 2; cy = r.top + r.height * 0.3; D = Math.min(r.height * 0.58, 330);
-    } else if (orbMode === "assistant") {
-      const r = rectOf("#assist-window"); if (!r || !r.width) return null;
-      cx = r.left + r.width / 2; cy = r.top + r.height * 0.36; D = Math.min(r.height * 0.66, r.width * 0.6, 400);
-    } else if (orbMode === "calm") {
-      const r = rectOf("#sheet"); if (!r) return null;
-      cx = r.left + r.width / 2; cy = r.top + r.height * 0.4; D = Math.min(r.height * 0.72, r.width * 0.7, 440);
-    } else {
-      const r = rectOf("#porthole"); if (!r || !r.width) return null;
-      cx = r.left + r.width / 2; cy = r.top + r.height / 2; D = r.width * (orbBig ? 2.3 : 1.85);
+  function target() {
+    const W = window.innerWidth, H = window.innerHeight;
+    const top = css("--top-h"), dock = css("--dock-h"), g = css("--gutter") || 24;
+    if (mode === "intro") return { x: W / 2, y: H / 2, size: Math.min(H * 0.3, W * 0.34, 280) };
+    if (mode === "home") {
+      const free = H - top - dock;
+      return { x: W / 2, y: top + free * 0.43, size: Math.min(free * 0.4, W * 0.32, 280) };
     }
-    return { x: cx - D / 2, y: cy - D / 2, scale: D / 360 };
+    if (mode === "calm") return { x: W / 2, y: top + (H - top - dock) * 0.4, size: Math.min((H - top - dock) * 0.52, W * 0.4, 360) };
+    if (mode === "off") return { x: W / 2, y: H / 2, size: 0, opacity: 0 };
+    const s = big ? 92 : 62;
+    if (W < 1000 && H > W) return { x: W - g - 40, y: top + 46, size: s };
+    return { x: g + 44, y: H - dock / 2 - 2, size: s };
   }
 
-  function placeOrb(instant = false) {
-    orbLayer.classList.toggle("is-off", orbMode === "off");
-    orb.setVisible(orbMode !== "off");
-    const t = orbTarget();
-    if (!t) return;
-    const g = window.gsap;
-    if (!g || instant || reduced()) { g ? g.set(orbLayer, t) : (orbLayer.style.transform = `translate(${t.x}px, ${t.y}px) scale(${t.scale})`); return; }
-    g.to(orbLayer, { ...t, duration: 0.9, ease: "power3.inOut", overwrite: true });
+  function placeOrb(seconds = 1.0) {
+    const t = target();
+    world.orbTo({ opacity: 1, ...t }, reduced() ? 0 : seconds);
   }
-  window.addEventListener("resize", () => placeOrb(true));
+  // keep the tap target and caption bubble on the orb
+  world.onFrame(() => {
+    const o = world.orbPlace;
+    const d = Math.max(44, o.size * 0.9);
+    hit.style.transform = `translate(${o.x - d / 2}px, ${o.y - d / 2}px)`;
+    hit.style.width = hit.style.height = `${d}px`;
+    hit.hidden = o.opacity < 0.2 || mode === "intro";
+  });
+  window.addEventListener("resize", () => placeOrb(0));
 
-  const api = {
+  return {
     get current() { return current; },
-    get orbMode() { return orbMode; },
-    setOrbMode(m, instant = false) { orbMode = m; placeOrb(instant); },
-    restoreOrb() { orbMode = current === "assistant" ? "assistant" : "porthole"; placeOrb(); },
-    setOrbBig(b) { if (b === orbBig) return; orbBig = b; if (orbMode === "porthole") placeOrb(); },
+    get orbMode() { return mode; },
+    setOrbMode(m, seconds) { mode = m; placeOrb(seconds); },
+    restoreOrb() { mode = current === "assistant" ? "home" : "corner"; placeOrb(); },
+    setOrbBig(b) { if (b === big) return; big = b; if (mode === "corner") placeOrb(0.6); },
     placeOrb,
     /** Go to a stage. Resolves once the new stage is showing. */
     async go(name, { instant = false } = {}) {
       if (!STAGES.includes(name)) return;
       const prev = current;
+      if (name === prev) return;
       current = name;
       document.body.dataset.stage = name;
       document.querySelectorAll(".stage").forEach((s) => s.classList.toggle("is-active", s.dataset.stage === name));
-      tabs.forEach((b) => (b.dataset.go === name ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
-      const host = document.querySelector(`#stage-${name} [data-world-host]`);
-      if (host) {
-        const scene = host.dataset.worldHost;
-        const sameScene = world.active === scene;
-        world.pause(false);
-        if (!sameScene || world.host !== host) {
-          if (prev && !instant && !reduced()) { world.renderer.domElement.classList.add("is-fading"); await new Promise((r) => setTimeout(r, 260)); }
-          world.attach(host);
-          await world.show(scene);
-          world.renderer.domElement.classList.remove("is-fading");
-        }
-        if (scene === "space") space.setView(VIEW[name] || "assistant", { instant: instant || !prev });
-      } else {
-        world.pause(true);
-      }
-      if (orbMode !== "calm" && orbMode !== "off") orbMode = name === "assistant" ? "assistant" : "porthole";
-      placeOrb(instant || !prev);
+      document.querySelectorAll("#tabbar [data-go]").forEach((b) => (b.dataset.go === name ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
+      if (mode !== "calm" && mode !== "off") mode = name === "assistant" ? "home" : "corner";
+      placeOrb(instant ? 0 : 1.0);
+      world.setClinic(name === "body" ? 1 : 0, instant ? 0 : 0.9);
+      const scene = SCENE[name];
+      if (world.active !== scene) await world.show(scene, { fade: !instant });
+      if (scene === "space") space.setView(VIEW[name] || "home", { instant });
       emit("stage", name);
-      if (!instant && !reduced()) await new Promise((r) => setTimeout(r, 380));
+      if (!instant && !reduced()) await new Promise((r) => setTimeout(r, 420));
     },
   };
-  return api;
 }

@@ -26,7 +26,7 @@ export const ZONE_SPAN = {
 const NAMED = { front: 0, left: -Math.PI / 2, right: Math.PI / 2, back: Math.PI };
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-const C = { slate: 0x5f7196, ok: new THREE.Color(0.55, 0.82, 1.0), watch: new THREE.Color(1.0, 0.7, 0.28), alert: new THREE.Color(1.0, 0.22, 0.28), xray: new THREE.Color(0.55, 0.78, 1.0), wire: new THREE.Color(0.45, 0.85, 1.0), rad: new THREE.Color(1.0, 0.62, 0.25) };
+const C = { slate: 0x66738f, ok: new THREE.Color(0.55, 0.82, 1.0), watch: new THREE.Color(1.0, 0.7, 0.28), alert: new THREE.Color(1.0, 0.22, 0.28), xray: new THREE.Color(0.55, 0.78, 1.0), wire: new THREE.Color(0.45, 0.85, 1.0), rad: new THREE.Color(1.0, 0.62, 0.25) };
 
 const fresVert = /* glsl */`
 varying vec3 vN; varying vec3 vV; varying float vY;
@@ -93,7 +93,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick } = 
   const target = new THREE.Vector3(0, 0.98, 0);
 
   // lights: soft studio key, cool rims, sky/ground fill
-  scene.add(new THREE.HemisphereLight(0xaec3ec, 0x0d1424, 1.1));
+  scene.add(new THREE.HemisphereLight(0x9aa9c6, 0x0d1424, 0.95));
   const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(1.6, 3.2, 3.6); scene.add(key);
   const rimL = new THREE.DirectionalLight(0x8fb4ff, 2.4); rimL.position.set(-3, 2.2, -2.6); scene.add(rimL);
   const rimR = new THREE.DirectionalLight(0x9fc0ff, 1.6); rimR.position.set(3, 1.6, -2.4); scene.add(rimR);
@@ -205,17 +205,28 @@ export async function createBody(world, host, { tablet = false, onZoneClick } = 
   }
   let W = 1, H = 1;
   let homeDist = 4.4;
+  // the body is framed in the free area between the panels (#body-host), inside the full-screen world
+  let hostR = { left: 0, top: 0, width: 1, height: 1 };
+  function readHost() {
+    const r = host.getBoundingClientRect();
+    if (r.width > 10 && r.height > 10) hostR = r;
+  }
   function fitDist() {
+    readHost();
     const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const needH = 1.18 / half;                      // body plus margin, vertically
-    const needW = 0.82 / (half * camera.aspect);    // arms, horizontally
+    const needH = (2.2 * H) / (2 * half * hostR.height);
+    const needW = (1.45 * W) / (2 * half * camera.aspect * hostR.width);
     return Math.max(needH, needW);
+  }
+  function frameOffset() {
+    camera.setViewOffset(W, H, W / 2 - (hostR.left + hostR.width / 2), H / 2 - (hostR.top + hostR.height / 2) + hostR.height * 0.02, W, H);
   }
   function resize(w, h) {
     W = w; H = h; camera.aspect = w / h; camera.updateProjectionMatrix();
     const wasHome = Math.abs(cam.dist - homeDist) < 0.05;
     homeDist = fitDist();
     controls.maxDistance = homeDist * 1.4;
+    frameOffset();
     if (wasHome || !moved) { cam.dist = homeDist; applyCam(); }
   }
   let moved = false;
@@ -243,7 +254,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick } = 
   // ---- hotspots ----
   const hot = {};
   const ZLABEL = { head: "Brain and cognition", eyes: "Eyes and vision", heart: "Heart and circulation", lungs: "Lungs and breathing", gut: "Digestion and nutrition", bones: "Bones and muscles" };
-  const hotLayer = host.querySelector("#hotspots");
+  const hotLayer = document.getElementById("hotspots");
   for (const z of Object.keys(ZLABEL)) {
     const b = document.createElement("button");
     b.type = "button"; b.className = "zone is-ok"; b.id = `zone-${z}`; b.dataset.zone = z;
@@ -282,7 +293,10 @@ export async function createBody(world, host, { tablet = false, onZoneClick } = 
     const s = zoneSev[z] || "ok";
     return s === "alert" ? C.alert : s === "watch" || s === "info" ? C.watch : C.ok;
   }
+  let hostCheck = 0;
   function update(dt, t) {
+    if ((hostCheck += dt) > 0.5) { hostCheck = 0; const before = hostR.width + hostR.height + hostR.left; readHost(); if (hostR.width + hostR.height + hostR.left !== before) { resize(W, H); } }
+    frameOffset();
     if (controls.enabled) controls.update();
     pulseT += dt;
     const xa = U.uXray.value;
@@ -315,9 +329,8 @@ export async function createBody(world, host, { tablet = false, onZoneClick } = 
     anchorWorld: (z) => ANCHORS[z],
     /** viewport coordinates of a zone's anchor */
     screenPoint(z) {
-      const r = world.rect();
-      const p = project(z === "whole_body" ? "whole_body" : z);
-      return { x: r.left + p.x, y: r.top + p.y };
+      const p = project(z);
+      return { x: p.x, y: p.y };
     },
     setZoneStates(zones) {
       for (const z of Object.keys(ZLABEL)) {

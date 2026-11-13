@@ -8,11 +8,12 @@ const SUN = new THREE.Vector3(-1, 0.35, 0.62).normalize();
 const MARS_POS = new THREE.Vector3(-2.7, 1.25, -6.2);
 
 const VIEWS = {
-  // fx, fy: where the target sits in the window (fractions); r: planet radius as a fraction of window height
-  assistant: { target: "earth", fx: 0.5, fy: 1.42, r: 0.52, az: 0.0, el: 0.32 },
-  mission: { target: "earth", fx: 0.7, fy: 0.47, r: 0.41, az: 0.12, el: 0.12 },
-  radiation: { target: "earth", fx: 0.6, fy: 0.56, r: 0.29, az: -0.25, el: 0.06 },
-  calm: { target: "earth", fx: 0.5, fy: 1.6, r: 0.5, az: 0.4, el: 0.3 },
+  // fx, fy: where the planet sits on screen (fractions); r: planet radius as a fraction of screen height
+  home: { target: "earth", fx: 0.5, fy: 1.62, r: 0.62, az: 0.15, el: 0.42 },
+  assistant: { target: "earth", fx: 0.5, fy: 1.62, r: 0.62, az: 0.15, el: 0.42 },
+  mission: { target: "earth", fx: 0.62, fy: 0.5, r: 0.33, az: 0.12, el: 0.12 },
+  radiation: { target: "earth", fx: 0.5, fy: 0.52, r: 0.25, az: -0.25, el: 0.06 },
+  calm: { target: "earth", fx: 0.5, fy: 1.75, r: 0.6, az: 0.4, el: 0.3 },
 };
 
 const earthVert = /* glsl */`
@@ -89,24 +90,6 @@ export function createSpace(world, { tablet = false } = {}) {
   const sunLight = new THREE.DirectionalLight(0xffffff, 2.4);
   sunLight.position.copy(SUN).multiplyScalar(30);
   scene.add(sunLight, new THREE.AmbientLight(0x2a3550, 0.25));
-
-  // stars: textured sky sphere, added on top of the window's CSS gradient
-  const stars = new THREE.Mesh(
-    new THREE.SphereGeometry(180, 48, 24),
-    new THREE.MeshBasicMaterial({ map: tex("stars.jpg"), side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9 }),
-  );
-  scene.add(stars);
-  // a few hundred bright points that twinkle
-  const nStar = tablet ? 260 : 520;
-  const sp = new Float32Array(nStar * 3);
-  for (let i = 0; i < nStar; i++) {
-    const v = new THREE.Vector3().randomDirection().multiplyScalar(90 + Math.random() * 60);
-    sp.set([v.x, v.y, v.z], i * 3);
-  }
-  const starGeo = new THREE.BufferGeometry();
-  starGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
-  const starPts = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdfe8ff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.8, depthWrite: false }));
-  scene.add(starPts);
 
   // Earth
   const earth = new THREE.Group();
@@ -202,6 +185,7 @@ export function createSpace(world, { tablet = false } = {}) {
     if (name === "radiation" && profile.startsWith("mars")) def.target = "mars";
     currentView = name;
     streamOn = name === "radiation";
+    moonPivot.children[1].visible = outer.visible = name === "mission";
     mars.visible = marsAtmo.visible = profile.startsWith("mars") && (name === "mission" || name === "radiation");
     const tp = def.target === "mars" ? MARS_POS : new THREE.Vector3();
     center.copy(tp);
@@ -224,8 +208,6 @@ export function createSpace(world, { tablet = false } = {}) {
     moonPivot.rotation.y += dt * 0.045;
     moon.rotation.y += dt * 0.02;
     mars.rotation.y += dt * 0.02;
-    starPts.material.opacity = 0.65 + 0.2 * Math.sin(t * 0.7);
-    stars.rotation.y += dt * 0.002;
     // camera: distance from the planet's screen size, plus a slow drift
     const radius = v.radius ?? 1;
     const dist = radius / (2 * v.r * half);

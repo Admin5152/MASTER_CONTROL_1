@@ -283,11 +283,6 @@ function renderCabin(el, ctx) {
 function renderSettings(el, ctx) {
   const st = ctx.settings;
   el.innerHTML = `
-    <h3>Theme</h3>
-    <div class="mood-row" role="radiogroup" aria-label="Theme">
-      <button type="button" data-theme="light" aria-pressed="${st.get("theme") !== "dark"}">Light</button>
-      <button type="button" data-theme="dark" aria-pressed="${st.get("theme") === "dark"}">Dark</button>
-    </div>
     <h3>Camera</h3><div class="field"><select data-cam><option value="">Default (built-in)</option></select><span class="hint">Used for the face scan and the camera pulse. Remembered in this browser.</span></div>
     <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
     <h3>Sentinel's voice</h3><div class="field"><select data-voice></select><span class="hint" data-voice-note>Kokoro voices run on this laptop. With an ElevenLabs key, that voice is used instead.</span></div>
@@ -295,10 +290,6 @@ function renderSettings(el, ctx) {
     <h3>Listening</h3>
     <div class="mood-row"><button type="button" data-listen="wake" aria-pressed="${st.get("listen") !== "ptt"}">Wake phrase</button><button type="button" data-listen="ptt" aria-pressed="${st.get("listen") === "ptt"}">Push to talk only</button></div>
     <p class="hint fine">Wake phrase: say "Hey Sentinel" any time. Push to talk: tap the microphone or the orb, then speak.</p>`;
-  el.querySelectorAll("[data-theme]").forEach((b) => b.addEventListener("click", () => {
-    st.set("theme", b.dataset.theme); ctx.applyTheme();
-    el.querySelectorAll("[data-theme]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-  }));
   el.querySelectorAll("[data-listen]").forEach((b) => b.addEventListener("click", () => {
     st.set("listen", b.dataset.listen); ctx.applyListening?.();
     el.querySelectorAll("[data-listen]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));

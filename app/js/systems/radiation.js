@@ -73,8 +73,6 @@ export function renderRadiation(el, ctx) {
     pill.className = `status-pill${level >= 2 ? " is-alert" : level >= 1 ? " is-watch" : ""}`;
     document.getElementById("rad-pill-word").textContent = sc ? "Replay (SIM)" : sw.source === "live" ? "Live" : "Snapshot";
     document.getElementById("rad-lede").textContent = sc ? sc.label : `Protons at or above 10 MeV, measured by NOAA GOES near Earth. ${sw.source === "live" ? "Live feed." : `Saved snapshot from ${sw.time}.`}`;
-    const prof = ctx.view.state?.radiation?.mission_profile || "";
-    document.getElementById("rad-credit").textContent = `${prof.startsWith("mars") ? "Mars" : "Earth"}, with the particle stream drawn from the current storm level (${badge})`;
     const pts = sc ? sc.series.map((p) => ({ x: `+${p.t}s`, y: p.flux })) : sw.series.slice(-288).map((p) => ({ x: p.t.slice(11, 16), y: p.flux }));
     if (!Chart) return;
     const data = { labels: pts.map((p) => p.x), datasets: [{ data: pts.map((p) => Math.max(0.01, p.y)), borderColor: css("--assist"), borderWidth: 2, pointRadius: 0, tension: 0.2, fill: { target: "origin", above: css("--assist-soft") } }] };

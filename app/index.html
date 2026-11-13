@@ -17,60 +17,43 @@
   <script src="vendor/chartjs/chart.umd.js" defer></script>
   <script type="module" src="js/main.js"></script>
 </head>
-<body data-stage="assistant">
-  <!-- one WebGL renderer for the framed windows (space scenes and the body studio); main.js moves
-       this canvas into the active stage's window -->
+<body data-stage="intro">
+  <!-- ONE full-screen world: intro solar system, Sentinel's orb, Earth, the body -->
   <canvas id="world" class="world" aria-hidden="true"></canvas>
 
-  <!-- the assistant orb: its own small renderer with bloom, blended with screen over a dark window or porthole -->
-  <div id="orb-layer" class="orb-layer">
-    <canvas id="orb-canvas" class="orb-canvas" aria-hidden="true"></canvas>
-    <button id="orb-hit" class="orb-hit" type="button" aria-label="Talk to Sentinel (push to talk)"></button>
-  </div>
-  <div id="bubble" class="bubble" hidden aria-live="polite"></div>
-
-  <!-- start: one tap unlocks audio, speech, camera, mic, motion and wake lock -->
-  <section id="start-screen" class="start">
-    <div class="start-inner window window-space">
-      <p class="hello">Sentinel · onboard crew health</p>
-      <h1 class="prompt">Good to see you.<br>Tap to begin.</h1>
-      <button id="start-btn" class="pill pill-light pill-xl" type="button">Start Sentinel</button>
-      <p class="start-note">Starting asks for the camera and microphone. Both are optional: Sentinel works with typing and simulated readings. It describes change from your own baseline and never diagnoses.</p>
+  <!-- intro: plays on load; a tap skips it; Begin unlocks audio, camera and microphone -->
+  <section id="start-screen" class="intro" aria-label="Sentinel">
+    <div class="intro-copy">
+      <h1 id="intro-hello" class="intro-hello">Hello. I'm Sentinel.</h1>
+      <p class="intro-sub">Your crew-health companion. I compare every reading with your own baseline and tell you what to do next. I never diagnose.</p>
+      <button id="start-btn" class="pill pill-light pill-xl" type="button">Begin</button>
+      <p class="intro-note">Begin asks for the camera and microphone. Both are optional.</p>
       <div class="legend" aria-label="Badge key">
-        <span class="badge badge-live">LIVE</span><span>measured or computed now</span>
-        <span class="badge badge-sim">SIM</span><span>prepared or simulated on purpose</span>
+        <span class="badge badge-live">LIVE</span><span>measured now</span>
+        <span class="badge badge-sim">SIM</span><span>simulated on purpose</span>
         <span class="badge badge-designed">DESIGNED</span><span>a design, not running</span>
       </div>
     </div>
+    <p id="intro-skip" class="intro-skip">Tap to skip</p>
   </section>
 
   <div id="app" class="app" hidden>
-    <header id="statusbar" class="topbar">
-      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span class="label">Sentinel</span></div>
-      <div class="sb-crew">
-        <button id="sb-crew-name" class="crew-btn" type="button" aria-label="Choose crew member">—</button>
-        <span id="sb-identity" class="badge badge-sim">manual</span>
-      </div>
-      <div class="sb-item"><span class="sb-k">Mission</span><span id="sb-clock" class="sb-v num">Day — 00:00</span></div>
-      <div class="sb-item sb-cabin"><span class="sb-k">Cabin</span><span id="sb-o2" class="sb-v num">O2 —</span><span id="sb-co2" class="sb-v num">CO2 —</span><span class="badge badge-sim">SIM</span></div>
-      <div class="sb-tools">
-        <button id="btn-key" class="legend legend-mini" type="button" aria-label="Badge key: LIVE measured now, SIM simulated, DESIGNED design only. Open the key.">
-          <span class="badge badge-live">LIVE</span><span class="badge badge-sim">SIM</span><span class="badge badge-designed">DESIGNED</span>
-        </button>
+    <!-- the quiet status line -->
+    <header id="statusbar" class="statusline">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>Sentinel</span>
+      <span class="sl-item"><button id="sb-crew-name" class="sl-crew" type="button" aria-label="Choose crew member">—</button><span id="sb-identity" class="badge badge-sim">manual</span></span>
+      <span class="sl-item"><span id="sb-clock" class="num">Day —</span></span>
+      <span class="sl-item sb-cabin"><span id="sb-cabin-word">Cabin —</span><span class="badge badge-sim">SIM</span><span class="visually-hidden"><span id="sb-o2">O2 —</span> <span id="sb-co2">CO2 —</span></span></span>
+      <span class="sl-item"><span id="sb-rad">Radiation —</span><span id="sb-rad-badge"></span></span>
+      <span class="sl-tools">
+        <button id="btn-key" class="legend-mini" type="button" aria-label="Badge key: LIVE measured now, SIM simulated, DESIGNED design only">
+          <span class="badge badge-live">LIVE</span><span class="badge badge-sim">SIM</span><span class="badge badge-designed">DESIGNED</span></button>
         <span id="sb-link" class="sb-link" role="status" title="Link to the brain">linking…</span>
         <button id="btn-mute" class="icon-btn" type="button" aria-pressed="false" aria-label="Mute sound cues">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="mute-waves" d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/></svg>
-        </button>
-        <button id="btn-hardware" class="icon-btn" type="button" aria-label="Show the wearable hardware design">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7.5" y="5" width="9" height="14" rx="3"/><path d="M10 2.5h4M10 21.5h4M10.5 10h3M10.5 13h3"/></svg>
-        </button>
-        <button id="btn-settings" class="icon-btn" type="button" aria-label="Settings: camera, microphone, voice">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg>
-        </button>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="mute-waves" d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/></svg></button>
         <button id="btn-demo" class="icon-btn" type="button" aria-label="Open the demo panel">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8" class="fill-bg"/><circle cx="15" cy="12" r="1.8" class="fill-bg"/><circle cx="7.5" cy="17" r="1.8" class="fill-bg"/></svg>
-        </button>
-      </div>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8" class="fill-bg"/><circle cx="15" cy="12" r="1.8" class="fill-bg"/><circle cx="7.5" cy="17" r="1.8" class="fill-bg"/></svg></button>
+      </span>
     </header>
 
     <div id="banner" class="banner" role="alert" hidden>
@@ -85,149 +68,149 @@
     </div>
 
     <main id="stages" class="stages">
-      <!-- ASSISTANT (ref 01): the orb in a deep-space window; conversation and suggestion beside it -->
-      <section id="stage-assistant" class="stage stage-assistant" data-stage="assistant" aria-label="Sentinel assistant">
-        <div id="assist-window" class="window window-space assist-window" data-world-host="space">
-          <div class="assist-copy">
-            <p id="greet-hello" class="hello">Hello</p>
-            <p id="orb-caption" class="prompt" aria-live="polite">How can I help<br>you today?</p>
-            <p id="orb-source" class="caption-src"></p>
-          </div>
-        </div>
-        <div class="assist-side">
-          <div id="action-card" class="action-card card" hidden></div>
-          <div class="convo card" aria-label="Conversation">
-            <div class="card-head"><span class="label">Conversation</span><span class="card-status" id="voice-mode">typing</span></div>
-            <ol id="transcript" class="transcript" aria-live="polite"></ol>
-          </div>
+      <!-- HOME: Sentinel itself. Greeting above the orb, the live caption below. -->
+      <section id="stage-assistant" class="stage stage-home" data-stage="assistant" aria-label="Sentinel">
+        <p id="greet-hello" class="home-hello">Hello</p>
+        <div class="home-caption">
+          <p id="orb-caption" class="prompt" aria-live="polite">How can I help you today?</p>
+          <p id="orb-source" class="caption-src"></p>
+          <div id="action-card" class="suggest" hidden></div>
         </div>
       </section>
 
-      <!-- MISSION (ref 02 inside a window): Earth hero, then five cards -->
-      <section id="stage-mission" class="stage stage-mission" data-stage="mission" aria-label="Mission view">
-        <div class="window window-space mission-window" data-world-host="space">
-          <div class="mission-hero">
-            <p class="status-pill" id="sys-status"><span class="label">System status</span><span class="dot"></span><span class="label" id="sys-status-word">Nominal</span></p>
-            <h1 class="display" id="mission-display"><span id="md-profile">Mars transit.</span><span id="md-day">Day 120.</span><span id="md-state" class="is-nominal">All nominal.</span></h1>
-            <p class="lede">Sentinel compares every reading with each person's own baseline and says what to do next. It never diagnoses.</p>
-            <div class="hero-actions">
-              <button class="pill pill-light" type="button" data-cmd="scan">Run full scan
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></button>
-              <button class="pill pill-window" type="button" data-cmd="talk">Talk to Sentinel
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-            </div>
-          </div>
-          <aside class="mission-stats" aria-label="Mission facts">
-            <div class="stat"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.4"/><path d="M3.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5M14.5 14.4c2.6-.3 4.8 1.2 5.5 4.6"/></svg>
-              <strong class="num" id="ms-crew">6</strong><span class="label">Crew on board</span></div>
-            <div class="stat"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3.5 2"/></svg>
-              <strong class="num" id="ms-day">120</strong><span class="label">Mission day</span></div>
-            <div class="stat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18c3-7 13-7 16 0M7 18c2-4 8-4 10 0"/><circle cx="12" cy="18" r="1.4"/></svg>
-              <strong class="num" id="ms-delay">12.7<small>min</small></strong><span class="label">Signal delay</span><span class="badge badge-sim">SIM</span></div>
-          </aside>
-          <p class="window-credit">Planet textures: Solar System Scope (CC BY 4.0), based on NASA imagery</p>
+      <!-- MISSION: Earth with panels around it (ref 02) -->
+      <section id="stage-mission" class="stage stage-mission" data-stage="mission" aria-label="Mission">
+        <div class="mission-hero">
+          <p class="status-pill" id="sys-status"><span class="label">System status</span><span class="dot"></span><span class="label" id="sys-status-word">Nominal</span></p>
+          <h1 class="display" id="mission-display"><span id="md-profile">Mars transit.</span><span id="md-day">Day 120.</span><span id="md-state" class="is-nominal">All nominal.</span></h1>
         </div>
+        <aside class="mission-stats" aria-label="Mission facts">
+          <div class="stat"><strong class="num" id="ms-crew">6</strong><span class="label">Crew</span></div>
+          <div class="stat"><strong class="num" id="ms-day">120</strong><span class="label">Mission day</span></div>
+          <div class="stat"><strong class="num" id="ms-delay">12.7<small>min</small></strong><span class="label">Signal delay</span><span class="badge badge-sim">SIM</span></div>
+        </aside>
         <div class="mission-cards" id="mission-cards"></div>
       </section>
 
-      <!-- BODY (refs 03-07): findings | scanner window | vitals -->
-      <section id="stage-body" class="stage stage-body" data-stage="body" aria-label="Body model">
-        <div class="body-left card">
-          <div class="card-head"><span class="label">Findings</span><span class="card-status" id="findings-status">—</span></div>
+      <!-- BODY: findings | the 3D body (in the world) | vitals -->
+      <section id="stage-body" class="stage stage-body" data-stage="body" aria-label="Body">
+        <div class="panel body-left">
+          <div class="panel-head"><span class="label">Findings</span><span class="card-status" id="findings-status">—</span></div>
           <ol id="findings" class="findings"></ol>
           <ol id="scan-list" class="scan-list" aria-live="polite"></ol>
         </div>
-        <div id="body-host" class="window window-studio body-host" data-world-host="body">
+        <div id="body-host" class="body-host" aria-label="3D body: drag to turn, scroll or pinch to zoom">
           <div id="hotspots" class="hotspots"></div>
-          <div id="body-loading" class="body-loading">Loading body model…</div>
+          <p id="body-loading" class="body-loading">Loading the body model…</p>
           <div class="body-tools">
             <button id="btn-scan" class="pill pill-light" type="button">Full scan</button>
-            <button id="btn-xray" class="pill pill-window" type="button" aria-pressed="false">X-ray</button>
-            <button id="btn-turn" class="pill pill-window" type="button" aria-label="Turn the body">Turn</button>
-            <button id="btn-radlayer" class="pill pill-window" type="button" aria-pressed="false">Radiation</button>
-            <button id="btn-radinfo" class="pill pill-window" type="button" hidden>Radiation effects</button>
+            <button id="btn-xray" class="pill pill-ghost" type="button" aria-pressed="false">X-ray</button>
+            <button id="btn-turn" class="pill pill-ghost" type="button">Turn</button>
+            <button id="btn-radlayer" class="pill pill-ghost" type="button" aria-pressed="false">Radiation</button>
+            <button id="btn-radinfo" class="pill pill-ghost" type="button" hidden>Radiation effects</button>
           </div>
-          <p class="window-hint">Drag to turn, scroll or pinch to zoom. Tap a dot to check that area.</p>
         </div>
-        <div id="vitals" class="vitals" aria-label="Vitals"></div>
+        <div class="body-right">
+          <div id="vitals" class="vitals" aria-label="Vitals"></div>
+          <button id="btn-all" class="link-btn" type="button">All readings</button>
+        </div>
       </section>
 
-      <!-- FACE SCAN: camera window | pulse card -->
+      <!-- FACE SCAN -->
       <section id="stage-vision" class="stage stage-vision" data-stage="vision" aria-label="Face scan">
-        <div class="window window-cam cam-stage">
+        <div class="cam-stage panel">
           <video id="cam-video" class="cam-video" playsinline muted autoplay></video>
           <canvas id="cam-overlay" class="cam-overlay"></canvas>
           <div class="cam-band" aria-hidden="true"></div>
           <p id="cam-msg" class="cam-msg">Camera off. Heart rate comes from the simulator (SIM).</p>
           <div class="cam-head"><span class="label">Face scan</span><span id="cam-badge" class="badge badge-sim">SIM</span></div>
         </div>
-        <aside class="pulse-panel card">
-          <div class="card-head"><span class="label">Pulse</span><span class="card-status" id="pulse-status">camera</span></div>
+        <aside class="pulse-panel panel">
           <div class="pulse-ring">
             <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="52"/><circle id="pulse-arc" class="ring-arc" cx="60" cy="60" r="52"/></svg>
-            <div class="pulse-read"><span id="pulse-value" class="pulse-value num">—</span><span class="pulse-unit">from the camera</span></div>
+            <div class="pulse-read"><span id="pulse-value" class="pulse-value num">—</span><span class="pulse-unit">pulse from the camera</span></div>
           </div>
           <p id="pulse-quality" class="pulse-quality">quality —</p>
-          <p class="note">Sampling the forehead and both cheeks, highlighted on the mesh. 11-second window, POS method with a green-channel fallback.</p>
           <div class="cam-controls">
-            <button id="btn-cam" class="pill pill-dark" type="button">Start camera</button>
+            <button id="btn-cam" class="pill pill-light" type="button">Start camera</button>
             <button id="btn-cam-devices" class="pill pill-ghost" type="button">Choose camera</button>
           </div>
-          <p class="fine">An estimate for trends, not a medical measurement.</p>
+          <p class="fine">An estimate for trends, not a medical measurement. Forehead and cheeks are sampled (highlighted on the mesh).</p>
         </aside>
       </section>
 
-      <!-- RADIATION: planet window with the storm stream | cards -->
+      <!-- RADIATION: the planet with the storm stream, panels around it -->
       <section id="stage-radiation" class="stage stage-radiation" data-stage="radiation" aria-label="Radiation Watch">
-        <div class="window window-space rad-window" data-world-host="space">
-          <div class="rad-hero">
-            <p class="status-pill" id="rad-pill"><span class="label">Space weather</span><span class="dot"></span><span class="label" id="rad-pill-word">Quiet</span></p>
-            <h1 class="display"><span id="rad-level">S0.</span><span id="rad-word">Quiet sun.</span></h1>
-            <p class="lede" id="rad-lede">Protons at or above 10 MeV, measured by NOAA GOES near Earth.</p>
-          </div>
-          <p class="window-credit" id="rad-credit">Particle stream drawn from the current storm level</p>
+        <div class="rad-hero">
+          <p class="status-pill" id="rad-pill"><span class="label">Space weather</span><span class="dot"></span><span class="label" id="rad-pill-word">Quiet</span></p>
+          <h1 class="display"><span id="rad-level">S0.</span><span id="rad-word">Quiet sun.</span></h1>
+          <p class="lede" id="rad-lede">Protons at or above 10 MeV, measured by NOAA GOES near Earth.</p>
         </div>
-        <div id="radiation-host" class="rad-col"></div>
+        <div id="radiation-host" class="rad-panels"></div>
       </section>
     </main>
 
-    <!-- dock: tab bar (ref 04) and the frosted ask bar (ref 01) -->
+    <!-- input: menu + mic + text (ref 01) -->
     <div id="dock" class="dock">
-      <nav id="tabbar" class="tabbar glass" aria-label="Screens">
-        <button type="button" data-go="assistant" aria-label="Sentinel"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M6 10.5c3 2 9 2 12-1.5M7 15c3.5 1 7.5.4 10.5-2.5"/></svg><span>Sentinel</span></button>
-        <button type="button" data-go="mission" aria-label="Mission"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/><ellipse cx="12" cy="12" rx="10" ry="3.6" transform="rotate(-20 12 12)"/></svg><span>Mission</span></button>
-        <button type="button" data-go="body" aria-label="Body"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.6" r="2.2"/><path d="M12 7.5v7M7 9.5l5 1 5-1M9.5 21l2.5-6.5 2.5 6.5"/></svg><span>Body</span></button>
-        <button type="button" data-go="vision" aria-label="Face scan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><circle cx="12" cy="11" r="3.2"/><path d="M7.5 17.5c1.2-1.8 2.7-2.5 4.5-2.5s3.3.7 4.5 2.5"/></svg><span>Scan</span></button>
-        <button type="button" data-go="radiation" aria-label="Radiation"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 3.5a8.5 8.5 0 0 1 7.4 4.3M19.6 16a8.5 8.5 0 0 1-7.6 4.5M4.5 16A8.5 8.5 0 0 1 6 6.2"/></svg><span>Radiation</span></button>
-        <button type="button" data-go="more" aria-label="More: health log, games, greenhouse"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></svg><span>More</span></button>
-      </nav>
-      <div id="porthole" class="porthole" aria-hidden="true"></div>
-      <div class="ask-wrap">
-        <div id="quick" class="quick" aria-label="Quick commands">
-          <button class="chip" type="button" data-say="hey sentinel how am i doing">How am I doing?</button>
-          <button class="chip" type="button" data-say="hey sentinel let me see you">Let me see you</button>
-          <button class="chip" type="button" data-say="hey sentinel start orb calm">Start Orb Calm</button>
-          <button class="chip" type="button" data-say="hey sentinel run a full scan">Full scan</button>
-          <button class="chip" type="button" data-say="hey sentinel how is the cabin">Cabin</button>
-          <button class="chip" type="button" data-say="hey sentinel log my health">Log my health</button>
-        </div>
-        <form id="ask-form" class="askbar glass" autocomplete="off">
-          <button id="btn-mic" class="mic" type="button" aria-pressed="false" aria-label="Push to talk">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg>
-          </button>
-          <label for="ask-input" class="visually-hidden">Ask Sentinel</label>
-          <input id="ask-input" class="ask-input" type="text" placeholder="Ask Sentinel anything…" enterkeyhint="send">
-          <button class="send" type="submit" aria-label="Send">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
-          </button>
-        </form>
-      </div>
+      <button id="btn-menu" class="menu-btn" type="button" aria-label="Menu: every screen" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="18" cy="6" r="1.6"/><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/><circle cx="6" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/></svg>
+      </button>
+      <form id="ask-form" class="askbar" autocomplete="off">
+        <button id="btn-mic" class="mic" type="button" aria-pressed="false" aria-label="Push to talk">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/></svg>
+        </button>
+        <label for="ask-input" class="visually-hidden">Ask Sentinel</label>
+        <input id="ask-input" class="ask-input" type="text" placeholder="Ask Sentinel anything…" enterkeyhint="send">
+        <button class="send" type="submit" aria-label="Send">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+        </button>
+      </form>
+      <button id="btn-convo" class="menu-btn" type="button" aria-label="Conversation history" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v9H10l-4 3v-3H5z"/></svg>
+      </button>
     </div>
 
-    <svg id="beam-layer" class="beam-layer" aria-hidden="true"></svg>
-    <div id="callout" class="callout glass" hidden></div>
+    <!-- the menu that opens from the input bar: every screen by touch, plus quick asks -->
+    <nav id="menu" class="menu panel" hidden aria-label="Every screen">
+      <div class="menu-grid" id="tabbar">
+        <button type="button" data-go="assistant"><span class="mi mi-orb"></span>Sentinel</button>
+        <button type="button" data-go="body"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="4.6" r="2.2"/><path d="M12 7.5v7M7 9.5l5 1 5-1M9.5 21l2.5-6.5 2.5 6.5"/></svg></span>Body</button>
+        <button type="button" data-go="vision"><span class="mi"><svg viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><circle cx="12" cy="11" r="3.2"/></svg></span>Face scan</button>
+        <button type="button" data-go="mission"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><ellipse cx="12" cy="12" rx="10" ry="3.6" transform="rotate(-20 12 12)"/></svg></span>Mission</button>
+        <button type="button" data-go="radiation"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 3.5a8.5 8.5 0 0 1 7.4 4.3M19.6 16a8.5 8.5 0 0 1-7.6 4.5M4.5 16A8.5 8.5 0 0 1 6 6.2"/></svg></span>Radiation</button>
+        <button type="button" data-go="health_log"><span class="mi"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4v2h6V4M9 11h6M9 15h4"/></svg></span>Health log</button>
+        <button type="button" data-go="trends"><span class="mi"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9"/></svg></span>Trends</button>
+        <button type="button" data-go="cognitive"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></span>Cognitive</button>
+        <button type="button" data-go="orb_calm"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M3 12h2M19 12h2"/></svg></span>Orb Calm</button>
+        <button type="button" data-go="race"><span class="mi"><svg viewBox="0 0 24 24"><path d="M4 15l8-9 8 9-8-3z"/></svg></span>Space race</button>
+        <button type="button" data-go="greenhouse"><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 20v-8M12 12c0-4 3-6 7-6 0 4-3 6-7 6zM12 14c0-3-2-5-6-5 0 3 2 5 6 5z"/></svg></span>Greenhouse</button>
+        <button type="button" data-go="hardware"><span class="mi"><svg viewBox="0 0 24 24"><rect x="7.5" y="5" width="9" height="14" rx="3"/><path d="M10.5 10h3M10.5 13h3"/></svg></span>Sentinel Skin</button>
+        <button type="button" data-go="crew"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.4"/><path d="M3.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/></svg></span>Crew</button>
+        <button type="button" data-go="cabin"><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 18V9l7-4 7 4v9z"/><path d="M9 18v-5h6v5"/></svg></span>Cabin</button>
+        <button type="button" data-go="settings"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg></span>Settings</button>
+        <button type="button" data-go="about"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v6M12 7.5v.5"/></svg></span>About</button>
+      </div>
+      <div id="quick" class="quick" aria-label="Quick asks">
+        <button class="chip" type="button" data-say="hey sentinel how am i doing">How am I doing?</button>
+        <button class="chip" type="button" data-say="hey sentinel let me see you">Let me see you</button>
+        <button class="chip" type="button" data-say="hey sentinel run a full scan">Full scan</button>
+        <button class="chip" type="button" data-say="hey sentinel check my eyes and my head">Check my eyes and head</button>
+        <button class="chip" type="button" data-say="hey sentinel start orb calm">Start Orb Calm</button>
+        <button class="chip" type="button" data-say="hey sentinel how is the cabin">Cabin</button>
+      </div>
+    </nav>
 
-    <section id="sheet" class="sheet glass" hidden role="dialog" aria-labelledby="sheet-title">
+    <section id="convo" class="convo panel" hidden aria-label="Conversation">
+      <div class="panel-head"><span class="label">Conversation</span><span class="card-status" id="voice-mode">typing</span></div>
+      <ol id="transcript" class="transcript" aria-live="polite"></ol>
+    </section>
+
+    <div id="bubble" class="bubble" hidden aria-live="polite"></div>
+    <button id="orb-hit" class="orb-hit" type="button" aria-label="Sentinel: tap to talk, or to come back here"></button>
+    <svg id="beam-layer" class="beam-layer" aria-hidden="true"></svg>
+    <div id="callout" class="callout panel" hidden></div>
+
+    <section id="sheet" class="sheet panel" hidden role="dialog" aria-labelledby="sheet-title">
       <header class="sheet-head">
         <h2 id="sheet-title" class="sheet-title"></h2>
         <span id="sheet-badge"></span>
@@ -238,7 +221,7 @@
       <div id="sheet-body" class="sheet-body"></div>
     </section>
 
-    <aside id="demo-panel" class="demo-panel glass" hidden aria-label="Demo panel"></aside>
+    <aside id="demo-panel" class="demo-panel panel" hidden aria-label="Demo panel"></aside>
   </div>
 </body>
 </html>
