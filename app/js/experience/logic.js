@@ -55,7 +55,7 @@ export function breathSync(samples) {
   return ok / samples.length;
 }
 
-/** Path half-width in 0..1 of the screen: wider when breathing in time and heart rate at or below baseline. */
+/** Path width as a fraction of the screen width: wider when breathing in time and heart rate at or below baseline. */
 export function pathWidth(syncRatio, hr = null, baseline = null) {
   let w = 0.18 + 0.22 * Math.max(0, Math.min(1, syncRatio));
   if (hr != null && baseline) w += hr <= baseline ? 0.06 : 0;

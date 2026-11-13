@@ -3,7 +3,7 @@
 import { api } from "../core/api.js";
 import { emit } from "../core/bus.js";
 import { renderTrend, METRIC_DEFS } from "./charts.js";
-import { ZONE_NAMES, badgeHTML, esc, fmt, statusWord, zoneReadings } from "./readings.js";
+import { ZONE_NAMES, badgeFor, badgeHTML, esc, fmt, statusWord, zoneReadings } from "./readings.js";
 
 const sheet = () => document.getElementById("sheet");
 const registry = new Map(); // name -> { title, badge, wide, render(el, ctx) -> cleanup }
@@ -142,7 +142,7 @@ function renderHealthLog(el, ctx) {
     <form class="form-grid" novalidate>
       ${FIELDS.map((f) => `<div class="field" data-key="${f.key}">
         <label for="f-${f.key}">${esc(f.label)} <span class="note">(${esc(f.unit)})</span></label>
-        <input id="f-${f.key}" name="${f.key}" type="number" inputmode="decimal" min="${f.min}" max="${f.max}" step="${f.step}" placeholder="last: ${esc(fmt(m[f.key], "manual." + f.key))}">
+        <input id="f-${f.key}" name="${f.key}" type="number" inputmode="decimal" min="${f.min}" max="${f.max}" step="${f.step}" placeholder="last: ${esc(fmt(m[f.key], "manual." + f.key))}${badgeFor("manual." + f.key, ctx.view.state, ctx.view.aux) === "LIVE" ? " (LIVE)" : " (SIM)"}">
         <span class="hint">How in microgravity: ${esc(f.hint)}</span>
         <span class="why">Why it matters: ${esc(f.why)}</span>
         <span class="err" aria-live="polite"></span></div>`).join("")}

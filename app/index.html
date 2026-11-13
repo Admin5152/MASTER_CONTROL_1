@@ -74,6 +74,7 @@
           <h2 class="panel-title">Body</h2>
           <button id="btn-scan" class="btn btn-ghost" type="button">Full scan</button>
           <button id="btn-radlayer" class="btn btn-ghost" type="button" aria-pressed="false">Radiation layer</button>
+          <button id="btn-radinfo" class="btn btn-ghost" type="button" hidden>Radiation effects</button>
         </header>
         <div id="body-host" class="body-host"></div>
         <ol id="scan-list" class="scan-list" aria-live="polite"></ol>
@@ -133,6 +134,7 @@
       <span class="badge badge-live">LIVE</span><span>measured now</span>
       <span class="badge badge-sim">SIM</span><span>simulated</span>
       <span class="badge badge-designed">DESIGNED</span><span>design only</span>
+      <span id="engagement" class="engagement"></span>
     </div>
 
     <svg id="beam-layer" class="beam-layer" aria-hidden="true"></svg>

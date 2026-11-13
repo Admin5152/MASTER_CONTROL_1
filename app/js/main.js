@@ -111,7 +111,7 @@ async function mountApp() {
   ctx.enrol = enrol;
   ctx.onClockSkip = () => pollOnce();
   registerScreen("radiation", { title: "Radiation Watch", render: renderRadiation });
-  registerScreen("cognitive", { title: "Cognitive check", badge: "LIVE", render: renderCognitive });
+  registerScreen("cognitive", { title: "Cognitive check", render: renderCognitive });
   registerScreen("orb_calm", { title: "Orb Calm", render: renderOrbCalm });
   registerScreen("aurora_run", { title: "Aurora Run", render: renderAurora });
   registerScreen("greenhouse", { title: "Greenhouse", render: renderGreenhouse });
@@ -166,6 +166,7 @@ function wireControls() {
     const on = e.currentTarget.getAttribute("aria-pressed") !== "true";
     director.run([{ cmd: "show_radiation", on }]);
   });
+  $("btn-radinfo").addEventListener("click", () => screens.zone("whole_body"));
   $("btn-hardware").addEventListener("click", () => director.run([{ cmd: "open_screen", name: "hardware" }]));
   $("btn-cam").addEventListener("click", () => (vision.state.on ? vision.stop() : vision.start()));
   $("btn-mute").addEventListener("click", (e) => {
@@ -349,9 +350,12 @@ function onState(v) {
   renderTiles($("vitals"), v, v.spaceweather);
   const sev = s.action?.severity || "none";
   orb.setSeverity(["flag_cabin", "flag_radiation", "flag_ground"].includes(s.action?.type) ? "alert" : sev === "watch" ? "watch" : "none");
-  banner.update(s);
+  banner.update(s, aux);
   renderActionCard(s, aux);
   $("greenhouse-mini").innerHTML = plantSVG(s.engagement.greenhouse_stage, view.wilt || 0);
+  const e = s.engagement;
+  $("engagement").textContent = `Streak ${e.streak_days} days · ${e.checkins_today} check-ins today · ${e.calm_levels_cleared} calm levels cleared`;
+  $("btn-radinfo").hidden = !body.bodySvg()?.classList.contains("show-radiation");
   // Sentinel noticed something: point at it
   const z = s.action?.zone || "";
   if (z !== lastZone) {

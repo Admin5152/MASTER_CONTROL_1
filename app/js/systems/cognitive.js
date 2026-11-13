@@ -2,6 +2,7 @@
 // Median reaction time is stored; the first three runs set the baseline; false starts are excluded.
 import { api } from "../core/api.js";
 import { medianReaction } from "../experience/logic.js";
+import { badgeFor, badgeHTML } from "../interface/readings.js";
 
 const DURATION = 25000;
 
@@ -9,7 +10,7 @@ export function renderCognitive(el, ctx) {
   const c = ctx.view.state?.cognitive || {};
   el.innerHTML = `
     <p>Tap the pad (or press the space bar) as soon as it turns green. 25 seconds. Tapping before it turns green counts as a false start and is left out.</p>
-    <p class="note">Your baseline: ${c.baseline_ms ? `<strong class="num">${c.baseline_ms} ms</strong>` : "not set yet; your first three runs set it"}. Last run: ${c.reaction_ms ? `${c.reaction_ms} ms` : "none"}.</p>
+    <p class="note">Your baseline: ${c.baseline_ms ? `<strong class="num">${c.baseline_ms} ms</strong> ${badgeHTML(badgeFor("cognitive.baseline_ms", ctx.view.state, ctx.view.aux))}` : "not set yet; your first three runs set it"}. Last run: ${c.reaction_ms ? `${c.reaction_ms} ms ${badgeHTML(badgeFor("cognitive.reaction_ms", ctx.view.state, ctx.view.aux))}` : "none"}. Results you produce here are LIVE.</p>
     <button class="target-pad" type="button" data-pad>Tap to start</button>
     <p class="note" data-res aria-live="polite"></p>`;
   const pad = el.querySelector("[data-pad]");

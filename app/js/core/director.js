@@ -255,6 +255,8 @@ export function createDirector(deps) {
     runCleanup();
     if (token.cancelled) return;
     const rank = { ok: 0, info: 1, watch: 2, alert: 3 };
+    clearTimeout(director.scanClear);
+    director.scanClear = setTimeout(() => { scanList.innerHTML = ""; }, 20000);
     const worst = results.reduce((w, r) => (rank[r.sev] > rank[w.sev] ? r : w), { sev: "ok" });
     cue.done();
     if (worst.sev === "ok") {

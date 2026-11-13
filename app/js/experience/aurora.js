@@ -92,7 +92,7 @@ export function renderAurora(el, ctx) {
       syncTotal++; if ((p.phase === "in") === holding) syncOk++;
       sync += (((p.phase === "in") === holding ? 1 : 0) - sync) * dt * 0.8;
       const hr = ctx.view.state?.vitals?.heart_rate, base = ctx.view.state?.baseline?.heart_rate;
-      const half = pathWidth(sync, hr, base);
+      const half = pathWidth(sync, hr, base) / 2; // pathWidth is the full path width as a fraction of the screen
       if (tiltX != null) targetX = 0.5 + tiltX * 0.45;
       if (keyL) targetX -= dt * 0.6;
       if (keyR) targetX += dt * 0.6;
