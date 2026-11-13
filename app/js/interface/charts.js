@@ -42,11 +42,11 @@ const bandsPlugin = {
     if (opts.baseline != null) {
       const yy = y.getPixelForValue(opts.baseline);
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = css("--ink-dim");
+      ctx.strokeStyle = css("--ink-2");
       ctx.setLineDash([6, 5]);
       ctx.beginPath(); ctx.moveTo(a.left, yy); ctx.lineTo(a.right, yy); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = css("--ink-dim");
+      ctx.fillStyle = css("--ink-2");
       ctx.fillText(`your usual ${opts.baseline}`, a.right - 110, yy - 6);
     }
     ctx.restore();
@@ -91,7 +91,7 @@ export async function renderTrend(host, crewId, metric, state, thresholds) {
       datasets: [{
         data: pts.map((p) => p.v), borderColor: line, borderWidth: 2, tension: 0.25,
         pointRadius: pts.length > 80 ? 0 : 4, pointHoverRadius: 6,
-        pointBackgroundColor: pts.map((p) => (live(p) ? line : css("--bg-panel"))), pointBorderColor: line,
+        pointBackgroundColor: pts.map((p) => (live(p) ? line : css("--surface-solid"))), pointBorderColor: line,
       }],
     },
     options: {
@@ -103,8 +103,8 @@ export async function renderTrend(host, crewId, metric, state, thresholds) {
         sentinelBands: { bands: bandsFrom(levels), baseline: def.base ? def.base(state) : null },
       },
       scales: {
-        x: { ticks: { color: css("--ink-faint"), maxTicksLimit: 6, maxRotation: 0 }, grid: { color: css("--rule") } },
-        y: { ticks: { color: css("--ink-dim") }, grid: { color: css("--rule") } },
+        x: { ticks: { color: css("--ink-3"), maxTicksLimit: 6, maxRotation: 0 }, grid: { color: css("--rule") } },
+        y: { ticks: { color: css("--ink-2") }, grid: { color: css("--rule") } },
       },
     },
     plugins: [bandsPlugin],

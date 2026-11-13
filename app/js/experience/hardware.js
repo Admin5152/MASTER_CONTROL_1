@@ -18,19 +18,19 @@ export function renderHardware(el) {
       </g>
       ${parts.map((p) => `
         <g class="hw-part">
-          <circle cx="${p.x}" cy="${p.y}" r="10" fill="var(--bg-panel)" stroke="var(--line)" stroke-width="2" filter="url(#hw-glow)"/>
+          <circle cx="${p.x}" cy="${p.y}" r="10" fill="var(--surface-solid)" stroke="var(--line)" stroke-width="2" filter="url(#hw-glow)"/>
           <path d="M${p.x} ${p.y} L${p.left ? p.bx + 120 : p.bx - 20} ${p.left ? p.by - 2 : p.by + 18}" stroke="var(--line)" stroke-dasharray="3 4"/>
           <text x="${p.bx}" y="${p.by + 14}" fill="var(--ink)" font-size="20" font-family="var(--font)">${p.label}</text>
-          <text x="${p.bx}" y="${p.by + 36}" fill="var(--ink-dim)" font-size="14" font-family="var(--font)">${p.sub}</text>
+          <text x="${p.bx}" y="${p.by + 36}" fill="var(--ink-2)" font-size="14" font-family="var(--font)">${p.sub}</text>
         </g>`).join("")}
       <g>
         <rect x="560" y="470" width="170" height="64" rx="8" fill="var(--bg-inset)" stroke="var(--line)"/>
         <text x="575" y="498" fill="var(--ink)" font-size="17" font-family="var(--font)">Sentinel hub</text>
-        <text x="575" y="520" fill="var(--ink-dim)" font-size="13" font-family="var(--font)">Bluetooth LE to the tablet</text>
+        <text x="575" y="520" fill="var(--ink-2)" font-size="13" font-family="var(--font)">Bluetooth LE to the tablet</text>
         <path d="M370 470 Q480 540 560 500" stroke="var(--line)" stroke-dasharray="6 6" fill="none"/>
       </g>
       <text x="30" y="40" fill="var(--badge-designed)" font-size="34" font-family="var(--font)" font-weight="700">DESIGNED</text>
-      <text x="30" y="64" fill="var(--ink-dim)" font-size="15" font-family="var(--font)">A design, not built. Nothing on this slide is running.</text>
+      <text x="30" y="64" fill="var(--ink-2)" font-size="15" font-family="var(--font)">A design, not built. Nothing on this slide is running.</text>
     </svg>
     <p class="note">Today the app reads pulse from the webcam (LIVE) and simulates breathing rate and SpO2 (SIM). This wearable is how those readings would become real sensors on a mission; on a deep-space mission an onboard dosimeter would also feed the radiation display.</p>
   </div>`;

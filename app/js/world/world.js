@@ -10,6 +10,9 @@ const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").ma
 export function createWorld(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTablet, alpha: true, powerPreference: "high-performance" });
   renderer.setClearColor(0x000000, 0);
+  // if the GPU drops the context, hide the canvas so the window's own gradient shows; three restores it
+  canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); canvas.classList.add("is-lost"); });
+  canvas.addEventListener("webglcontextrestored", () => canvas.classList.remove("is-lost"));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
@@ -23,12 +26,17 @@ export function createWorld(canvas) {
   const stats = { frames: 0, since: performance.now(), fps: 0, msAvg: 0, ms: [] };
   const listeners = new Set();   // per-frame hooks (hotspot projection etc.)
 
+  let host = null;
   function resize() {
-    W = Math.max(1, window.innerWidth); H = Math.max(1, window.innerHeight);
+    const r = host ? host.getBoundingClientRect() : { width: 1, height: 1 };
+    const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+    if (w === W && h === H) return;
+    W = w; H = h;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr));
     renderer.setSize(W, H, false);
     for (const s of scenes.values()) s.resize?.(W, H);
   }
+  const ro = new ResizeObserver(() => resize());
   window.addEventListener("resize", resize);
 
   function frame(now) {
@@ -71,6 +79,19 @@ export function createWorld(canvas) {
       scenes.get(name).onShow?.();
       canvas.classList.remove("is-fading");
     },
+    /** Move the canvas into a window element (the world renders inside framed windows). */
+    attach(el) {
+      if (!el || el === host) return;
+      if (host) ro.unobserve(host);
+      host = el;
+      el.insertBefore(canvas, el.firstChild);
+      ro.observe(el);
+      W = H = 0;
+      resize();
+    },
+    get host() { return host; },
+    /** Viewport rect of the world's window, for projecting 3D anchors to the screen. */
+    rect() { return host ? host.getBoundingClientRect() : { left: 0, top: 0, width: W, height: H }; },
     pause(p) { paused = !!p; },
     onFrame(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     stats: () => ({ fps: Math.round(stats.fps * 10) / 10, msAvg: Math.round(stats.msAvg * 100) / 100, cap: fpsCap, dpr: renderer.getPixelRatio(), active }),

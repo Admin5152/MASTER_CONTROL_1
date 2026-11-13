@@ -10,7 +10,7 @@ export function createDemoPanel(ctx) {
     const v = ctx.view;
     const h = ctx.health || {};
     el.innerHTML = `
-      <h2>Demo panel <span class="badge badge-sim">SIM</span> <button class="btn btn-ghost" type="button" data-close style="margin-left:auto">Close</button></h2>
+      <h2>Demo panel <span class="badge badge-sim">SIM</span> <button class="pill pill-ghost" type="button" data-close style="margin-left:auto">Close</button></h2>
       <p class="note">Everything set here is simulated and shows a SIM badge on the main screen.</p>
       <h3>Tablet URL</h3><p class="demo-url">${esc(h.tablet_url || "—")}</p>
       <h3>Subsystems</h3>
@@ -18,19 +18,19 @@ export function createDemoPanel(ctx) {
       <h3>Crew member</h3>
       <select data-crew>${v.crew.map((c) => `<option value="${esc(c.crew_id)}" ${c.crew_id === v.crewId ? "selected" : ""}>${esc(c.display_name)}</option>`).join("")}</select>
       <h3>Scenarios</h3>
-      <div class="row">${scenarios.map(([k, l]) => `<button class="btn" type="button" data-scn="${k}">${esc(l)}</button>`).join("")}</div>
+      <div class="row">${scenarios.map(([k, l]) => `<button class="pill pill-ghost" type="button" data-scn="${k}">${esc(l)}</button>`).join("")}</div>
       <h3>Cabin oxygen <span class="num" data-o2v></span>%</h3>
       <input type="range" min="15" max="23" step="0.1" data-o2>
       <h3>Cabin CO2 <span class="num" data-co2v></span> ppm</h3>
       <input type="range" min="300" max="8000" step="50" data-co2>
       <h3>Heart-rate override <span class="num" data-hrv></span> bpm</h3>
       <input type="range" min="45" max="150" step="1" data-hr>
-      <div class="row"><button class="btn" type="button" data-hrapply>Apply heart rate</button><button class="btn" type="button" data-hrrelease>Release to camera</button></div>
+      <div class="row"><button class="pill pill-ghost" type="button" data-hrapply>Apply heart rate</button><button class="pill pill-ghost" type="button" data-hrrelease>Release to camera</button></div>
       <h3>Mission clock</h3>
-      <div class="row"><button class="btn" type="button" data-skip="3">+3 hours</button><button class="btn" type="button" data-skip="24">+1 day</button></div>
+      <div class="row"><button class="pill pill-ghost" type="button" data-skip="3">+3 hours</button><button class="pill pill-ghost" type="button" data-skip="24">+1 day</button></div>
       <h3>Voice enrolment ${h.speaker_id ? "" : '<span class="note">(speaker ID not installed)</span>'}</h3>
       <p class="note">Each person reads aloud for 10 seconds. Voiceprints stay on this laptop.</p>
-      <div class="row">${v.crew.map((c) => `<button class="btn" type="button" data-enrol="${esc(c.crew_id)}" ${h.speaker_id ? "" : "disabled"}>${esc(c.display_name)}${(h.voiceprints || []).includes(c.crew_id) ? " ✓" : ""}</button>`).join("")}</div>
+      <div class="row">${v.crew.map((c) => `<button class="pill pill-ghost" type="button" data-enrol="${esc(c.crew_id)}" ${h.speaker_id ? "" : "disabled"}>${esc(c.display_name)}${(h.voiceprints || []).includes(c.crew_id) ? " ✓" : ""}</button>`).join("")}</div>
       <p class="note" data-enrolst aria-live="polite"></p>`;
     const s = v.state;
     const o2 = el.querySelector("[data-o2]"), co2 = el.querySelector("[data-co2]"), hr = el.querySelector("[data-hr]");

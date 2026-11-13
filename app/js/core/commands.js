@@ -1,12 +1,14 @@
 // Director command whitelist and validator. Pure (no DOM): tested with node --test.
-export const SCREENS = ["home", "vision", "health_log", "trends", "radiation", "cognitive", "orb_calm",
-  "aurora_run", "greenhouse", "hardware", "crew"];
+// The backend (brain/llm.py) keeps the same whitelist for LLM replies.
+export const SCREENS = ["home", "assistant", "mission", "body", "vision", "health_log", "trends", "radiation", "cabin",
+  "cognitive", "orb_calm", "aurora_run", "race", "greenhouse", "hardware", "crew"];
 export const ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"];
 export const METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
   "reaction", "talk_time", "pitch", "o2", "co2"];
+export const VIEWS = ["front", "back", "left", "right"];
 export const MAX_COMMANDS = 3;
 
-/** Drop unknown commands, zones, screens and metrics; keep at most `max`. */
+/** Drop unknown commands, zones, screens, metrics and views; keep at most `max`. */
 export function validateCommands(cmds, max = MAX_COMMANDS) {
   const out = [];
   if (!Array.isArray(cmds)) return out;
@@ -19,6 +21,19 @@ export function validateCommands(cmds, max = MAX_COMMANDS) {
       case "start_scan": out.push({ cmd: "start_scan" }); break;
       case "show_radiation": out.push({ cmd: "show_radiation", on: c.on !== false }); break;
       case "close": out.push({ cmd: "close" }); break;
+      case "rotate_body":
+        if (VIEWS.includes(c.view)) out.push({ cmd: "rotate_body", view: c.view });
+        else if (typeof c.angle === "number" && Number.isFinite(c.angle) && Math.abs(c.angle) <= 360) out.push({ cmd: "rotate_body", angle: c.angle });
+        break;
+      case "zoom_body":
+        if (c.zone === "reset" || ZONES.includes(c.zone)) out.push({ cmd: "zoom_body", zone: c.zone });
+        break;
+      case "xray": out.push({ cmd: "xray", on: c.on !== false }); break;
+      case "check_zone": {
+        const zs = Array.isArray(c.zones) ? [...new Set(c.zones.filter((z) => ZONES.includes(z)))].slice(0, 3) : [];
+        if (zs.length) out.push({ cmd: "check_zone", zones: zs });
+        break;
+      }
       default: break;
     }
     if (out.length >= max) break;

@@ -42,3 +42,34 @@ export const api = {
   clock: (hours) => req("POST", "../api/clock", { advance_hours: hours }),
   json: (path) => req("GET", path),
 };
+
+/** Streamed chat: calls onSentence(text, source) for each complete sentence as it arrives (NDJSON),
+ *  resolves with the final {reply, commands, source}. Falls back to /api/chat if streaming fails. */
+api.chatStream = async (crew_id, transcript, onSentence) => {
+  let r;
+  try {
+    r = await fetch("../api/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ crew_id, transcript }) });
+  } catch { r = null; }
+  if (!r || !r.ok || !r.body) {
+    const d = await api.chat(crew_id, transcript);
+    return d;
+  }
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", final = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, i).trim();
+      buf = buf.slice(i + 1);
+      if (!line) continue;
+      let ev; try { ev = JSON.parse(line); } catch { continue; }
+      if (ev.type === "sentence") onSentence?.(ev.text, ev.source);
+      else if (ev.type === "final") final = ev;
+    }
+  }
+  return final || { reply: "", commands: [], source: "rules" };
+};

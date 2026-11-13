@@ -240,3 +240,11 @@ export async function recordClip(seconds = 10, onProgress) {
   for (let i = 0; i < len; i++) out[i] = ring[(startPos + i) % ring.length];
   return { samples: out, rate: ringRate };
 }
+
+// interim push-to-talk (replaced by the VAD capture pipeline)
+export function pushToTalk() {
+  if (!SR) return false;
+  awaitingUntil = Date.now() + 8000;
+  startListening();
+  return true;
+}

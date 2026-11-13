@@ -1,18 +1,22 @@
-// The Director: every screen change goes through director.run(commands).
-// Commands run in order; each returns a promise that resolves when its animation ends.
-// A new run cancels the one in progress cleanly.
+// The Director: every screen change and every body move goes through director.run(commands).
+// Commands run in order; each returns a promise that resolves when its animation ends. A new run
+// cancels the one in progress cleanly. Whitelist and validation: ./commands.js.
 import { emit } from "./bus.js";
 import { validateCommands } from "./commands.js";
 import { cue } from "./sound.js";
 import * as body from "../interface/body.js";
 import { ZONE_NAMES, badgeHTML, esc, fmt, statusWord, zoneReadings } from "../interface/readings.js";
+import { skinReadings, mountUltrasound } from "../experience/skin.js";
 
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-const SEV_COLOR = { ok: "var(--ok)", watch: "var(--watch)", alert: "var(--alert)", info: "var(--watch)" };
+const SEV_COLOR = { ok: "#3fbf80", watch: "#ffb547", info: "#ffb547", alert: "#ff3b4e" };
+const NS = "http://www.w3.org/2000/svg";
 const sleep = (ms, token) => new Promise((res) => {
   const t = setTimeout(res, ms);
   token?.onCancel(() => { clearTimeout(t); res(); });
 });
+const INFO_ICON = '<svg class="co-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>';
+const SPAN = { head: [1.9, 1.66], eyes: [1.8, 1.72], lungs: [1.5, 1.2], heart: [1.42, 1.22], gut: [1.25, 0.98], bones: [0.98, 0.35], whole_body: [1.95, 0.0] };
 
 class Token {
   constructor() { this.cancelled = false; this.cbs = []; }
@@ -21,17 +25,17 @@ class Token {
 }
 
 export function createDirector(deps) {
-  const { orb, screens, say, getView, facts } = deps;
+  const { orb, screens, stages, say, getView, facts, onFrame } = deps;
   const beamLayer = document.getElementById("beam-layer");
   const callout = document.getElementById("callout");
   const scanList = document.getElementById("scan-list");
   let current = null;
   let cleanup = [];
-  const director = { lastScanVisits: [], busy: false, lastCommands: [] };
+  const director = { lastScanVisits: [], lastChecks: [], busy: false, lastCommands: [] };
+  const b3 = () => body.body3d();
 
   function runCleanup() { cleanup.splice(0).reverse().forEach((f) => { try { f(); } catch {} }); }
-
-  director.cancel = () => { current?.cancel(); current = null; runCleanup(); };
+  director.cancel = () => { current?.cancel(); current = null; runCleanup(); b3()?.cancelScan(); };
 
   director.run = async (commands) => {
     const cmds = validateCommands(commands, 6);
@@ -46,10 +50,18 @@ export function createDirector(deps) {
         if (token.cancelled) break;
         await step(c, token);
       }
+    } catch (e) {
+      console.warn("director step failed", e);
     } finally {
       if (current === token) { director.busy = false; current = null; emit("director:busy", false); }
     }
   };
+
+  async function toBody() {
+    if (stages.current !== "body") await stages.go("body");
+    for (let i = 0; i < 40 && !b3(); i++) await sleep(150);
+    return b3();
+  }
 
   async function step(c, token) {
     switch (c.cmd) {
@@ -57,26 +69,25 @@ export function createDirector(deps) {
       case "open_screen": return screens.open(c.name);
       case "show_chart": return screens.chart(c.metric);
       case "start_scan": return fullScan(token);
-      case "show_radiation": body.showRadiation(c.on); document.getElementById("btn-radlayer")?.setAttribute("aria-pressed", String(!!c.on)); return;
+      case "check_zone": return checkZones(c.zones, token);
+      case "show_radiation": {
+        await toBody();
+        body.showRadiation(c.on);
+        document.getElementById("btn-radlayer")?.setAttribute("aria-pressed", String(!!c.on));
+        return;
+      }
+      case "rotate_body": { const b = await toBody(); return b?.rotate(c.view ?? c.angle); }
+      case "zoom_body": { const b = await toBody(); return b?.zoomTo(c.zone); }
+      case "xray": { const b = await toBody(); document.getElementById("btn-xray")?.setAttribute("aria-pressed", String(!!c.on)); return b?.setXray(c.on); }
       case "close": screens.close(); return;
     }
   }
 
-  // ---------- pointing sequence ----------
-  function zoneSeverity(zone) {
+  // ---------- shared pieces ----------
+  function zoneSeverity(zone) { return getView().aux?.assessment?.zones?.[zone] || "ok"; }
+  function readingsFor(zone) {
     const v = getView();
-    return v.aux?.assessment?.zones?.[zone] || "ok";
-  }
-
-  function makeLine(cls) {
-    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    l.setAttribute("class", cls);
-    beamLayer.appendChild(l);
-    return l;
-  }
-
-  function setLine(l, a, b) {
-    l.setAttribute("x1", a.x); l.setAttribute("y1", a.y); l.setAttribute("x2", b.x); l.setAttribute("y2", b.y);
+    return zoneReadings(zone, v.state, v.aux).concat(skinReadings(zone, v.aux?.skin));
   }
 
   function sentenceFor(zone, readings) {
@@ -91,12 +102,11 @@ export function createDirector(deps) {
   }
 
   function nextStepFor(zone) {
-    const s = getView().state;
-    const a = s?.action || {};
+    const a = getView().state?.action || {};
     if (a.type === "offer_orb_calm") return { label: "Start Orb Calm", cmd: { cmd: "open_screen", name: "orb_calm" } };
     if (a.type === "offer_intervention" && a.intervention) {
-      const map = { breathing: "orb_calm", aurora_run: "aurora_run" };
-      if (map[a.intervention]) return { label: a.intervention === "aurora_run" ? "Start Aurora Run" : "Start Orb Calm", cmd: { cmd: "open_screen", name: map[a.intervention] } };
+      const map = { breathing: "orb_calm", aurora_run: "race" };
+      if (map[a.intervention]) return { label: a.intervention === "aurora_run" ? "Take a space race break" : "Start Orb Calm", cmd: { cmd: "open_screen", name: map[a.intervention] } };
       const names = { earth_window: "Open the Earth window", music: "Play ambient sound", connection: "Message a crewmate" };
       return { label: names[a.intervention] || "Open the suggestion", intervention: a.intervention };
     }
@@ -107,166 +117,259 @@ export function createDirector(deps) {
     return { label: "See the trend", cmd: { cmd: "show_chart", metric } };
   }
 
-  async function pointTo(zone, token) {
-    const svg = body.bodySvg();
-    if (!svg) return;
-    const v = getView();
-    const sev = zoneSeverity(zone);
-    const color = SEV_COLOR[sev] || "var(--line)";
-    document.documentElement.style.setProperty("--beam-color", color);
-    const readings = zoneReadings(zone, v.state, v.aux);
-    const a = body.anchorOf(zone);
-    const fast = reduced();
-    cue.point();
+  function el(tag, cls) { const e = document.createElementNS(NS, tag); if (cls) e.setAttribute("class", cls); beamLayer.appendChild(e); return e; }
 
-    if (zone === "whole_body") body.showRadiation(true);
-    // 1. orb turns toward the zone, beam draws from orb to anchor
-    const oc = orb.center();
-    let target = body.screenPoint(a.x, a.y);
-    const dx = target.x - oc.x, dy = target.y - oc.y, len = Math.hypot(dx, dy) || 1;
-    orb.look(dx / len, dy / len);
-    const beam = makeLine("beam");
-    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    dot.setAttribute("class", "beam-dot");
-    dot.setAttribute("r", "5");
-    beamLayer.appendChild(dot);
-    const start = { x: oc.x + (dx / len) * oc.r, y: oc.y + (dy / len) * oc.r };
-    const update = () => {
-      target = body.screenPoint(a.x, a.y);
-      setLine(beam, start, target);
-      dot.setAttribute("cx", target.x); dot.setAttribute("cy", target.y);
-      placeCallout(target);
-    };
-    cleanup.push(() => { beam.remove(); dot.remove(); orb.look(0, 0); body.setTarget(null); emit("vision:point", null); });
-    setLine(beam, start, target);
-    dot.setAttribute("cx", target.x); dot.setAttribute("cy", target.y);
-    if (!fast && window.gsap) {
-      const L = Math.hypot(target.x - start.x, target.y - start.y);
-      beam.style.strokeDasharray = `${L}`;
-      beam.style.strokeDashoffset = `${L}`;
-      await new Promise((res) => { window.gsap.to(beam.style, { strokeDashoffset: 0, duration: 0.6, ease: "power2.out", onComplete: res }); token.onCancel(res); });
-      beam.style.strokeDasharray = "";
+  function placeCallout(dot, leader) {
+    if (callout.hidden) return;
+    const host = document.getElementById("body-host").getBoundingClientRect();
+    const cw = callout.offsetWidth || 340, ch = callout.offsetHeight || 220;
+    const top0 = 64, bottomMax = window.innerHeight - 90;
+    // ref 06: the card sits to the side of the body, the leader runs to its edge
+    let x = host.left - cw * 0.55;
+    let side = "left";
+    if (x < 12) { x = Math.min(window.innerWidth - cw - 12, host.right - cw * 0.45); side = "right"; }
+    if (side === "right" && x < dot.x + 30) x = Math.max(12, dot.x - cw - 60), side = "left";
+    const y = Math.min(Math.max(top0, dot.y - ch * 0.35), bottomMax - ch);
+    callout.style.left = `${x}px`; callout.style.top = `${y}px`;
+    if (leader) {
+      const ex = side === "left" ? x + cw : x;
+      const ey = Math.min(Math.max(dot.y, y + 18), y + ch - 18);
+      const mx = side === "left" ? Math.max(ex + 12, dot.x - 40) : Math.min(ex - 12, dot.x + 40);
+      leader.setAttribute("points", `${dot.x},${dot.y} ${mx},${ey} ${ex},${ey}`);
     }
-    if (token.cancelled) return;
+  }
 
-    // 2. ring + zoom
-    body.setTarget(zone);
-    emit("vision:point", zone);
-    cleanup.push(() => { if (body.isZoomed()) body.zoomReset(reduced() ? 0 : 0.6); });
-    await body.zoomTo(body.zoomBoxFor(zone), fast ? 0 : 1.0, update);
-    if (token.cancelled) return;
-
-    // 3. callout card with leader line
-    const sentence = sentenceFor(zone, readings);
-    const next = nextStepFor(zone);
-    const top = readings.find((r) => r.severity !== "ok") || readings[0];
-    callout.innerHTML = `
-      <h3>${esc(ZONE_NAMES[zone] || zone)} <span class="co-sev st-${sev}">${statusWord(sev)}</span></h3>
-      ${top ? `<div class="co-reading"><span>${esc(top.label)}: <strong class="num">${esc(fmt(top.value, top.field))}</strong> ${esc(top.unit || "")}</span>${badgeHTML(top.badge)}</div>
-      <div class="co-change">${esc(top.change || "No baseline comparison for this reading.")}</div>` : `<div class="co-change">No readings for this area yet.</div>`}
-      <div class="co-mean">${esc(facts?.zones?.[zone]?.spaceflight?.split(". ")[0] || "")}.</div>
-      <button class="btn btn-primary btn-big" type="button" data-next>${esc(next.label)}</button>`;
+  /** Red dot + leader + callout that follow the zone every frame. Returns the wait-for-user promise. */
+  function showCallout(zone, html, color, token, next) {
+    document.documentElement.style.setProperty("--beam-color", color);
+    const dot = el("circle", "beam-dot"); dot.setAttribute("r", "7");
+    const leader = el("polyline", "leader");
+    // beam: a thin line of light from the orb to the zone (spec 6.11 step 1)
+    const beam = el("line", "beam");
+    callout.innerHTML = html;
     callout.hidden = false;
     callout.dataset.zone = zone;
-    const leader = makeLine("leader");
-    cleanup.push(() => { leader.remove(); callout.hidden = true; callout.innerHTML = ""; });
-    placeCallout(target, leader);
-    if (!fast && window.gsap) window.gsap.fromTo(callout, { scaleX: 0.2, opacity: 0 }, { scaleX: 1, opacity: 1, duration: 0.35, ease: "power2.out" });
-
-    // 4. say it while the card is open; 6. wait for the user or eight seconds
+    const off = onFrame(() => {
+      const p = body.screenPoint(zone);
+      dot.setAttribute("cx", p.x); dot.setAttribute("cy", p.y);
+      const oc = orb.center();
+      beam.setAttribute("x1", oc.x); beam.setAttribute("y1", oc.y); beam.setAttribute("x2", p.x); beam.setAttribute("y2", p.y);
+      placeCallout(p, leader);
+    });
+    const p0 = body.screenPoint(zone);
+    dot.setAttribute("cx", p0.x); dot.setAttribute("cy", p0.y);
+    placeCallout(p0, leader);
+    const oc = orb.center();
+    beam.setAttribute("x1", oc.x); beam.setAttribute("y1", oc.y); beam.setAttribute("x2", p0.x); beam.setAttribute("y2", p0.y);
+    if (!reduced() && window.gsap) {
+      const L = Math.hypot(p0.x - oc.x, p0.y - oc.y);
+      window.gsap.fromTo(beam, { strokeDasharray: L, strokeDashoffset: L }, { strokeDashoffset: 0, duration: 0.6, ease: "power2.out" });
+      window.gsap.fromTo(dot, { attr: { r: 0 } }, { attr: { r: 7 }, duration: 0.45, ease: "back.out(2)" });
+      window.gsap.fromTo(callout, { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" });
+    }
+    const usOff = mountUltrasound(callout.querySelector("[data-us]"), zone, getView().aux?.skin);
+    cleanup.push(() => { off(); usOff?.(); dot.remove(); leader.remove(); beam.remove(); callout.hidden = true; callout.innerHTML = ""; });
     let acted = null;
-    const waitUser = new Promise((res) => {
-      callout.querySelector("[data-next]").addEventListener("click", () => { acted = next; res(); }, { once: true });
+    const wait = new Promise((res) => {
+      callout.querySelector("[data-next]")?.addEventListener("click", () => { acted = next; res(); }, { once: true });
       token.onCancel(res);
     });
-    say(sentence, { kind: "point" });
-    await Promise.race([waitUser, sleep(8000, token)]);
-    if (token.cancelled) return;
+    return { wait, acted: () => acted };
+  }
 
-    // ease back
-    if (!fast && window.gsap) {
-      await new Promise((res) => window.gsap.to(callout, { opacity: 0, duration: 0.25, onComplete: res }));
-    }
+  async function easeOut(token, restoreXray) {
+    if (!reduced() && window.gsap && !callout.hidden) await new Promise((res) => window.gsap.to(callout, { opacity: 0, duration: 0.25, onComplete: res }));
     runCleanup();
-    await body.zoomReset(fast ? 0 : 0.8);
+    const b = b3();
+    body.setTarget(null);
+    emit("vision:point", null);
+    if (b) await Promise.all([b.zoomReset(reduced() ? 0 : 1.1), restoreXray === false ? b.setXray(false, 0.8) : Promise.resolve()]);
+  }
+
+  function readingRows(rs) {
+    return rs.length ? `<ul class="co-list">${rs.slice(0, 5).map((r) => `<li><span>${esc(r.label)} <strong class="num">${esc(fmt(r.value, r.field))}</strong> ${esc(r.unit || "")}</span>${badgeHTML(r.badge)}</li>`).join("")}</ul>` : "";
+  }
+  const nowStr = () => new Date().toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  // ---------- pointing: best view, zoom, X-ray, red dot, leader, callout ----------
+  async function pointTo(zone, token) {
+    const b = await toBody();
+    if (!b || token.cancelled) return;
+    const sev = zoneSeverity(zone);
+    const readings = readingsFor(zone);
+    const fast = reduced();
+    const wasX = b.xray;
+    cue.point();
+    if (zone === "whole_body") body.showRadiation(true);
+    orb.look(-0.6, 0.1);
+    cleanup.push(() => orb.look(0, 0));
+    await b.zoomTo(zone, fast ? 0 : 1.3);
+    if (token.cancelled) return;
+    await b.setXray(true, fast ? 0 : 0.7);
+    body.setTarget(zone);
+    emit("vision:point", zone);
+    if (token.cancelled) return;
+    const top = readings.find((r) => r.severity !== "ok") || readings[0];
+    const next = nextStepFor(zone);
+    const html = `
+      <h3>${INFO_ICON}${esc(ZONE_NAMES[zone] || zone)}<span class="co-sev st-${sev}">${statusWord(sev)}</span></h3>
+      <p class="co-time">${esc(nowStr())}</p>
+      ${top ? `<div class="co-reading"><span>${esc(top.label)}: <strong class="num">${esc(fmt(top.value, top.field))}</strong> ${esc(top.unit || "")}</span>${badgeHTML(top.badge)}</div>
+        <p class="co-change">${esc(top.change || "No baseline comparison for this reading.")}</p>` : `<p class="co-change">No readings for this area yet.</p>`}
+      <p class="co-mean">${esc((facts?.zones?.[zone]?.spaceflight || "").split(". ")[0])}.</p>
+      ${skinBlock(zone)}
+      <button class="pill pill-dark pill-block" type="button" data-next>${esc(next.label)}</button>`;
+    const co = showCallout(zone, html, SEV_COLOR[sev] || SEV_COLOR.alert, token, next);
+    say(sentenceFor(zone, readings), { kind: "point" });
+    await Promise.race([co.wait, sleep(8000, token)]);
+    if (token.cancelled) return;
+    await easeOut(token, wasX);
+    const acted = co.acted();
     if (acted) {
       if (acted.cmd) await step(acted.cmd, token);
       else if (acted.intervention) screens.intervention(acted.intervention);
     }
   }
 
-  function placeCallout(target, leader) {
-    if (callout.hidden) return;
-    const host = document.getElementById("col-body").getBoundingClientRect();
-    const cw = callout.offsetWidth || 320, ch = callout.offsetHeight || 220;
-    let x = host.right + 12;
-    if (x + cw > window.innerWidth - 8) x = Math.max(8, window.innerWidth - cw - 8);
-    let y = Math.min(Math.max(8 + 64, target.y - ch / 2), window.innerHeight - ch - 8);
-    callout.style.left = `${x}px`;
-    callout.style.top = `${y}px`;
-    const l = leader || beamLayer.querySelector(".leader");
-    if (l) setLine(l, target, { x, y: Math.min(Math.max(target.y, y + 16), y + ch - 16) });
+  function skinBlock(zone) {
+    const skin = getView().aux?.skin;
+    if (!skin?.on || !["heart", "lungs", "eyes", "gut"].includes(zone)) return "";
+    return `<div class="us-panel" data-us><canvas></canvas><div class="us-cap"><span>Sentinel Skin ultrasound</span>${badgeHTML("SIM · Sentinel Skin")}</div></div>`;
   }
 
-  // ---------- full scan ----------
+  // ---------- full scan: mesh sweep head to feet, then resolve into X-ray ----------
   async function fullScan(token) {
-    const svg = body.bodySvg();
-    if (!svg) return;
+    const b = await toBody();
+    if (!b || token.cancelled) return;
     const v = getView();
     const anchors = Object.fromEntries(body.ZONES.map((z) => [z, body.anchorOf(z)]));
     const order = body.scanOrder(anchors);
     const fast = reduced();
     director.lastScanVisits = [];
     scanList.innerHTML = "";
-    if (body.isZoomed()) await body.zoomReset(0);
-    svg.classList.add("is-scanning", "director-scan");
+    body.setTarget(null);
+    await Promise.all([b.zoomReset(fast ? 0 : 1.0), b.setXray(false, fast ? 0 : 0.5)]);
+    if (token.cancelled) return;
     body.ZONES.forEach((z) => body.zoneEl(z)?.classList.add("scan-pending"));
-    const line = svg.querySelector("#scanline");
-    const yState = { y: 20 };
-    const setY = () => line?.setAttribute("transform", `translate(0 ${yState.y})`);
-    cleanup.push(() => {
-      svg.classList.remove("is-scanning", "director-scan");
-      line?.removeAttribute("transform");
-      body.ZONES.forEach((z) => body.zoneEl(z)?.classList.remove("scan-pending"));
-    });
+    cleanup.push(() => body.ZONES.forEach((z) => body.zoneEl(z)?.classList.remove("scan-pending")));
+    b.beginScan(1.95);
     say("Running a full scan.", { kind: "scan" });
     const results = [];
+    let y = 1.95;
     for (const z of order) {
       if (token.cancelled) return;
-      const toY = anchors[z].y;
-      if (!fast && window.gsap) {
-        await new Promise((res) => { window.gsap.to(yState, { y: toY, duration: Math.max(0.5, (toY - yState.y) / 140), ease: "none", onUpdate: setY, onComplete: res }); token.onCancel(res); });
-      } else { yState.y = toY; setY(); await sleep(250, token); }
+      const toY = anchors[z].h;
+      await b.sweepTo(toY, fast ? 0 : Math.max(0.35, (y - toY) * 1.6));
+      y = toY;
       if (token.cancelled) return;
       const sev = v.aux?.assessment?.zones?.[z] || "ok";
       body.zoneEl(z)?.classList.remove("scan-pending");
+      b.setRing({ head: "head", eyes: "head", lungs: "chest", heart: "chest", gut: "waist", bones: "thighs" }[z]);
       cue.tick();
       director.lastScanVisits.push(z);
-      const rs = zoneReadings(z, getView().state, getView().aux);
+      const rs = readingsFor(z);
       const top = rs.find((r) => r.severity !== "ok") || rs[0];
       results.push({ zone: z, sev });
       const li = document.createElement("li");
       li.dataset.zone = z;
-      li.innerHTML = `<span class="st st-${sev}">${statusWord(sev)}</span><span>${esc(ZONE_NAMES[z])}${top ? `: ${esc(top.label.toLowerCase())} ${esc(fmt(top.value, top.field))} ${esc(top.unit || "")}` : ": no sensor in this build"}</span>${top ? badgeHTML(top.badge) : badgeHTML("DESIGNED")}`;
+      li.innerHTML = `<span class="st st-${sev}">${statusWord(sev)}</span><span>${esc(ZONE_NAMES[z])}${top ? `: ${esc(top.label.toLowerCase())} ${esc(fmt(top.value, top.field))} ${esc(top.unit || "")}` : ": no sensor yet"}</span>${top ? badgeHTML(top.badge) : badgeHTML("DESIGNED")}`;
       scanList.appendChild(li);
-      await sleep(fast ? 100 : 450, token);
+      await sleep(fast ? 60 : 260, token);
     }
-    if (!fast && window.gsap) await new Promise((res) => { window.gsap.to(yState, { y: 860, duration: 1.2, ease: "none", onUpdate: setY, onComplete: res }); token.onCancel(res); });
+    await b.sweepTo(-0.02, fast ? 0 : 1.1);
+    b.setRing(null);
+    await b.endScan(true, fast ? 0 : 1.0);
+    document.getElementById("btn-xray")?.setAttribute("aria-pressed", "true");
     runCleanup();
     if (token.cancelled) return;
     const rank = { ok: 0, info: 1, watch: 2, alert: 3 };
     clearTimeout(director.scanClear);
-    director.scanClear = setTimeout(() => { scanList.innerHTML = ""; }, 20000);
+    director.scanClear = setTimeout(() => { scanList.innerHTML = ""; }, 30000);
     const worst = results.reduce((w, r) => (rank[r.sev] > rank[w.sev] ? r : w), { sev: "ok" });
     cue.done();
     if (worst.sev === "ok") {
-      say("Scan complete. Everything is within your usual range.", { kind: "scan" });
+      await say("Scan complete. Everything is within your usual range.", { kind: "scan" });
+      await sleep(2500, token);
+      if (!token.cancelled) { await b.setXray(false, 1.0); document.getElementById("btn-xray")?.setAttribute("aria-pressed", "false"); }
     } else {
       const n = results.filter((r) => r.sev !== "ok").length;
       say(`Scan complete. ${n} area${n > 1 ? "s" : ""} need${n > 1 ? "" : "s"} a look; the most important is ${ZONE_NAMES[worst.zone].toLowerCase()}.`, { kind: "scan" });
-      await sleep(2500, token);
+      await sleep(2200, token);
       if (!token.cancelled) await pointTo(worst.zone, token);
     }
+  }
+
+  // ---------- focused zone check (team lead item 6) ----------
+  async function checkZones(zones, token) {
+    const b = await toBody();
+    if (!b || token.cancelled) return;
+    const fast = reduced();
+    director.lastChecks = [];
+    for (const zone of zones) {
+      if (token.cancelled) return;
+      const name = ZONE_NAMES[zone] || zone;
+      const lower = name.toLowerCase().replace(/^.*?: /, "");
+      say(`Checking your ${shortName(zone)}.`, { kind: "check" });
+      await b.setXray(false, fast ? 0 : 0.4);
+      await b.zoomTo(zone, fast ? 0 : 1.3);
+      if (token.cancelled) return;
+      const [top, bottom] = SPAN[zone] || SPAN.whole_body;
+      b.beginScan(top);
+      b.setRing({ head: "head", eyes: "head", lungs: "chest", heart: "chest", gut: "waist", bones: "thighs" }[zone] || null);
+      await b.sweepTo(bottom, fast ? 0 : 1.7);
+      await b.endScan(true, fast ? 0 : 0.9);
+      b.setRing(null);
+      if (token.cancelled) return;
+      body.setTarget(zone);
+      const sev = zoneSeverity(zone);
+      const rs = readingsFor(zone);
+      const result = { zone, sev, readings: rs.length };
+      director.lastChecks.push(result);
+      let html, spoken, next, color;
+      if (!rs.length) {
+        result.verdict = "no_sensor";
+        next = { label: "Log a symptom", cmd: { cmd: "open_screen", name: "health_log" } };
+        spoken = `I have no sensor on your ${shortName(zone)} yet. Would you like to log a symptom?`;
+        color = SEV_COLOR.watch;
+        html = `<h3>${INFO_ICON}${esc(name)}<span class="co-sev">No data</span></h3><p class="co-time">${esc(nowStr())}</p>
+          <p class="co-change">${esc(spoken)}</p>${badgeHTML("DESIGNED")} <span class="fine">The Sentinel Skin wearable would add a sensor here.</span>
+          <button class="pill pill-dark pill-block" type="button" data-next>${esc(next.label)}</button>`;
+      } else if (sev === "ok" && rs.every((r) => r.severity === "ok")) {
+        result.verdict = "ok";
+        next = { label: "Done" };
+        spoken = `All readings for your ${shortName(zone)} are within your usual range.`;
+        color = SEV_COLOR.ok;
+        html = `<h3>${INFO_ICON}${esc(name)}<span class="co-sev st-ok">Normal</span></h3><p class="co-time">${esc(nowStr())}</p>
+          <p class="co-change">${esc(spoken)}</p>${readingRows(rs)}${skinBlock(zone)}
+          <button class="pill pill-ghost pill-block" type="button" data-next>Done</button>`;
+      } else {
+        result.verdict = "finding";
+        const topR = rs.find((r) => r.severity !== "ok") || rs[0];
+        next = nextStepFor(zone);
+        spoken = sentenceFor(zone, rs);
+        color = SEV_COLOR[sev] || SEV_COLOR.alert;
+        html = `<h3>${INFO_ICON}${esc(name)}<span class="co-sev st-${sev === "ok" ? "watch" : sev}">${statusWord(sev === "ok" ? "watch" : sev)}</span></h3><p class="co-time">${esc(nowStr())}</p>
+          <div class="co-reading"><span>${esc(topR.label)}: <strong class="num">${esc(fmt(topR.value, topR.field))}</strong> ${esc(topR.unit || "")}</span>${badgeHTML(topR.badge)}</div>
+          <p class="co-change">${esc(topR.change || "No baseline comparison for this reading.")} This is a change from your own baseline, not a diagnosis.</p>
+          ${readingRows(rs.filter((r) => r !== topR))}${skinBlock(zone)}
+          <button class="pill pill-dark pill-block" type="button" data-next>${esc(next.label)}</button>`;
+      }
+      void lower;
+      const co = showCallout(zone, html, color, token, next);
+      say(spoken, { kind: "check" });
+      await Promise.race([co.wait, sleep(zones.length > 1 ? 7000 : 9000, token)]);
+      if (token.cancelled) return;
+      const acted = co.acted();
+      if (acted?.cmd) { await easeOut(token, false); await step(acted.cmd, token); return; }
+      if (acted?.intervention) { await easeOut(token, false); screens.intervention(acted.intervention); return; }
+      runCleanup();
+      body.setTarget(null);
+    }
+    await easeOut(token, false);
+  }
+
+  function shortName(zone) {
+    return { head: "head", eyes: "eyes", heart: "heart", lungs: "chest and lungs", gut: "stomach", bones: "bones and muscles", whole_body: "whole body" }[zone] || zone;
   }
 
   return director;

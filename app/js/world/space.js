@@ -1,0 +1,283 @@
+// Space scene: real-texture Earth (day/night blend, clouds, atmosphere), Moon on a slow orbit, Mars,
+// a starfield, thin orbit lines and a solar particle stream driven by the NOAA storm level.
+// Views ("assistant", "mission", "radiation") are eased camera moves; the camera also drifts a little.
+import * as THREE from "three";
+
+const TEX = "assets/space/";
+const SUN = new THREE.Vector3(-1, 0.35, 0.62).normalize();
+const MARS_POS = new THREE.Vector3(-2.7, 1.25, -6.2);
+
+const VIEWS = {
+  // fx, fy: where the target sits in the window (fractions); r: planet radius as a fraction of window height
+  assistant: { target: "earth", fx: 0.5, fy: 1.42, r: 0.52, az: 0.0, el: 0.32 },
+  mission: { target: "earth", fx: 0.7, fy: 0.47, r: 0.41, az: 0.12, el: 0.12 },
+  radiation: { target: "earth", fx: 0.6, fy: 0.56, r: 0.29, az: -0.25, el: 0.06 },
+  calm: { target: "earth", fx: 0.5, fy: 1.6, r: 0.5, az: 0.4, el: 0.3 },
+};
+
+const earthVert = /* glsl */`
+varying vec2 vUv; varying vec3 vWN; varying vec3 vVN; varying vec3 vVV;
+void main() {
+  vUv = uv;
+  vWN = normalize(mat3(modelMatrix) * normal);
+  vVN = normalize(normalMatrix * normal);
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vVV = normalize(-mv.xyz);
+  gl_Position = projectionMatrix * mv;
+}`;
+const earthFrag = /* glsl */`
+uniform sampler2D dayMap; uniform sampler2D nightMap; uniform vec3 sunDir;
+varying vec2 vUv; varying vec3 vWN; varying vec3 vVN; varying vec3 vVV;
+void main() {
+  float d = dot(normalize(vWN), sunDir);
+  float dayAmt = smoothstep(-0.18, 0.28, d);
+  vec3 day = texture2D(dayMap, vUv).rgb;
+  vec3 night = texture2D(nightMap, vUv).rgb;
+  vec3 col = mix(night * vec3(1.6, 1.3, 0.9), day * (0.08 + 1.15 * max(d, 0.0)), dayAmt);
+  float fr = pow(1.0 - max(dot(normalize(vVN), normalize(vVV)), 0.0), 2.6);
+  col += vec3(0.30, 0.58, 1.0) * fr * (0.12 + 0.9 * smoothstep(-0.2, 0.6, d));
+  gl_FragColor = vec4(col, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`;
+const atmoFrag = /* glsl */`
+uniform vec3 sunDir; uniform vec3 tint;
+varying vec2 vUv; varying vec3 vWN; varying vec3 vVN; varying vec3 vVV;
+void main() {
+  // back faces: dot(n, v) runs from about -0.5 at the planet's edge to 0 at the atmosphere's edge
+  float rim = pow(clamp(-dot(normalize(vVN), normalize(vVV)) * 1.7, 0.0, 1.0), 2.4);
+  float lit = 0.25 + 0.95 * smoothstep(-0.35, 0.5, dot(normalize(vWN), sunDir));
+  gl_FragColor = vec4(tint * rim * lit * 1.6, rim * lit);
+  #include <colorspace_fragment>
+}`;
+const particleVert = /* glsl */`
+attribute float aLife; uniform float uSize; varying float vLife;
+void main() {
+  vLife = aLife;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_PointSize = uSize * (1.0 / -mv.z);
+  gl_Position = projectionMatrix * mv;
+}`;
+const particleFrag = /* glsl */`
+uniform vec3 uColor; uniform float uAlpha; varying float vLife;
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float a = smoothstep(0.5, 0.0, length(c));
+  gl_FragColor = vec4(uColor * (0.6 + vLife), a * uAlpha * (0.25 + vLife));
+}`;
+
+export function createSpace(world, { tablet = false } = {}) {
+  const renderer = world.renderer;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 400);
+  const loader = new THREE.TextureLoader();
+  const maxTex = renderer.capabilities.maxTextureSize;
+  const gl = renderer.getContext();
+  const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+  const gpuName = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : "";
+  const software = /swiftshader|llvmpipe|software|basic render/i.test(gpuName);
+  // brief: 2k Earth on tablets, 8k on the laptop (only with a real GPU; loaded after the 2k is showing)
+  const useHi = !tablet && !software && maxTex >= 8192;
+  const tex = (name, srgb = true) => {
+    const t = loader.load(TEX + name);
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    return t;
+  };
+
+  // light
+  const sunLight = new THREE.DirectionalLight(0xffffff, 2.4);
+  sunLight.position.copy(SUN).multiplyScalar(30);
+  scene.add(sunLight, new THREE.AmbientLight(0x2a3550, 0.25));
+
+  // stars: textured sky sphere, added on top of the window's CSS gradient
+  const stars = new THREE.Mesh(
+    new THREE.SphereGeometry(180, 48, 24),
+    new THREE.MeshBasicMaterial({ map: tex("stars.jpg"), side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9 }),
+  );
+  scene.add(stars);
+  // a few hundred bright points that twinkle
+  const nStar = tablet ? 260 : 520;
+  const sp = new Float32Array(nStar * 3);
+  for (let i = 0; i < nStar; i++) {
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(90 + Math.random() * 60);
+    sp.set([v.x, v.y, v.z], i * 3);
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+  const starPts = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xdfe8ff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.8, depthWrite: false }));
+  scene.add(starPts);
+
+  // Earth
+  const earth = new THREE.Group();
+  scene.add(earth);
+  earth.rotation.z = THREE.MathUtils.degToRad(-23.4);
+  const dayMap = tex("earth_day.jpg");
+  const nightMap = tex("earth_night.jpg");
+  const earthUniforms = { dayMap: { value: dayMap }, nightMap: { value: nightMap }, sunDir: { value: SUN.clone() } };
+  if (useHi) {
+    setTimeout(() => loader.load(TEX + "earth_day_8k.jpg", (t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+      earthUniforms.dayMap.value = t;
+    }), 4000);
+  }
+  const globe = new THREE.Mesh(new THREE.SphereGeometry(1, tablet ? 72 : 128, tablet ? 36 : 64), new THREE.ShaderMaterial({ uniforms: earthUniforms, vertexShader: earthVert, fragmentShader: earthFrag }));
+  earth.add(globe);
+  const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.012, tablet ? 64 : 96, tablet ? 32 : 48),
+    new THREE.MeshStandardMaterial({ alphaMap: tex("earth_clouds.jpg", false), color: 0xffffff, transparent: true, depthWrite: false, roughness: 1, metalness: 0, opacity: 0.9 }));
+  earth.add(clouds);
+  const atmo = new THREE.Mesh(new THREE.SphereGeometry(1.14, 64, 32), new THREE.ShaderMaterial({
+    uniforms: { sunDir: { value: SUN.clone() }, tint: { value: new THREE.Color(0.35, 0.62, 1.0) } },
+    vertexShader: earthVert, fragmentShader: atmoFrag, side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  scene.add(atmo);
+
+  // Moon on a slow inclined orbit, with its orbit line
+  const moonPivot = new THREE.Group();
+  moonPivot.rotation.x = 0.28; moonPivot.rotation.z = -0.12;
+  scene.add(moonPivot);
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(0.27, 48, 24), new THREE.MeshStandardMaterial({ map: tex("moon.jpg"), roughness: 1 }));
+  moon.position.set(3.3, 0, 0);
+  moonPivot.add(moon);
+  const ring = (r, opacity, segments = 256) => {
+    const pts = [];
+    for (let i = 0; i <= segments; i++) { const a = (i / segments) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)); }
+    return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xcfe0ff, transparent: true, opacity, depthWrite: false }));
+  };
+  moonPivot.add(ring(3.3, 0.22));
+  const outer = ring(5.2, 0.12);
+  outer.rotation.set(0.42, 0, 0.3);
+  scene.add(outer);
+
+  // Mars in the distance (and the radiation focus on Mars profiles)
+  const mars = new THREE.Mesh(new THREE.SphereGeometry(0.53, 64, 32), new THREE.MeshStandardMaterial({ map: tex("mars.jpg"), roughness: 1 }));
+  mars.position.copy(MARS_POS);
+  mars.visible = false;  // shown on the mission and radiation views of a Mars profile
+  scene.add(mars);
+  const marsAtmo = new THREE.Mesh(new THREE.SphereGeometry(0.53 * 1.08, 48, 24), new THREE.ShaderMaterial({
+    uniforms: { sunDir: { value: SUN.clone() }, tint: { value: new THREE.Color(1.0, 0.55, 0.35) } },
+    vertexShader: earthVert, fragmentShader: atmoFrag, side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  marsAtmo.position.copy(MARS_POS);
+  scene.add(marsAtmo);
+
+  // solar particle stream: flows along -SUN, deflects around the planet limb
+  const NP = tablet ? 600 : 1400;
+  const pPos = new Float32Array(NP * 3), pLife = new Float32Array(NP), pSpeed = new Float32Array(NP);
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
+  pGeo.setAttribute("aLife", new THREE.BufferAttribute(pLife, 1));
+  const pUni = { uSize: { value: tablet ? 26 : 34 }, uColor: { value: new THREE.Color(0.55, 0.85, 1.0) }, uAlpha: { value: 0 } };
+  const particles = new THREE.Points(pGeo, new THREE.ShaderMaterial({ uniforms: pUni, vertexShader: particleVert, fragmentShader: particleFrag, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  particles.frustumCulled = false;
+  scene.add(particles);
+  const flow = SUN.clone().negate();
+  const basisA = new THREE.Vector3().crossVectors(flow, new THREE.Vector3(0, 1, 0)).normalize();
+  const basisB = new THREE.Vector3().crossVectors(flow, basisA).normalize();
+  const center = new THREE.Vector3();
+  const tmp = new THREE.Vector3();
+  function spawn(i, anywhere) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * 1.9;
+    const back = anywhere ? -7 + Math.random() * 10 : -7 - Math.random();
+    tmp.copy(center).addScaledVector(flow, back).addScaledVector(basisA, Math.cos(a) * r).addScaledVector(basisB, Math.sin(a) * r);
+    pPos[i * 3] = tmp.x; pPos[i * 3 + 1] = tmp.y; pPos[i * 3 + 2] = tmp.z;
+    pLife[i] = 0; pSpeed[i] = 0.6 + Math.random() * 0.8;
+  }
+  for (let i = 0; i < NP; i++) spawn(i, true);
+  let storm = 0, stormTarget = 0, streamOn = false;
+
+  // camera view (tweened)
+  const v = { tx: 0, ty: 0, tz: 0, fx: 0.5, fy: 1.42, r: 0.52, az: 0, el: 0.32 };
+  let currentView = "assistant";
+  let profile = "mars_transit";
+  let W = 1, H = 1;
+  function targetPos(name) {
+    const tgt = VIEWS[name].target === "mars" ? MARS_POS : new THREE.Vector3();
+    return tgt;
+  }
+
+  function setView(name, { instant = false } = {}) {
+    const def = { ...(VIEWS[name] || VIEWS.assistant) };
+    if (name === "radiation" && profile.startsWith("mars")) def.target = "mars";
+    currentView = name;
+    streamOn = name === "radiation";
+    mars.visible = marsAtmo.visible = profile.startsWith("mars") && (name === "mission" || name === "radiation");
+    const tp = def.target === "mars" ? MARS_POS : new THREE.Vector3();
+    center.copy(tp);
+    const r = def.target === "mars" ? def.r : def.r;
+    const to = { tx: tp.x, ty: tp.y, tz: tp.z, fx: def.fx, fy: def.fy, r: def.target === "mars" ? r * (1 / 0.53) * 0.53 : r, az: def.az, el: def.el };
+    to.radius = def.target === "mars" ? 0.53 : 1;
+    v.radius = v.radius ?? 1;
+    const g = window.gsap;
+    if (instant || !g || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) Object.assign(v, to);
+    else g.to(v, { ...to, duration: 1.8, ease: "power3.inOut", overwrite: true });
+    for (let i = 0; i < NP; i++) spawn(i, true);
+  }
+
+  function resize(w, h) { W = w; H = h; camera.aspect = w / h; camera.updateProjectionMatrix(); }
+
+  const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  function update(dt, t) {
+    earth.rotation.y += dt * 0.025;
+    clouds.rotation.y += dt * 0.008;
+    moonPivot.rotation.y += dt * 0.045;
+    moon.rotation.y += dt * 0.02;
+    mars.rotation.y += dt * 0.02;
+    starPts.material.opacity = 0.65 + 0.2 * Math.sin(t * 0.7);
+    stars.rotation.y += dt * 0.002;
+    // camera: distance from the planet's screen size, plus a slow drift
+    const radius = v.radius ?? 1;
+    const dist = radius / (2 * v.r * half);
+    const az = v.az + Math.sin(t * 0.05) * 0.05;
+    const el = v.el + Math.sin(t * 0.037) * 0.02;
+    camera.position.set(v.tx + dist * Math.sin(az) * Math.cos(el), v.ty + dist * Math.sin(el), v.tz + dist * Math.cos(az) * Math.cos(el));
+    camera.lookAt(v.tx, v.ty, v.tz);
+    camera.setViewOffset(W, H, W * (0.5 - v.fx), H * (0.5 - v.fy), W, H);
+    // particles
+    storm += (stormTarget - storm) * Math.min(1, dt * 1.5);
+    const show = streamOn ? 1 : 0;
+    pUni.uAlpha.value += ((show ? 0.35 + storm * 0.13 : 0) - pUni.uAlpha.value) * Math.min(1, dt * 2);
+    if (pUni.uAlpha.value > 0.01) {
+      const cHot = new THREE.Color(1.0, 0.45, 0.3), cCool = new THREE.Color(0.55, 0.85, 1.0);
+      pUni.uColor.value.copy(cCool).lerp(cHot, Math.min(1, storm / 3));
+      const speed = 1.4 + storm * 0.9;
+      const active = Math.floor(NP * (0.35 + Math.min(1, storm / 3) * 0.65));
+      const pr = (center.equals(MARS_POS) ? 0.53 : 1) * 1.28;
+      for (let i = 0; i < NP; i++) {
+        const k = i * 3;
+        if (i >= active) { pPos[k + 1] = 9999; continue; }
+        if (pPos[k + 1] > 9000) spawn(i, false);
+        let x = pPos[k], y = pPos[k + 1], z = pPos[k + 2];
+        const s = speed * pSpeed[i] * dt;
+        x += flow.x * s; y += flow.y * s; z += flow.z * s;
+        // deflect around the planet (bow-shock look)
+        const dx = x - center.x, dy = y - center.y, dz = z - center.z;
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (d < pr) {
+          const push = (pr - d) / d;
+          x += dx * push; y += dy * push; z += dz * push;
+          pLife[i] = Math.min(1, pLife[i] + dt * 3);
+        } else pLife[i] = Math.max(0, pLife[i] - dt * 0.8);
+        pPos[k] = x; pPos[k + 1] = y; pPos[k + 2] = z;
+        if ((dx * flow.x + dy * flow.y + dz * flow.z) > 4) spawn(i, false);
+      }
+      pGeo.attributes.position.needsUpdate = true;
+      pGeo.attributes.aLife.needsUpdate = true;
+    }
+  }
+
+  setView("assistant", { instant: true });
+  return {
+    scene, camera, update, resize, setView,
+    get view() { return currentView; },
+    setStorm(level) { stormTarget = Math.max(0, Math.min(5, Number(level) || 0)); },
+    setProfile(p) {
+      const changed = p !== profile;
+      profile = p || profile;
+      if (changed && currentView === "radiation") setView("radiation");
+    },
+    hiRes: useHi,
+    gpu: gpuName,
+  };
+}

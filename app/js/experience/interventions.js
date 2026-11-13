@@ -13,7 +13,7 @@ export const INTERVENTIONS = [
 export function renderMenu(el, ctx, chosen) {
   const sel = chosen || ctx.view.state?.action?.intervention || "";
   el.innerHTML = `<p class="note">Sentinel's rules choose a suggestion from your current state${sel ? `: <strong>${esc(INTERVENTIONS.find((i) => i.id === sel)?.label || sel)}</strong>` : ""}. You can pick any of them.</p>
-    <div class="form-grid">${INTERVENTIONS.map((i) => `<button class="btn btn-big ${i.id === sel ? "btn-primary" : ""}" type="button" data-iv="${i.id}">${esc(i.label)}</button><p class="note">${esc(i.why)}</p>`).join("")}</div>`;
+    <div class="form-grid">${INTERVENTIONS.map((i) => `<button class="pill pill-block ${i.id === sel ? "pill-dark" : "pill-ghost"}" type="button" data-iv="${i.id}">${esc(i.label)}</button><p class="note">${esc(i.why)}</p>`).join("")}</div>`;
   el.querySelectorAll("[data-iv]").forEach((b) => b.addEventListener("click", () => ctx.openIntervention(b.dataset.iv)));
 }
 
@@ -24,7 +24,7 @@ export function renderEarth(el) {
 
 export function renderMusic(el) {
   el.innerHTML = `<p>A soft ambient pad generated in the browser. It fades in and out slowly.</p>
-    <p><button class="btn btn-primary btn-big" type="button" data-play>Play</button></p>
+    <p><button class="pill pill-dark pill-block" type="button" data-play>Play</button></p>
     <p class="note" data-st>${isMuted() ? "Sound cues are muted; this player still plays when you press it." : ""}</p>`;
   let nodes = null;
   const btn = el.querySelector("[data-play]");
@@ -64,7 +64,7 @@ export function renderConnection(el, ctx) {
   el.innerHTML = `<p>Isolation and confinement is one of NASA's five hazards. A two-line message to a crewmate is a small, real countermeasure.</p>
     <div class="field"><label for="msg-to">To</label><select id="msg-to">${others.map((c) => `<option value="${esc(c.crew_id)}">${esc(c.display_name)}</option>`).join("")}</select></div>
     <div class="field" style="margin-top:var(--s-3)"><label for="msg-text">Message</label><input id="msg-text" type="text" placeholder="Fancy a coffee at the window after shift?"></div>
-    <p style="margin-top:var(--s-3)"><button class="btn btn-primary btn-big" type="button" data-send>Send</button></p>
+    <p style="margin-top:var(--s-3)"><button class="pill pill-dark pill-block" type="button" data-send>Send</button></p>
     <p class="note" data-st>Messages stay on this laptop in the demo; crew messaging is DESIGNED, not built.</p>`;
   el.querySelector("[data-send]").addEventListener("click", () => {
     const to = el.querySelector("#msg-to");

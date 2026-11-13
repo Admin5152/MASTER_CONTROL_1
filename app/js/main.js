@@ -1,19 +1,21 @@
-// Sentinel frontend entry point: start screen, wiring, polling, routines.
+// Sentinel v2 entry point: start tap, world + orb, stages, Director, dashboards, voice, polling, routines.
 import { api } from "./core/api.js";
 import { emit, on } from "./core/bus.js";
 import { createDirector } from "./core/director.js";
 import { matchIntent } from "./core/intents.js";
 import { audioContext, cue, setMuted, isMuted } from "./core/sound.js";
+import { createStages } from "./core/stages.js";
 import { patch, pollOnce, setCrew, startPolling, view } from "./core/state.js";
 import * as body from "./interface/body.js";
 import { createBanner } from "./interface/banner.js";
 import { createDemoPanel } from "./interface/demopanel.js";
 import { createOrb } from "./interface/orb.js";
-import { ZONE_NAMES, badgeFor, badgeHTML, esc, zoneReadings } from "./interface/readings.js";
+import { mountMission, renderFindings, renderMission } from "./interface/dashboard.js";
+import { ZONE_NAMES, badgeHTML, esc, zoneReadings } from "./interface/readings.js";
 import { closeScreen, initScreens, registerScreen } from "./interface/screens.js";
 import { invalidateSparks, mountTiles, refreshSparks, renderTiles } from "./interface/tiles.js";
-import { renderAurora } from "./experience/aurora.js";
-import { plantSVG, renderGreenhouse } from "./experience/greenhouse.js";
+import { renderRace } from "./experience/race/race.js";
+import { renderGreenhouse } from "./experience/greenhouse.js";
 import { renderHardware } from "./experience/hardware.js";
 import { INTERVENTIONS, renderConnection, renderEarth, renderMenu, renderMusic } from "./experience/interventions.js";
 import { greenhouseDay, routineComplete } from "./experience/logic.js";
@@ -22,19 +24,40 @@ import { renderCognitive } from "./systems/cognitive.js";
 import { renderRadiation } from "./systems/radiation.js";
 import { createVision } from "./vision/vision.js";
 import * as voiceMod from "./voice/voice.js";
+import { createWorld, isTablet } from "./world/world.js";
+import { createSpace } from "./world/space.js";
 
 const $ = (id) => document.getElementById(id);
-const ctx = { view, patch, health: {}, facts: { facts: [], zones: {} }, thresholds: null, demoLines: {} };
+
+// ---------- settings (per browser; a convenience, never required) ----------
+const settings = {
+  get(k) { try { return localStorage.getItem(`sentinel:${k}`) || ""; } catch { return ""; } },
+  set(k, v) { try { localStorage.setItem(`sentinel:${k}`, v); } catch { /* storage blocked */ } },
+};
+function applyTheme() { document.documentElement.dataset.theme = settings.get("theme") === "dark" ? "dark" : "light"; }
+applyTheme();
+
+const ctx = { view, patch, settings, applyTheme, health: {}, facts: { facts: [], zones: {} }, thresholds: null, demoLines: {} };
 window.sentinel = ctx; // for the browser test harness and debugging
-let orb, director, banner, vision, demoPanel, screens;
+let orb, director, banner, vision, demoPanel, screens, world, space, stages;
 let lastZone = "";
 let lastActionKey = "";
-let speakingQueue = Promise.resolve();
+let interacted = false;
+let captionTimer = null;
 
 // ---------- boot (before the start tap) ----------
 async function boot() {
-  const startOrb = createOrb($("start-orb"), { small: true });
-  ctx.startOrb = startOrb;
+  orb = createOrb($("orb-canvas"), { tablet: isTablet });
+  ctx.orb = orb;
+  world = createWorld($("world"));
+  space = world.add("space", createSpace(world, { tablet: isTablet }));
+  ctx.world = world; ctx.space = space;
+  stages = createStages({ world, space, orb, orbLayer: $("orb-layer") });
+  ctx.stages = stages;
+  world.attach(document.querySelector(".start-inner"));
+  await world.show("space");
+  space.setView("assistant", { instant: true });
+  stages.setOrbMode("start", true);
   try {
     [ctx.facts, ctx.thresholds, ctx.demoLines] = await Promise.all([
       api.json("../shared/facts.json"), api.json("../shared/thresholds.json"), api.json("assets/demo_lines.json"),
@@ -50,35 +73,30 @@ async function boot() {
 async function start() {
   audioContext();
   voiceMod.unlockSpeech();
-  // iPad motion permission must be asked from a tap
   try {
     if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
       DeviceOrientationEvent.requestPermission().catch(() => {});
     }
   } catch { /* not iPad */ }
   requestWakeLock();
+  const g = window.gsap;
+  if (g && !matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise((r) => g.to("#start-screen", { opacity: 0, duration: 0.5, onComplete: r }));
   $("start-screen").hidden = true;
   $("app").hidden = false;
-  ctx.startOrb?.destroy();
   await mountApp();
-  // microphone
+  await stages.go("assistant");
+  // microphone (one capture feeds VAD, pitch, talk time and speaker ID)
   if (navigator.mediaDevices?.getUserMedia) {
     try {
-      const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const id = settings.get("mic");
+      const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, ...(id ? { deviceId: { exact: id } } : {}) } });
       await voiceMod.initMic(mic);
-    } catch { note("Microphone not available: type or use the quick buttons."); }
+    } catch { note("Microphone not available: type, or use the quick buttons."); }
   }
-  if (voiceMod.voice.recognitionAvailable) {
-    voiceMod.startListening();
-    $("btn-mic").setAttribute("aria-pressed", "true");
-  } else {
-    $("btn-mic").disabled = true;
-    note("Speech recognition is not available in this browser: type or use the quick buttons.");
-  }
-  // camera
+  applyListening();
   vision.start();
   const name = view.state?.display_name || "";
-  say(`Sentinel is ready${name ? `, ${name}` : ""}. Say hey Sentinel, or type below.`);
+  say(`Sentinel is ready${name ? `, ${name}` : ""}. Say hey Sentinel, tap the orb, or type below.`, { source: "local" });
 }
 
 async function requestWakeLock() {
@@ -92,15 +110,26 @@ async function requestWakeLock() {
   } catch { /* wake lock refused: fine */ }
 }
 
+function applyListening() {
+  const ptt = settings.get("listen") === "ptt";
+  if (!voiceMod.voice.micReady && !voiceMod.voice.recognitionAvailable) { $("voice-mode").textContent = "typing"; return; }
+  if (ptt) { voiceMod.stopListening(); $("voice-mode").textContent = "push to talk"; }
+  else if (voiceMod.startListening()) $("voice-mode").textContent = "say hey sentinel";
+  $("btn-mic").classList.toggle("is-wake", !ptt);
+}
+ctx.applyListening = applyListening;
+
 // ---------- app ----------
 async function mountApp() {
-  orb = createOrb($("orb"));
-  ctx.orb = orb;
-  await body.mountBody($("body-host"));
   mountTiles($("vitals"), (id) => {
     const t = { dose: "radiation", storm: "radiation" }[id];
     if (t) director.run([{ cmd: "open_screen", name: t }]);
     else director.run([{ cmd: "show_chart", metric: id }]);
+  });
+  mountMission($("mission-cards"), (card) => {
+    const to = { crew: "crew", cabin: "cabin", radiation: "radiation", greenhouse: "greenhouse" }[card];
+    if (to) return director.run([{ cmd: "open_screen", name: to }]);
+    if (card === "checkin") director.run([{ cmd: "open_screen", name: (dueRoutine() || nextRoutine() || ROUTINE[0]).screen }]);
   });
   screens = initScreens(ctx);
   ctx.screens = screens;
@@ -110,24 +139,38 @@ async function mountApp() {
   ctx.openIntervention = openIntervention;
   ctx.enrol = enrol;
   ctx.onClockSkip = () => pollOnce();
-  registerScreen("radiation", { title: "Radiation Watch", render: renderRadiation });
+  ctx.homeStage = () => (interacted ? "mission" : "assistant");
+  ctx.onDeviceChange = (k) => { if (k === "camera" && vision.state.on) { vision.stop(); vision.start(); } };
   registerScreen("cognitive", { title: "Cognitive check", render: renderCognitive });
-  registerScreen("orb_calm", { title: "Orb Calm", render: renderOrbCalm });
-  registerScreen("aurora_run", { title: "Aurora Run", render: renderAurora });
+  registerScreen("orb_calm", { title: "Orb Calm", orb: true, render: renderOrbCalm });
+  registerScreen("race", { title: "Space race", full: true, render: renderRace });
   registerScreen("greenhouse", { title: "Greenhouse", render: renderGreenhouse });
-  registerScreen("hardware", { title: "Wearable hardware", badge: "DESIGNED", wide: true, render: renderHardware });
+  registerScreen("hardware", { title: "Sentinel Skin", badge: "DESIGNED", wide: true, render: renderHardware });
   registerScreen("interventions", { title: "Suggestions", render: (el, c, arg) => renderMenu(el, c, arg) });
   registerScreen("earth_window", { title: "Earth window", badge: "SIM", render: renderEarth });
   registerScreen("music", { title: "Ambient sound", render: renderMusic });
   registerScreen("connection", { title: "Message a crewmate", badge: "DESIGNED", render: renderConnection });
 
-  director = createDirector({ orb, screens, say: (t) => say(t), getView: () => view, facts: ctx.facts });
+  // the body (async; the Director waits for it when needed)
+  import("./world/body3d.js").then(async ({ createBody }) => {
+    const b = await createBody(world, $("body-host"), { tablet: isTablet, onZoneClick: zonePopover });
+    world.add("body", b);
+    body.setImpl(b);
+    ctx.body3d = b;
+    $("body-loading").hidden = true;
+    if (view.aux) body.setZoneStates(view.aux.assessment?.zones);
+    if (stages.current === "body") { world.attach($("body-host")); world.show("body"); }
+  }).catch((e) => { console.warn("body model failed", e); $("body-loading").textContent = "The 3D body could not load on this device."; });
+  world.onFrame(() => {}); // keeps the hook list warm for the Director
+
+  director = createDirector({ orb, screens, stages, say: (t, o) => say(t, o), getView: () => view, facts: ctx.facts, onFrame: (fn) => world.onFrame(fn) });
   ctx.director = director;
   banner = createBanner({ say });
   demoPanel = createDemoPanel(ctx);
   vision = createVision({
     video: $("cam-video"), overlay: $("cam-overlay"), msg: $("cam-msg"), badge: $("cam-badge"),
-    pulseValue: $("pulse-value"), pulseQuality: $("pulse-quality"),
+    pulseValue: $("pulse-value"), pulseQuality: $("pulse-quality"), arc: $("pulse-arc"), stage: $("stage-vision"),
+    deviceId: () => settings.get("camera"),
     canPatch: () => !view.aux?.scenario?.running && !view.hrOverride,
     patchHr: (bpm) => patch({ vitals: { heart_rate: bpm, source: "camera", sources: { heart_rate: "camera" } } }).catch(() => {}),
     onFallback: () => {
@@ -135,21 +178,24 @@ async function mountApp() {
     },
   });
   ctx.vision = vision;
+  renderRadiation($("radiation-host"), ctx);
 
   wireControls();
   wireVoice();
   on("state", onState);
-  on("offline", () => { document.body.classList.add("offline"); $("sb-link").textContent = "Brain offline: showing last known values"; });
-  on("online", () => { document.body.classList.remove("offline"); $("sb-link").textContent = "Brain online"; });
+  on("offline", () => { document.body.classList.add("offline"); $("sb-link").textContent = "Brain offline: last known values"; $("sb-link").title = "Brain offline: showing last known values"; });
+  on("online", () => { document.body.classList.remove("offline"); $("sb-link").textContent = "Brain online"; $("sb-link").title = "Brain online"; });
   on("zone:open", (z) => screens.zone(z));
-  on("vision:open", () => { vision.start(); $("col-cam").scrollIntoView?.({ block: "nearest" }); });
+  on("vision:open", () => vision.start());
   on("intervention:open", openIntervention);
   on("crew:changed", () => { invalidateSparks(); lastZone = ""; });
+  on("stage", (name) => { if (name === "vision" && !vision.state.on) vision.start(); });
 
   const first = view.crew[0]?.crew_id;
   if (first) setCrew(first, "manual");
   startPolling();
   setInterval(() => view.crewId && refreshSparks($("vitals"), view.crewId), 5000);
+  setTimeout(() => view.crewId && refreshSparks($("vitals"), view.crewId), 1200);
   setInterval(routineTick, 15000);
   setInterval(refreshSpaceweather, 30000);
   refreshSpaceweather();
@@ -157,25 +203,53 @@ async function mountApp() {
 }
 
 async function refreshSpaceweather() {
-  try { view.spaceweather = await api.spaceweather(); } catch { /* keep last */ }
+  try {
+    view.spaceweather = await api.spaceweather();
+    space.setStorm(view.spaceweather.scenario ? view.spaceweather.scenario.level : view.spaceweather.level);
+  } catch { /* keep last */ }
+}
+
+// A tap on a body dot: a small card with Check and Details (team lead item 6)
+function zonePopover(zone, btn) {
+  document.querySelector(".zone-pop")?.remove();
+  const host = $("body-host");
+  const r = btn.getBoundingClientRect(), h = host.getBoundingClientRect();
+  const pop = document.createElement("div");
+  pop.className = "zone-pop card";
+  const sev = view.aux?.assessment?.zones?.[zone] || "ok";
+  pop.innerHTML = `<strong>${esc(ZONE_NAMES[zone])}</strong><span class="note st-${sev}">${sev === "ok" ? "Within your usual range" : sev === "alert" ? "Past the alert line" : "Worth watching"}</span>
+    <div class="row"><button class="pill pill-dark" type="button" data-check>Check</button><button class="pill pill-ghost" type="button" data-details>Details</button></div>`;
+  pop.style.left = `${r.left - h.left + 10}px`; pop.style.top = `${r.top - h.top + 22}px`;
+  host.appendChild(pop);
+  if (r.left - h.left > h.width - 240) pop.style.transform = "translate(calc(-100% - 20px), -50%)";
+  pop.querySelector("[data-check]").addEventListener("click", () => { pop.remove(); director.run([{ cmd: "check_zone", zones: [zone] }]); });
+  pop.querySelector("[data-details]").addEventListener("click", () => { pop.remove(); screens.zone(zone); });
+  setTimeout(() => document.addEventListener("pointerdown", function off(e) { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener("pointerdown", off); } }), 0);
 }
 
 function wireControls() {
+  document.querySelectorAll("#tabbar [data-go]").forEach((b) => b.addEventListener("click", () => {
+    const go = b.dataset.go;
+    if (go === "more") { director.cancel(); screens.open("more"); return; }
+    closeScreen();
+    director.run([{ cmd: "open_screen", name: go }]);
+  }));
   $("btn-scan").addEventListener("click", () => director.run([{ cmd: "start_scan" }]));
-  $("btn-radlayer").addEventListener("click", (e) => {
-    const on = e.currentTarget.getAttribute("aria-pressed") !== "true";
-    director.run([{ cmd: "show_radiation", on }]);
-  });
+  $("btn-xray").addEventListener("click", (e) => director.run([{ cmd: "xray", on: e.currentTarget.getAttribute("aria-pressed") !== "true" }]));
+  $("btn-turn").addEventListener("click", () => ctx.body3d?.turnBy(90));
+  $("btn-radlayer").addEventListener("click", (e) => director.run([{ cmd: "show_radiation", on: e.currentTarget.getAttribute("aria-pressed") !== "true" }]));
   $("btn-radinfo").addEventListener("click", () => screens.zone("whole_body"));
   $("btn-hardware").addEventListener("click", () => director.run([{ cmd: "open_screen", name: "hardware" }]));
+  $("btn-key").addEventListener("click", () => screens.open("about"));
+  $("btn-settings").addEventListener("click", () => screens.open("settings"));
   $("btn-cam").addEventListener("click", () => (vision.state.on ? vision.stop() : vision.start()));
-  $("btn-mute").addEventListener("click", (e) => {
-    const m = !isMuted();
-    setMuted(m);
-    e.currentTarget.setAttribute("aria-pressed", String(m));
-  });
+  $("btn-cam-devices").addEventListener("click", () => screens.open("settings"));
+  $("btn-mute").addEventListener("click", (e) => { const m = !isMuted(); setMuted(m); e.currentTarget.setAttribute("aria-pressed", String(m)); });
   $("sb-crew-name").addEventListener("click", () => director.run([{ cmd: "open_screen", name: "crew" }]));
-  $("greenhouse-mini").addEventListener("click", () => director.run([{ cmd: "open_screen", name: "greenhouse" }]));
+  document.querySelectorAll("#stage-mission [data-cmd]").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.cmd === "scan") director.run([{ cmd: "start_scan" }]);
+    else { director.run([{ cmd: "open_screen", name: "assistant" }]); pushToTalk(); }
+  }));
   window.addEventListener("keydown", (e) => {
     if (e.target.closest?.("input, textarea, select")) return;
     if (e.key === "h" || e.key === "H") director.run([{ cmd: "open_screen", name: "hardware" }]);
@@ -188,73 +262,106 @@ function wireControls() {
     $("ask-input").value = "";
     handleCommand(t, { via: "typed", heard: t });
   });
-  // typing drives the orb's listening state when there is no microphone
   let typingT = null;
   $("ask-input").addEventListener("input", () => {
-    orb.setState("listening"); orb.setLevel(0.3);
+    if (orb.getState() === "idle") orb.setState("listening");
+    orb.setLevel(0.25);
     clearTimeout(typingT);
-    typingT = setTimeout(() => { if (orb.getState() === "listening") orb.setState("idle"); orb.setLevel(0); }, 1200);
+    typingT = setTimeout(() => { if (orb.getState() === "listening" && !voiceMod.voice.capturing) orb.setState("idle"); orb.setLevel(0); }, 1200);
   });
   $("quick").addEventListener("click", (e) => {
     const b = e.target.closest("[data-say]");
     if (!b) return;
-    // quick buttons go through the same wake-phrase path as speech
-    import("./voice/wake.js").then(({ matchWake }) => {
-      const w = matchWake(b.dataset.say);
-      handleCommand(w.command, { via: "button", heard: b.textContent });
-    });
+    import("./voice/wake.js").then(({ matchWake }) => handleCommand(matchWake(b.dataset.say).command, { via: "button", heard: b.textContent }));
   });
-  $("btn-mic").addEventListener("click", (e) => {
-    const onNow = e.currentTarget.getAttribute("aria-pressed") === "true";
-    if (onNow) { voiceMod.stopListening(); e.currentTarget.setAttribute("aria-pressed", "false"); }
-    else if (voiceMod.startListening()) e.currentTarget.setAttribute("aria-pressed", "true");
+  $("btn-mic").addEventListener("click", pushToTalk);
+  $("orb-hit").addEventListener("click", () => {
+    if (stages.orbMode === "calm") return;
+    if (stages.current !== "assistant" && !voiceMod.voice.capturing) { director.cancel(); closeScreen(); stages.go("assistant"); }
+    pushToTalk();
   });
+}
+
+function pushToTalk() {
+  voiceMod.stopSpeaking();
+  if (voiceMod.pushToTalk()) { $("btn-mic").setAttribute("aria-pressed", "true"); cue.wake(); }
+  else { note("No microphone: type your question below."); $("ask-input").focus(); }
 }
 
 function wireVoice() {
-  voiceMod.initVoice({
-    onCommand: (text, meta) => handleCommand(text, meta),
-    onUtterance: (audio) => onUtterance(audio),
+  voiceMod.initVoice({ onCommand: (text, meta) => handleCommand(text, meta), onUtterance: (audio) => onUtterance(audio) });
+  on("voice:transcript", ({ text, final }) => { if (!final && text) caption(`“${text}”`, ""); });
+  on("voice:level", (l) => { if (orb.getState() === "listening") orb.setLevel(l); });
+  on("voice:speak-level", (l) => orb.setSpeakLevel(l));
+  on("voice:capture", (onNow) => {
+    $("btn-mic").setAttribute("aria-pressed", String(!!onNow));
+    if (onNow) { orb.setState("listening"); stages.setOrbBig(true); }
+    else if (orb.getState() === "listening") { orb.setState("idle"); stages.setOrbBig(false); }
   });
-  on("voice:transcript", ({ text, final }) => { if (!final) $("orb-caption").textContent = `“${text}”`; });
-  on("voice:level", (l) => { if (orb.getState() === "listening" || voiceMod.voice.listening) orb.setLevel(l); });
-  on("voice:listening", (l) => { if (!voiceMod.voice.speaking) orb.setState(l ? "listening" : "idle"); });
-  on("voice:speaking-start", () => orb.setState("speaking"));
-  on("voice:speaking-end", () => orb.setState(voiceMod.voice.listening ? "listening" : "idle"));
+  on("voice:thinking", (t) => { if (t) orb.setState("thinking"); else if (orb.getState() === "thinking") orb.setState("idle"); });
+  on("voice:speaking-start", () => { orb.setState("speaking"); stages.setOrbBig(true); });
+  on("voice:speaking-end", () => { orb.setState("idle"); orb.setSpeakLevel(0); stages.setOrbBig(false); });
   on("voice:status", (t) => note(t));
 }
 
-// ---------- speech out ----------
+// ---------- captions and speech out ----------
+function caption(text, source) {
+  clearTimeout(captionTimer);
+  const onAssistant = stages.current === "assistant" || !stages.current;
+  const c = $("orb-caption"), b = $("bubble");
+  if (onAssistant) {
+    b.hidden = true;
+    c.textContent = text;
+    c.classList.add("is-caption");
+    $("orb-source").textContent = source ? `Answered by ${source}` : "";
+  } else {
+    const p = $("porthole").getBoundingClientRect();
+    b.innerHTML = `${esc(text)}${source ? `<span class="src">${esc(source)}</span>` : ""}`;
+    b.hidden = false;
+    b.style.right = `${Math.max(12, window.innerWidth - p.right)}px`;
+    b.style.bottom = `${window.innerHeight - p.top + 12}px`;
+    b.style.left = "auto";
+  }
+  captionTimer = setTimeout(resetCaption, Math.min(16000, 5000 + text.length * 70));
+}
+function resetCaption() {
+  if (voiceMod.voice.speaking) { captionTimer = setTimeout(resetCaption, 2000); return; }
+  $("bubble").hidden = true;
+  const c = $("orb-caption");
+  c.classList.remove("is-caption");
+  c.innerHTML = "How can I help<br>you today?";
+  $("orb-source").textContent = "";
+}
+
 function say(text, opts = {}) {
   if (!text) return Promise.resolve();
   logLine("Sentinel", text, opts.source);
-  $("orb-caption").textContent = text;
-  const p = voiceMod.speak(text, { interrupt: true });
-  speakingQueue = p;
-  return p;
+  caption(text, opts.source);
+  return voiceMod.speak(text, { interrupt: opts.append ? false : true });
 }
 
 function logLine(who, text, source) {
   const li = document.createElement("li");
   li.className = who === "Sentinel" ? "sentinel" : "you";
-  li.innerHTML = `<span class="who">${esc(who)}</span><span class="msg">${esc(text)}</span>${source ? `<span class="src">${esc(source)}</span>` : ""}`;
+  li.innerHTML = `<span class="who">${esc(who)}${source ? `<span class="src">${esc(source)}</span>` : ""}</span><span class="msg">${esc(text)}</span>`;
   const ol = $("transcript");
   ol.appendChild(li);
   while (ol.children.length > 40) ol.removeChild(ol.firstChild);
   ol.scrollTop = ol.scrollHeight;
 }
 
-function note(t) { $("orb-caption").textContent = t; }
+function note(t) { caption(t, ""); }
 
 // ---------- commands ----------
 async function handleCommand(text, meta = {}) {
-  if (meta.heard && meta.via !== "typed") logLine("You", meta.heard);
-  else if (meta.via === "typed") logLine("You", text);
+  if (meta.heard) logLine("You", meta.via === "typed" ? text : meta.heard);
   if (meta.wakeOnly || !text) {
     cue.wake();
-    say(`Yes${view.state?.display_name ? `, ${view.state.display_name}` : ""}?`);
+    say(`Yes${view.state?.display_name ? `, ${view.state.display_name}` : ""}?`, { source: "local" });
     return;
   }
+  const firstTime = !interacted;
+  interacted = true;
   const m = matchIntent(text);
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
@@ -267,16 +374,22 @@ async function handleCommand(text, meta = {}) {
     director.run(m.commands);
     return;
   }
-  // everything else goes to the brain
+  // everything else goes to the brain (streamed: first sentence is spoken while the rest arrives)
+  emit("voice:thinking", true);
+  caption("Thinking…", "");
   try {
-    $("orb-caption").textContent = "Thinking…";
-    const r = await api.chat(view.crewId, text);
-    say(r.reply, { source: r.source === "llm" ? "LLM" : "rules" });
-    if (r.commands?.length) {
-      await new Promise((res) => setTimeout(res, 400));
-      director.run(r.commands);
-    }
+    let spoke = false, first = true;
+    const r = await api.chatStream(view.crewId, text, (sentence, source) => {
+      if (first) { emit("voice:thinking", false); first = false; }
+      spoke = true;
+      say(sentence, { source: source === "llm" ? "LLM" : "rules", append: !first });
+    });
+    emit("voice:thinking", false);
+    if (!spoke && r.reply) say(r.reply, { source: r.source === "llm" ? "LLM" : "rules" });
+    if (r.commands?.length) { await new Promise((res) => setTimeout(res, 400)); director.run(r.commands); }
+    else if (firstTime && stages.current === "assistant") setTimeout(() => { if (!director.busy && stages.current === "assistant" && !voiceMod.voice.capturing) stages.go("mission"); }, 9000);
   } catch {
+    emit("voice:thinking", false);
     say("The brain is offline. I can still open screens and run the scan.", { source: "local" });
   }
 }
@@ -293,7 +406,7 @@ async function onUtterance(audio) {
       const changed = r.crew_id !== view.crewId;
       switchCrew(r.crew_id, "voice");
       await patch({ identity: { confidence: r.confidence, source: "voice" } });
-      if (changed) say(`Hello ${view.crew.find((c) => c.crew_id === r.crew_id)?.display_name || ""}.`);
+      if (changed) say(`Hello ${view.crew.find((c) => c.crew_id === r.crew_id)?.display_name || ""}.`, { source: "local" });
     }
   } catch { /* identify failed: keep the current crew member */ }
 }
@@ -318,23 +431,22 @@ async function enrol(id, statusEl) {
   } catch (e) {
     statusEl.textContent = `Enrolment failed: ${e.message}`;
   } finally {
-    if (voiceMod.voice.recognitionAvailable) voiceMod.startListening();
+    applyListening();
     demoPanel.render();
   }
 }
 
 function openIntervention(name) {
-  const map = { breathing: "orb_calm", aurora_run: "aurora_run", earth_window: "earth_window", music: "music", connection: "connection" };
-  if (map[name]) screens.open(map[name]);
-  else screens.open("interventions");
+  const map = { breathing: "orb_calm", aurora_run: "race", earth_window: "earth_window", music: "music", connection: "connection" };
+  screens.open(map[name] || "interventions");
 }
 
 // ---------- every poll ----------
 function onState(v) {
   const s = v.state, aux = v.aux;
   if (!s) return;
-  // status bar
   $("sb-crew-name").textContent = s.display_name;
+  $("greet-hello").textContent = `Hello ${s.display_name}`;
   const id = $("sb-identity");
   if (s.identity?.source === "voice" && v.identitySource === "voice") { id.className = "badge badge-live"; id.textContent = `voice ${Math.round((s.identity.confidence || 0) * 100)}%`; }
   else { id.className = "badge badge-sim"; id.textContent = "manual"; }
@@ -344,25 +456,23 @@ function onState(v) {
   $("sb-co2").textContent = `CO2 ${Math.round(s.cabin.co2_ppm)} ppm`;
   document.querySelector(".sb-cabin").classList.toggle("is-alert", !!s.cabin.alert);
   if (view.online) $("sb-link").textContent = "Brain online";
-  // body, tiles, orb
   body.setZoneStates(aux?.assessment?.zones);
-  if (s.radiation.storm_level >= 1) body.showRadiation(true);
-  renderTiles($("vitals"), v, v.spaceweather);
+  if (s.radiation.storm_level >= 1 && !body.radiationShown()) body.showRadiation(true);
+  $("btn-radinfo").hidden = !body.radiationShown();
+  renderTiles(document.getElementById("app"), v, v.spaceweather);
+  renderMission($("mission-cards"), v, { spaceweather: v.spaceweather, due: dueRoutine(), nextRoutine: nextRoutine(), wilt: view.wilt || 0 });
+  renderFindings($("findings"), $("findings-status"), v, (z) => director.run([{ cmd: "check_zone", zones: [z] }]));
+  space.setProfile(s.radiation.mission_profile);
   const sev = s.action?.severity || "none";
   orb.setSeverity(["flag_cabin", "flag_radiation", "flag_ground"].includes(s.action?.type) ? "alert" : sev === "watch" ? "watch" : "none");
   banner.update(s, aux);
   renderActionCard(s, aux);
-  $("greenhouse-mini").innerHTML = plantSVG(s.engagement.greenhouse_stage, view.wilt || 0);
-  const e = s.engagement;
-  $("engagement").textContent = `Streak ${e.streak_days} days · ${e.checkins_today} check-ins today · ${e.calm_levels_cleared} calm levels cleared`;
-  $("btn-radinfo").hidden = !body.bodySvg()?.classList.contains("show-radiation");
   // Sentinel noticed something: point at it
   const z = s.action?.zone || "";
   if (z !== lastZone) {
     lastZone = z;
-    if (z && z !== "cabin" && !director.busy) director.run([{ cmd: "point_to", zone: z }]);
+    if (z && z !== "cabin" && !director.busy && !document.querySelector("#sheet.is-full:not([hidden])")) director.run([{ cmd: "point_to", zone: z }]);
   }
-  // scripted scenario steps
   const sc = aux?.scenario;
   if (sc && sc.seq !== view.scenarioSeq) {
     const first = view.scenarioSeq === 0 && sc.seq > 0 && !sc.running && sc.step !== "reset";
@@ -388,9 +498,9 @@ function renderActionCard(s, aux) {
     const due = dueRoutine();
     if (due) {
       card.hidden = false;
-      card.className = "action-card";
-      card.innerHTML = `<div class="ac-row"><span class="ac-title">Due now: ${esc(due.label)}</span>${badgeHTML("LIVE")}</div>
-        <button class="btn btn-primary" type="button" data-go>${esc(due.button)}</button>`;
+      card.className = "action-card card";
+      card.innerHTML = `<div class="card-head"><span class="label">Due now</span>${badgeHTML("LIVE")}</div><div class="ac-title">${esc(due.label.charAt(0).toUpperCase() + due.label.slice(1))}</div>
+        <button class="pill pill-dark" type="button" data-go>${esc(due.button)}</button>`;
       card.querySelector("[data-go]").addEventListener("click", () => director.run([{ cmd: "open_screen", name: due.screen }]));
     } else card.hidden = true;
     return;
@@ -403,12 +513,13 @@ function renderActionCard(s, aux) {
     suggest_medicine: ["Open the health log", () => director.run([{ cmd: "open_screen", name: "health_log" }])],
     gentle_checkin: ["Log how I feel", () => director.run([{ cmd: "open_screen", name: "health_log" }])],
   }[a.type];
-  const title = { offer_orb_calm: "Suggestion: Orb Calm", offer_intervention: "Suggestion", suggest_medicine: "Onboard kit (SIM list)", gentle_checkin: "Check-in" }[a.type] || a.type;
+  const title = { offer_orb_calm: "Suggestion", offer_intervention: "Suggestion", suggest_medicine: "Onboard kit (SIM list)", gentle_checkin: "Check-in" }[a.type] || a.type;
   card.hidden = false;
-  card.className = `action-card is-${a.severity === "alert" ? "alert" : a.severity === "watch" ? "watch" : "info"}`;
-  card.innerHTML = `<div class="ac-row"><span class="ac-title">${esc(title)}</span>${badgeHTML(badge)}<span class="note">${a.zone ? esc(ZONE_NAMES[a.zone] || a.zone) : ""}</span></div>
+  card.className = `action-card card is-${a.severity === "alert" ? "alert" : a.severity === "watch" ? "watch" : "info"}`;
+  card.innerHTML = `<div class="card-head"><span class="label">${esc(title)}</span>${badgeHTML(badge)}</div>
+    <div class="ac-title">${esc(a.zone ? ZONE_NAMES[a.zone] || a.zone : "")}</div>
     <div class="ac-detail">${esc(a.detail)}</div>
-    <div class="ac-row">${btn ? `<button class="btn btn-primary" type="button" data-act>${esc(btn[0])}</button>` : ""}<button class="btn btn-ghost" type="button" data-menu>Other options</button></div>`;
+    <div class="ac-row">${btn ? `<button class="pill pill-dark" type="button" data-act>${esc(btn[0])}</button>` : ""}<button class="pill pill-ghost" type="button" data-menu>Other options</button></div>`;
   card.querySelector("[data-act]")?.addEventListener("click", btn[1]);
   card.querySelector("[data-menu]").addEventListener("click", () => screens.open("interventions", a.intervention));
 }
@@ -420,24 +531,25 @@ const ROUTINE = [
   { id: "log", label: "evening mood and sleep log", from: 18, to: 23, screen: "health_log", button: "Log mood and sleep" },
 ];
 const nudged = new Set();
-
 function routineKey(day) { return `sentinel:routine:${view.crewId}:${day}`; }
-function routineDone(day) {
-  try { return JSON.parse(localStorage.getItem(routineKey(day)) || "{}"); } catch { return {}; }
-}
+function routineDone(day) { try { return JSON.parse(localStorage.getItem(routineKey(day)) || "{}"); } catch { return {}; } }
 function setRoutineDone(day, id) {
   const d = routineDone(day);
   d[id] = true;
   try { localStorage.setItem(routineKey(day), JSON.stringify(d)); } catch { /* storage blocked */ }
 }
-
 function dueRoutine() {
   const c = view.aux?.clock;
   if (!c) return null;
   const done = routineDone(c.mission_day);
   return ROUTINE.find((r) => c.hour >= r.from && c.hour < r.to && !done[r.id]) || null;
 }
-
+function nextRoutine() {
+  const c = view.aux?.clock;
+  if (!c) return null;
+  const done = routineDone(c.mission_day);
+  return ROUTINE.find((r) => r.from > c.hour && !done[r.id]) || null;
+}
 async function onCheckin(kind) {
   const c = view.aux?.clock;
   if (!c || !view.state) return;
@@ -446,13 +558,11 @@ async function onCheckin(kind) {
   lastActionKey = "";
   try { await patch({ engagement: { checkins_today: (view.state.engagement.checkins_today || 0) + 1 } }); } catch {}
 }
-
 let lastDay = null;
 async function routineTick() {
   const c = view.aux?.clock;
   if (!c || !view.state) return;
   if (lastDay != null && c.mission_day > lastDay) {
-    // the day(s) ended: grow or wilt the plant
     let stage = view.state.engagement.greenhouse_stage;
     let streak = view.state.engagement.streak_days;
     for (let d = lastDay; d < c.mission_day; d++) {
@@ -467,12 +577,7 @@ async function routineTick() {
   const due = dueRoutine();
   if (due) {
     const k = `${c.mission_day}:${due.id}`;
-    if (!nudged.has(k)) {
-      nudged.add(k);
-      cue.nudge();
-      note(`Due now: ${due.label}.`);
-      lastActionKey = "";
-    }
+    if (!nudged.has(k)) { nudged.add(k); cue.nudge(); note(`Due now: ${due.label}.`); lastActionKey = ""; }
   }
 }
 on("state", () => { if (lastDay == null && view.aux?.clock) lastDay = view.aux.clock.mission_day; });

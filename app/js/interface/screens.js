@@ -1,15 +1,17 @@
-// Screen manager: the sheet that opens over the orb and camera columns, plus the
-// screens that are plain panels (zone info, health log, trends, crew).
+// Screen manager. Stages (assistant, mission, body, vision, radiation) go through the stage manager;
+// everything else opens in the side sheet so detail is one tap away and the stage stays in view.
 import { api } from "../core/api.js";
 import { emit } from "../core/bus.js";
+import { STAGES } from "../core/stages.js";
 import { renderTrend, METRIC_DEFS } from "./charts.js";
 import { ZONE_NAMES, badgeFor, badgeHTML, esc, fmt, statusWord, zoneReadings } from "./readings.js";
 
 const sheet = () => document.getElementById("sheet");
-const registry = new Map(); // name -> { title, badge, wide, render(el, ctx) -> cleanup }
+const registry = new Map(); // name -> { title, badge, wide, full, orb, render(el, ctx, arg) -> cleanup }
 let cleanupFn = null;
 let currentName = null;
 let ctxRef = null;
+const ALIAS = { aurora_run: "race" };
 
 export function registerScreen(name, def) { registry.set(name, def); }
 export function currentScreen() { return currentName; }
@@ -21,6 +23,10 @@ export function initScreens(ctx) {
   registerScreen("health_log", { title: "Health log", badge: "LIVE", render: renderHealthLog });
   registerScreen("trends", { title: "Trends", render: renderTrends });
   registerScreen("crew", { title: "Crew", render: renderCrew });
+  registerScreen("more", { title: "More", render: renderHub });
+  registerScreen("cabin", { title: "Cabin air", badge: "SIM", render: renderCabin });
+  registerScreen("settings", { title: "Settings", render: renderSettings });
+  registerScreen("about", { title: "About and credits", render: renderAbout });
   return api_;
 }
 
@@ -32,6 +38,8 @@ function show(name, arg) {
   currentName = name;
   el.hidden = false;
   el.classList.toggle("is-wide", !!def.wide);
+  el.classList.toggle("is-full", !!def.full);
+  el.classList.toggle("is-orb", !!def.orb);
   el.dataset.screen = name;
   document.getElementById("sheet-title").textContent = typeof def.title === "function" ? def.title(arg) : def.title;
   const badge = typeof def.badge === "function" ? def.badge(arg) : def.badge;
@@ -39,16 +47,18 @@ function show(name, arg) {
   const body = document.getElementById("sheet-body");
   body.innerHTML = "";
   body.scrollTop = 0;
+  if (def.orb) ctxRef.stages?.setOrbMode("calm");
+  if (def.full) ctxRef.stages?.setOrbMode("off");
   try {
     const c = def.render(body, ctxRef, arg);
-    cleanupFn = typeof c === "function" ? c : c?.then ? null : null;
+    cleanupFn = typeof c === "function" ? c : null;
     if (c?.then) c.then((fn) => { if (currentName === name && typeof fn === "function") cleanupFn = fn; });
   } catch (err) {
     console.warn("screen failed", name, err);
     body.innerHTML = `<p class="note">This screen could not load: ${esc(err.message)}</p>`;
   }
   if (window.gsap && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    window.gsap.fromTo(el, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.28, ease: "power2.out" });
+    window.gsap.fromTo(el, { opacity: 0, x: def.full || def.wide || def.orb ? 0 : 24, scale: def.full ? 1.01 : 1 }, { opacity: 1, x: 0, scale: 1, duration: 0.6, ease: "power3.out" });
   }
   emit("screen:open", name);
 }
@@ -57,22 +67,29 @@ export function closeScreen(silent = false) {
   if (cleanupFn) { try { cleanupFn(); } catch {} }
   cleanupFn = null;
   const was = currentName;
+  const def = registry.get(was);
   currentName = null;
   sheet().hidden = true;
+  sheet().classList.remove("is-wide", "is-full", "is-orb");
   document.getElementById("sheet-body").innerHTML = "";
+  if (def?.orb || def?.full) ctxRef.stages?.restoreOrb();
   if (!silent && was) emit("screen:close", was);
 }
 
 const api_ = {
-  open(name, arg) {
-    if (name === "home") { closeScreen(); return; }
-    if (name === "vision") { closeScreen(); emit("vision:open"); return; }
+  async open(name, arg) {
+    name = ALIAS[name] || name;
+    if (name === "home") { closeScreen(); return ctxRef.stages.go(ctxRef.homeStage()); }
+    if (STAGES.includes(name)) { closeScreen(); return ctxRef.stages.go(name); }
     show(name, arg);
   },
   chart(metric) { show("trends", metric); },
   zone(zone) { show("zone", zone); },
   intervention(name) { emit("intervention:open", name); },
-  close() { closeScreen(); },
+  close() {
+    if (currentName) { closeScreen(); return; }
+    return ctxRef.stages.go(ctxRef.homeStage());
+  },
   current: () => currentName,
 };
 
@@ -92,31 +109,26 @@ function renderZone(el, ctx, zone) {
         <td class="note">${esc(r.change || "")}</td></tr>`).join("");
     const ths = readings.flatMap((r) => (r.levels || []).map((l) => `<li>${esc(r.label)}: ${esc(l.severity)} ${l.below != null ? "below " + l.below : "above " + l.above} ${esc(r.unit || "")}.
         <span class="kind kind-${l.kind}">${esc(l.kind)}</span> ${l.source.url ? `<a class="src-link" href="${esc(l.source.url)}" target="_blank" rel="noopener">${esc(l.source.title)}</a>` : esc(l.source.title)}</li>`)).join("");
-    const extra = zone === "bones"
-      ? `<p>${badgeHTML("DESIGNED")} Exercise log: the wearable's accelerometer would log resistance exercise here. Not running in this build.</p>` : "";
-    const rad = zone === "whole_body" ? `<p class="note">The radiation layer is shown on the body model. Effects NASA tracks: cancer risk, central nervous system and cognitive effects, cardiovascular effects, and cataracts. Because radiation cannot be felt, Sentinel asks for the cognitive check so a trend is noticed early. This is not a diagnosis.</p>
-      <button class="btn" type="button" data-open="radiation">Open Radiation Watch</button>` : "";
+    const extra = zone === "bones" ? `<p>${badgeHTML("DESIGNED")} Exercise log: the wearable's accelerometer would log resistance exercise here. Not running in this build.</p>` : "";
+    const rad = zone === "whole_body" ? `<p class="note">Effects NASA tracks: cancer risk, central nervous system and cognitive effects, cardiovascular effects, and cataracts. Because radiation cannot be felt, Sentinel asks for the cognitive check so a trend is noticed early. This is not a diagnosis.</p>
+      <button class="pill pill-ghost" type="button" data-open="radiation">Open Radiation Watch</button>` : "";
     el.innerHTML = `
-      <div class="cols">
-        <div>
-          <h3>What it does</h3><p>${esc(f.what || "")}</p>
-          <h3>In spaceflight</h3><p>${esc(f.spaceflight || "")}</p>
-          <p class="note">NASA hazard: ${esc(f.hazard || "")}. Source: <a href="${esc(f.source?.url || "")}" target="_blank" rel="noopener">${esc(f.source?.title || "")}</a></p>
-          ${extra}${rad}
-        </div>
-        <div>
-          <h3>Your readings <span class="co-sev st-${sev}">${statusWord(sev)}</span></h3>
-          ${rows ? `<table class="readings"><thead><tr><th>Reading</th><th>Value</th><th>Source</th><th>Status</th><th>Change</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="note">No readings for this area yet.</p>`}
-          <h3>Thresholds and where they come from</h3>
-          ${ths ? `<ul class="note">${ths}</ul>` : `<p class="note">No numeric threshold applies to this area in this build.</p>`}
-          <h3>What to do next</h3><p>${esc(f.next || "")}</p>
-          <p class="note">Sentinel describes change from your own baseline. It does not diagnose; anything that worries you is a question for the flight surgeon.</p>
-        </div>
-      </div>`;
+      <h3>Your readings <span class="co-sev st-${sev}">${statusWord(sev)}</span></h3>
+      ${rows ? `<table class="readings"><thead><tr><th>Reading</th><th>Value</th><th>Source</th><th>Status</th><th>Change</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="note">No readings for this area yet.</p>`}
+      <p style="margin-top:var(--s-4)"><button class="pill pill-dark" type="button" data-check>Check this area</button></p>
+      <h3>What to do next</h3><p>${esc(f.next || "")}</p>
+      <details class="more"><summary>What it does and how spaceflight affects it</summary>
+        <p>${esc(f.what || "")}</p><p>${esc(f.spaceflight || "")}</p>
+        <p class="note">NASA hazard: ${esc(f.hazard || "")}. Source: <a href="${esc(f.source?.url || "")}" target="_blank" rel="noopener">${esc(f.source?.title || "")}</a></p>
+        ${extra}${rad}</details>
+      <details class="more"><summary>Thresholds and where they come from</summary>
+        ${ths ? `<ul class="note">${ths}</ul>` : `<p class="note">No numeric threshold applies to this area in this build.</p>`}</details>
+      <p class="fine">Sentinel describes change from your own baseline. It does not diagnose; anything that worries you is a question for the flight surgeon.</p>`;
     el.querySelector("[data-open]")?.addEventListener("click", () => api_.open("radiation"));
+    el.querySelector("[data-check]")?.addEventListener("click", () => { closeScreen(); ctx.director.run([{ cmd: "check_zone", zones: [zone] }]); });
   };
   draw();
-  const t = setInterval(() => { if (!el.contains(document.activeElement)) draw(); }, 3000);
+  const t = setInterval(() => { if (!el.contains(document.activeElement) && !el.querySelector("details[open]")) draw(); }, 3000);
   return () => clearInterval(t);
 }
 
@@ -159,7 +171,7 @@ function renderHealthLog(el, ctx) {
         <span class="why">Why it matters: early symptoms are easier to manage before they grow.</span>
       </div>
     </form>
-    <p><button class="btn btn-primary btn-big" type="button" data-save>Save health log</button></p>
+    <p><button class="pill pill-dark pill-block" type="button" data-save>Save health log</button></p>
     <p class="note" data-result aria-live="polite"></p>`;
   el.querySelectorAll("[data-mood]").forEach((b) => b.addEventListener("click", () => {
     mood = Number(b.dataset.mood);
@@ -210,9 +222,9 @@ function renderHealthLog(el, ctx) {
 // ---------- trends ----------
 function renderTrends(el, ctx, metric) {
   const m = metric && METRIC_DEFS[metric] ? metric : "heart_rate";
-  el.innerHTML = `<div class="quick" role="tablist">${Object.entries(METRIC_DEFS).map(([k, d]) =>
+  el.innerHTML = `<div class="quick" style="display:flex;flex-wrap:wrap;position:static" role="tablist">${Object.entries(METRIC_DEFS).map(([k, d]) =>
     `<button class="chip" type="button" role="tab" data-m="${k}" aria-selected="${k === m}">${esc(d.label)}</button>`).join("")}</div>
-    <div data-chart style="margin-top: var(--s-3)"></div>`;
+    <div data-chart style="margin-top: var(--s-4)"></div>`;
   let cleanup = () => {};
   const load = async (k) => {
     cleanup();
@@ -228,6 +240,106 @@ function renderTrends(el, ctx, metric) {
 // ---------- crew ----------
 function renderCrew(el, ctx) {
   el.innerHTML = `<p class="note">Choose who is using Sentinel. A manual choice is badged <span class="badge badge-sim">manual</span>; a voice match is badged LIVE.</p>
-    <div class="form-grid">${ctx.view.crew.map((c) => `<button class="btn btn-big" type="button" data-crew="${esc(c.crew_id)}">${esc(c.display_name)}</button>`).join("")}</div>`;
+    <div class="hub" style="margin-top:var(--s-4)">${ctx.view.crew.map((c) => `<button type="button" data-crew="${esc(c.crew_id)}"><strong>${esc(c.display_name)}</strong><span>${c.crew_id === ctx.view.crewId ? "Using Sentinel now" : "Switch to"}</span></button>`).join("")}</div>`;
   el.querySelectorAll("[data-crew]").forEach((b) => b.addEventListener("click", () => { ctx.setCrew(b.dataset.crew, "manual"); closeScreen(); }));
+}
+
+// ---------- the More hub: everything else, grouped ----------
+function renderHub(el, ctx) {
+  const groups = [
+    ["Check-ins", [["health_log", "Health log", "Blood pressure, glucose, temperature, sleep, mood"], ["cognitive", "Cognitive check", "25-second reaction test"], ["trends", "Trends", "Every reading over time"]]],
+    ["Wellbeing", [["orb_calm", "Orb Calm", "Breathing with the orb, tracked by heart rate"], ["race", "Space race", "A short racing break past the planets"], ["greenhouse", "Greenhouse", "Your plant grows with your routine"], ["interventions", "Suggestions", "What Sentinel recommends now"]]],
+    ["Crew and ship", [["crew", "Crew", "Who is using Sentinel"], ["cabin", "Cabin air", "Oxygen and carbon dioxide (SIM)"], ["hardware", "Sentinel Skin", "The wearable design (DESIGNED)"], ["settings", "Settings", "Theme, camera, microphone, voice"], ["about", "About and credits", "Sources and licences"]]],
+  ];
+  el.innerHTML = groups.map(([g, items]) => `<section class="hub-group"><h3>${esc(g)}</h3><div class="hub">${items.map(([k, t, d]) =>
+    `<button type="button" data-open="${k}"><strong>${esc(t)}</strong><span>${esc(d)}</span></button>`).join("")}</div></section>`).join("");
+  el.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.open;
+    if (k === "race" || k === "orb_calm" || k === "health_log" || k === "trends" || k === "cognitive" || k === "hardware" || k === "greenhouse" || k === "crew") ctx.director.run([{ cmd: "open_screen", name: k }]);
+    else api_.open(k);
+  }));
+}
+
+// ---------- cabin ----------
+function renderCabin(el, ctx) {
+  const th = ctx.thresholds?.absolute || {};
+  const draw = () => {
+    const c = ctx.view.state?.cabin || {};
+    const lv = (k) => (th[k]?.levels || []).map((l) => `${l.severity} ${l.below != null ? "below " + l.below : "above " + l.above} <span class="kind kind-${l.kind}">${esc(l.kind)}</span> <a class="src-link" href="${esc(l.source?.url || "")}" target="_blank" rel="noopener">${esc(l.source?.title || "")}</a>`).join("<br>");
+    el.innerHTML = `<p class="note">There is no cabin sensor in this build: these values come from the simulator and the demo panel, so they are always SIM.</p>
+      <div class="cabin-big two" style="margin-top:var(--s-4)">
+        <div class="card rcard"><span class="label">Oxygen</span><span class="big-stat num">${esc(fmt(c.oxygen_pct))}<small class="note"> %</small></span>${badgeHTML("SIM")}<p class="fine">${lv("cabin.oxygen_pct")}</p></div>
+        <div class="card rcard"><span class="label">Carbon dioxide</span><span class="big-stat num">${esc(fmt(c.co2_ppm))}<small class="note"> ppm</small></span>${badgeHTML("SIM")}<p class="fine">${lv("cabin.co2_ppm")}</p></div>
+      </div>
+      <h3>Status</h3><p>${c.alert ? "Out of range. Flagged to ground with the one-way signal delay shown in the banner (SIM)." : "Both within limits."}</p>
+      <p class="fine">CO2 limit from NASA-STD-3001 V2 6004 (3 mmHg one-hour average, converted at 760 mmHg). The oxygen alarm level is a clinical reference, not a NASA limit.</p>`;
+  };
+  draw();
+  const t = setInterval(draw, 1500);
+  return () => clearInterval(t);
+}
+
+// ---------- settings: theme, camera, microphone, voice ----------
+function renderSettings(el, ctx) {
+  const st = ctx.settings;
+  el.innerHTML = `
+    <h3>Theme</h3>
+    <div class="mood-row" role="radiogroup" aria-label="Theme">
+      <button type="button" data-theme="light" aria-pressed="${st.get("theme") !== "dark"}">Light</button>
+      <button type="button" data-theme="dark" aria-pressed="${st.get("theme") === "dark"}">Dark</button>
+    </div>
+    <h3>Camera</h3><div class="field"><select data-cam><option value="">Default (built-in)</option></select><span class="hint">Used for the face scan and the camera pulse. Remembered in this browser.</span></div>
+    <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
+    <h3>Sentinel's voice</h3><div class="field"><select data-voice></select><span class="hint" data-voice-note>Kokoro voices run on this laptop. With an ElevenLabs key, that voice is used instead.</span></div>
+    <p style="margin-top:var(--s-3)"><button class="pill pill-ghost" type="button" data-test-voice>Play a sample</button></p>
+    <h3>Listening</h3>
+    <div class="mood-row"><button type="button" data-listen="wake" aria-pressed="${st.get("listen") !== "ptt"}">Wake phrase</button><button type="button" data-listen="ptt" aria-pressed="${st.get("listen") === "ptt"}">Push to talk only</button></div>
+    <p class="hint fine">Wake phrase: say "Hey Sentinel" any time. Push to talk: tap the microphone or the orb, then speak.</p>`;
+  el.querySelectorAll("[data-theme]").forEach((b) => b.addEventListener("click", () => {
+    st.set("theme", b.dataset.theme); ctx.applyTheme();
+    el.querySelectorAll("[data-theme]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
+  el.querySelectorAll("[data-listen]").forEach((b) => b.addEventListener("click", () => {
+    st.set("listen", b.dataset.listen); ctx.applyListening?.();
+    el.querySelectorAll("[data-listen]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
+  (async () => {
+    try {
+      const devs = await navigator.mediaDevices?.enumerateDevices?.() || [];
+      const fill = (sel, kind, key) => {
+        devs.filter((d) => d.kind === kind).forEach((d, i) => sel.insertAdjacentHTML("beforeend", `<option value="${esc(d.deviceId)}">${esc(d.label || `${kind === "videoinput" ? "Camera" : "Microphone"} ${i + 1}`)}</option>`));
+        sel.value = st.get(key) || "";
+        sel.addEventListener("change", () => { st.set(key, sel.value); ctx.onDeviceChange?.(key); });
+      };
+      fill(el.querySelector("[data-cam]"), "videoinput", "camera");
+      fill(el.querySelector("[data-mic]"), "audioinput", "mic");
+    } catch { /* no device list */ }
+    try {
+      const v = await api.json("../api/tts/voices");
+      const sel = el.querySelector("[data-voice]");
+      sel.innerHTML = (v.voices || []).map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+      sel.value = st.get("voice") || v.default;
+      if (v.engine === "elevenlabs") el.querySelector("[data-voice-note]").textContent = "ElevenLabs is active (key set); Kokoro is the fallback.";
+      if (!v.ready) el.querySelector("[data-voice-note]").textContent = v.engine === "none" ? "The local voice model is not available; the browser voice is used." : "The local voice model is still loading.";
+      sel.addEventListener("change", () => st.set("voice", sel.value));
+    } catch { el.querySelector("[data-voice]").innerHTML = `<option>Browser voice</option>`; }
+  })();
+  el.querySelector("[data-test-voice]").addEventListener("click", () => ctx.say("Hello. This is how I will sound on the mission."));
+}
+
+function renderAbout(el) {
+  el.innerHTML = `<p>Sentinel is an onboard crew-health companion built for the NASA Space Apps Challenge 2026. It describes change from each person's own baseline and never diagnoses.</p>
+    <h3>Credits</h3>
+    <ul class="credits">
+      <li>Planet textures: Solar System Scope (CC BY 4.0), based on NASA imagery.</li>
+      <li>Body model: generated with MakeHuman / MPFB (CC0 base mesh).</li>
+      <li>Voice: Kokoro text-to-speech (Apache 2.0), running on this laptop.</li>
+      <li>Speech recognition: Whisper via faster-whisper (MIT) on this laptop, or Groq when a key is set.</li>
+      <li>Space weather: NOAA Space Weather Prediction Center (GOES proton flux, NOAA scales); storm replay from NASA DONKI.</li>
+      <li>Health thresholds and facts: NASA-STD-3001, NASA Human Research Program and OCHMO briefs, CDC, AHA, ADA, MedlinePlus (see shared/SOURCES.md).</li>
+      <li>Sentinel Skin design draws on CSA Astroskin, MIT's bioadhesive ultrasound patch and NASA ocular health research (sources on the hardware screen).</li>
+      <li>Libraries: three.js (MIT), GSAP, Chart.js (MIT), MediaPipe Tasks Vision (Apache 2.0). Fonts: Inter and Michroma (SIL OFL).</li>
+    </ul>
+    <h3>Badges</h3>
+    <div class="legend" style="color:var(--ink-2)"><span class="badge badge-live">LIVE</span><span>measured or computed now</span><span class="badge badge-sim">SIM</span><span>prepared or simulated on purpose</span><span class="badge badge-designed">DESIGNED</span><span>a design, not running</span></div>`;
 }

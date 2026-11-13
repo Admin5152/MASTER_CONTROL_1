@@ -209,10 +209,10 @@ export async function renderWellbeing(host, crewId) {
   const chart = new window.Chart(host.querySelector("canvas"), {
     type: "bar",
     data: { labels: Array.from({ length: n }, (_, i) => `Session ${i + 1}`),
-      datasets: [{ label: "Before", data: b.points.slice(-n).map((p) => p.v), backgroundColor: css("--ink-faint") },
+      datasets: [{ label: "Before", data: b.points.slice(-n).map((p) => p.v), backgroundColor: css("--ink-3") },
         { label: "After", data: a.points.slice(-n).map((p) => p.v), backgroundColor: css("--line") }] },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 5, ticks: { color: css("--ink-dim") }, grid: { color: css("--rule") } }, x: { ticks: { color: css("--ink-dim") }, grid: { display: false } } },
-      plugins: { legend: { labels: { color: css("--ink-dim") } } } },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 5, ticks: { color: css("--ink-2") }, grid: { color: css("--rule") } }, x: { ticks: { color: css("--ink-2") }, grid: { display: false } } },
+      plugins: { legend: { labels: { color: css("--ink-2") } } } },
   });
   return () => chart.destroy();
 }
