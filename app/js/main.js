@@ -39,7 +39,7 @@ const settings = {
 const ctx = { view, patch, settings, health: {}, facts: { facts: [], zones: {} }, thresholds: null, demoLines: {} };
 window.sentinel = ctx; // for the browser test harness and debugging
 let orb, director, banner, vision, demoPanel, screens, world, space, stages;
-let lastZone = "";
+let lastZone = null;   // null until the first state: Sentinel does not jump to the body on start
 let lastActionKey = "";
 let interacted = false;
 let captionTimer = null;
@@ -173,7 +173,8 @@ async function mountApp() {
 
   // the body (async; the Director waits for it when needed)
   import("./world/body3d.js").then(async ({ createBody }) => {
-    const b = await createBody(world, $("body-host"), { tablet: isTablet, onZoneClick: zonePopover });
+    const b = await createBody(world, $("body-host"), { tablet: isTablet, onZoneClick: zonePopover, model: view.state?.body_model || "male" });
+    b.preload(b.model === "male" ? "female" : "male");
     world.add("body", b);
     body.setImpl(b);
     ctx.body3d = b;
@@ -208,7 +209,7 @@ async function mountApp() {
   on("zone:open", (z) => screens.zone(z));
   on("vision:open", () => vision.start());
   on("intervention:open", openIntervention);
-  on("crew:changed", () => { invalidateSparks(); lastZone = ""; });
+  on("crew:changed", () => { invalidateSparks(); lastZone = null; });
   on("stage", (name) => { if (name === "vision" && !vision.state.on) vision.start(); closeMenus(); });
 
   const first = view.crew[0]?.crew_id;
@@ -520,7 +521,9 @@ function onState(v) {
   renderActionCard(s, aux);
   // Sentinel noticed something: point at it
   const z = s.action?.zone || "";
-  if (z !== lastZone) {
+  if (ctx.body3d && s.body_model && ctx.body3d.model !== s.body_model) ctx.body3d.setModel(s.body_model).catch((e) => console.warn("body model switch failed", e));
+  if (lastZone === null) lastZone = z;   // on start or a crew switch, Sentinel mentions it rather than taking over the screen
+  else if (z !== lastZone) {
     lastZone = z;
     if (z && z !== "cabin" && !director.busy && !document.querySelector("#sheet.is-full:not([hidden])")) director.run([{ cmd: "point_to", zone: z }]);
   }
@@ -534,7 +537,7 @@ function onState(v) {
 
 function runScenarioStep(sc) {
   if (sc.crew_id && sc.crew_id !== view.crewId) switchCrew(sc.crew_id, "manual");
-  if (sc.step === "reset") { director.cancel(); closeScreen(); banner.hide(); lastZone = ""; invalidateSparks(); return; }
+  if (sc.step === "reset") { director.cancel(); closeScreen(); banner.hide(); lastZone = null; invalidateSparks(); return; }
   if (sc.say) say(sc.say, { source: "SIM line" });
   if (sc.commands?.length) director.run(sc.commands);
 }

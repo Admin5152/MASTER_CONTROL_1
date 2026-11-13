@@ -46,6 +46,13 @@ export const SCREEN_WORDS = {
   home: ["home", "main screen"],
 };
 
+// parts that are not zones (zones such as "heart" point and check instead)
+export const PART_WORDS = {
+  spine: ["spine", "backbone", "vertebrae", "spinal column"], skull: ["skull"], ribcage: ["ribcage", "rib cage", "ribs"],
+  pelvis: ["pelvis", "hips", "hip bones"], vessels: ["blood vessels", "vessels", "veins and arteries", "arteries and veins", "circulation system", "circulatory system"],
+  arteries: ["arteries"], veins: ["veins"], skeleton: ["skeleton", "my bones", "all my bones"], liver: ["liver"], kidneys: ["kidneys", "kidney"],
+  intestines: ["intestines", "bowel", "guts"], airway: ["airway", "windpipe", "trachea"], organs: ["organs", "my organs"],
+};
 const norm = (s) => ` ${String(s || "").toLowerCase().replace(/[’']/g, "").replace(/x ray/g, "xray").replace(/x-ray/g, "xray").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim()} `;
 const has = (t, w) => t.includes(` ${w} `);
 const pairsOf = (table) => Object.entries(table).flatMap(([k, ws]) => ws.map((w) => [k, w])).sort((a, b) => b[1].length - a[1].length);
@@ -79,10 +86,20 @@ export function matchIntent(text) {
     return { intent: "close", commands: [{ cmd: "close" }] };
   }
 
-  // body: X-ray on/off
+  // body: isolate one anatomy part ("show me my spine", "show my blood vessels", "show my skeleton")
+  const isoVerb = / (show|see|isolate|highlight|display) /.test(t);
+  if (isoVerb && !has(t, "xray")) {
+    const part = findWord(t, PART_WORDS);
+    if (part) return { intent: "isolate", commands: [{ cmd: "isolate", part }] };
+  }
+
+  // body: X-ray on/off (radiograph or coloured anatomy)
   if (has(t, "xray")) {
     const off = / (hide|off|stop|remove|turn off|close|no) /.test(t) || has(t, "normal view");
-    return { intent: "xray", commands: [{ cmd: "xray", on: !off }] };
+    const x = { cmd: "xray", on: !off };
+    if (!off && / (anatomy|organs|colou?r|colou?red) /.test(t)) x.style = "anatomy";
+    else if (!off && / (radiograph|bones only|real xray|plain xray) /.test(t)) x.style = "radiograph";
+    return { intent: "xray", commands: [x] };
   }
   // body: turn / rotate
   const deg = t.match(/ (rotate|turn) (?:it |me |the body )?(?:by )?(-?\d{1,3}) degrees? /);

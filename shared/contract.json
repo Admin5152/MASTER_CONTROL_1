@@ -3,48 +3,196 @@
   "frozen": {
     "crew_id": "james",
     "timestamp": "2026-11-14T10:00:00Z",
-    "identity": { "confidence": 0.0 },
-    "vitals": { "heart_rate": 0, "breathing_rate": 0, "spo2": 0, "source": "camera" },
-    "state": { "emotion": "neutral", "emotion_confidence": 0.0, "fatigue": 0.0, "stress": 0.0 },
-    "baseline": { "heart_rate": 0, "talk_time": 0.0, "pitch": 0.0 },
-    "drift": { "flag": false, "note": "" },
-    "cabin": { "oxygen_pct": 20.9, "co2_ppm": 400, "alert": false },
-    "action": { "type": "none", "detail": "" }
+    "identity": {
+      "confidence": 0.0
+    },
+    "vitals": {
+      "heart_rate": 0,
+      "breathing_rate": 0,
+      "spo2": 0,
+      "source": "camera"
+    },
+    "state": {
+      "emotion": "neutral",
+      "emotion_confidence": 0.0,
+      "fatigue": 0.0,
+      "stress": 0.0
+    },
+    "baseline": {
+      "heart_rate": 0,
+      "talk_time": 0.0,
+      "pitch": 0.0
+    },
+    "drift": {
+      "flag": false,
+      "note": ""
+    },
+    "cabin": {
+      "oxygen_pct": 20.9,
+      "co2_ppm": 400,
+      "alert": false
+    },
+    "action": {
+      "type": "none",
+      "detail": ""
+    }
   },
   "additions": {
     "display_name": "James",
-    "identity": { "source": "manual" },
-    "vitals": { "sources": { "heart_rate": "camera", "breathing_rate": "sim", "spo2": "sim" } },
+    "identity": {
+      "source": "manual"
+    },
+    "vitals": {
+      "sources": {
+        "heart_rate": "camera",
+        "breathing_rate": "sim",
+        "spo2": "sim"
+      }
+    },
     "manual": {
-      "bp_systolic": null, "bp_diastolic": null, "glucose_mgdl": null,
-      "temp_c": null, "sleep_hours": null, "mood": null, "symptoms": [],
+      "bp_systolic": null,
+      "bp_diastolic": null,
+      "glucose_mgdl": null,
+      "temp_c": null,
+      "sleep_hours": null,
+      "mood": null,
+      "symptoms": [],
       "updated": null
     },
-    "voice": { "talk_time": 0.0, "pitch": 0.0 },
-    "cognitive": { "reaction_ms": null, "baseline_ms": null, "updated": null },
-    "drift": { "items": [ { "metric": "", "delta_pct": 0.0, "zone": "", "severity": "info" } ] },
-    "action": { "zone": "", "severity": "none", "intervention": "" },
-    "engagement": { "streak_days": 0, "checkins_today": 0, "calm_levels_cleared": 0, "greenhouse_stage": 0 },
+    "voice": {
+      "talk_time": 0.0,
+      "pitch": 0.0
+    },
+    "cognitive": {
+      "reaction_ms": null,
+      "baseline_ms": null,
+      "updated": null
+    },
+    "drift": {
+      "items": [
+        {
+          "metric": "",
+          "delta_pct": 0.0,
+          "zone": "",
+          "severity": "info"
+        }
+      ]
+    },
+    "action": {
+      "zone": "",
+      "severity": "none",
+      "intervention": ""
+    },
+    "engagement": {
+      "streak_days": 0,
+      "checkins_today": 0,
+      "calm_levels_cleared": 0,
+      "greenhouse_stage": 0
+    },
     "radiation": {
       "mission_profile": "iss",
-      "mission_day": 0, "dose_rate_msv_day": 0.0, "cumulative_msv": 0.0,
-      "career_limit_msv": 600, "storm_level": 0, "sheltered": false,
+      "mission_day": 0,
+      "dose_rate_msv_day": 0.0,
+      "cumulative_msv": 0.0,
+      "career_limit_msv": 600,
+      "storm_level": 0,
+      "sheltered": false,
       "source": "model"
     },
-    "wellbeing": { "mood_before": null, "mood_after": null, "last_game": "", "updated": null }
+    "wellbeing": {
+      "mood_before": null,
+      "mood_after": null,
+      "last_game": "",
+      "updated": null
+    },
+    "body_model": "male"
   },
   "enums": {
-    "vitals.source": ["camera", "sim", "sensor"],
-    "vitals.sources.*": ["camera", "sim", "sensor", "manual"],
-    "identity.source": ["voice", "manual"],
-    "action.type": ["none", "gentle_checkin", "offer_orb_calm", "offer_intervention", "suggest_medicine", "flag_cabin", "flag_radiation", "flag_ground"],
-    "action.zone": ["", "head", "eyes", "heart", "lungs", "gut", "bones", "whole_body", "cabin"],
-    "action.severity": ["none", "info", "watch", "alert"],
-    "action.intervention": ["", "breathing", "aurora_run", "earth_window", "music", "connection"],
-    "drift.items.severity": ["info", "watch", "alert"],
-    "drift.items.zone": ["", "head", "eyes", "heart", "lungs", "gut", "bones", "whole_body", "cabin"],
-    "radiation.mission_profile": ["iss", "lunar", "mars_transit", "mars_surface"],
-    "radiation.source": ["model", "live_feed", "sim"]
+    "vitals.source": [
+      "camera",
+      "sim",
+      "sensor"
+    ],
+    "vitals.sources.*": [
+      "camera",
+      "sim",
+      "sensor",
+      "manual"
+    ],
+    "identity.source": [
+      "voice",
+      "manual"
+    ],
+    "action.type": [
+      "none",
+      "gentle_checkin",
+      "offer_orb_calm",
+      "offer_intervention",
+      "suggest_medicine",
+      "flag_cabin",
+      "flag_radiation",
+      "flag_ground"
+    ],
+    "action.zone": [
+      "",
+      "head",
+      "eyes",
+      "heart",
+      "lungs",
+      "gut",
+      "bones",
+      "whole_body",
+      "cabin"
+    ],
+    "action.severity": [
+      "none",
+      "info",
+      "watch",
+      "alert"
+    ],
+    "action.intervention": [
+      "",
+      "breathing",
+      "aurora_run",
+      "earth_window",
+      "music",
+      "connection"
+    ],
+    "drift.items.severity": [
+      "info",
+      "watch",
+      "alert"
+    ],
+    "drift.items.zone": [
+      "",
+      "head",
+      "eyes",
+      "heart",
+      "lungs",
+      "gut",
+      "bones",
+      "whole_body",
+      "cabin"
+    ],
+    "radiation.mission_profile": [
+      "iss",
+      "lunar",
+      "mars_transit",
+      "mars_surface"
+    ],
+    "radiation.source": [
+      "model",
+      "live_feed",
+      "sim"
+    ],
+    "body_model": [
+      "male",
+      "female"
+    ]
   },
-  "vitals_sources_keys": ["heart_rate", "breathing_rate", "spo2"]
+  "vitals_sources_keys": [
+    "heart_rate",
+    "breathing_rate",
+    "spo2"
+  ]
 }

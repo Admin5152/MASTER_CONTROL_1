@@ -123,7 +123,7 @@ test("intent matcher maps 24 phrases to the right commands", () => {
     ["show me my chest", [{ cmd: "point_to", zone: "lungs" }]],
     ["how is my brain", [{ cmd: "point_to", zone: "head" }]],
     ["look at my head", [{ cmd: "point_to", zone: "head" }]],
-    ["check my stomach", [{ cmd: "point_to", zone: "gut" }]],
+    ["check my stomach", [{ cmd: "check_zone", zones: ["gut"] }]],
     ["show me my legs", [{ cmd: "point_to", zone: "bones" }]],
     ["what is wrong with my muscles", [{ cmd: "point_to", zone: "bones" }]],
     ["show my lungs", [{ cmd: "point_to", zone: "lungs" }]],
@@ -141,7 +141,7 @@ test("intent matcher maps 24 phrases to the right commands", () => {
     ["show me the hardware", [{ cmd: "open_screen", name: "hardware" }]],
     ["let me see you", [{ cmd: "open_screen", name: "vision" }, { cmd: "start_scan" }]],
     ["start the cognitive check", [{ cmd: "open_screen", name: "cognitive" }]],
-    ["play aurora run", [{ cmd: "open_screen", name: "aurora_run" }]],
+    ["play aurora run", [{ cmd: "open_screen", name: "race" }]],
     ["open the greenhouse", [{ cmd: "open_screen", name: "greenhouse" }]],
     ["show the radiation layer", [{ cmd: "show_radiation", on: true }]],
   ];
@@ -236,4 +236,24 @@ test("Greenhouse: grows on a completed day, wilts at most one, never below zero"
 test("cognitive check: median excludes false starts", () => {
   assert.equal(medianReaction([{ ms: 300 }, { ms: 50, falseStart: true }, { ms: 340 }, { ms: 320 }]), 320);
   assert.equal(medianReaction([{ falseStart: true }]), null);
+});
+
+// ---------- section 9: real anatomy (isolate, X-ray styles) ----------
+test("intent matcher isolates anatomy parts and picks the X-ray style", () => {
+  const table = [
+    ["show me my spine", [{ cmd: "isolate", part: "spine" }]],
+    ["show my blood vessels", [{ cmd: "isolate", part: "vessels" }]],
+    ["show me my skeleton", [{ cmd: "isolate", part: "skeleton" }]],
+    ["highlight my liver", [{ cmd: "isolate", part: "liver" }]],
+    ["show me the x-ray", [{ cmd: "xray", on: true }]],
+    ["show the xray with the organs", [{ cmd: "xray", on: true, style: "anatomy" }]],
+    ["turn off the x ray", [{ cmd: "xray", on: false }]],
+    ["show me my heart", [{ cmd: "point_to", zone: "heart" }]],
+  ];
+  for (const [phrase, cmds] of table) assert.deepEqual(matchIntent(phrase)?.commands, cmds, phrase);
+});
+
+test("validator keeps isolate and X-ray style only for known values", () => {
+  assert.deepEqual(validateCommands([{ cmd: "isolate", part: "spine" }, { cmd: "isolate", part: "tail" }, { cmd: "xray", on: true, style: "anatomy" }, { cmd: "xray", style: "neon" }]),
+    [{ cmd: "isolate", part: "spine" }, { cmd: "xray", on: true, style: "anatomy" }, { cmd: "xray", on: true }]);
 });

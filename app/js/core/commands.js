@@ -7,6 +7,10 @@ export const METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose",
   "reaction", "talk_time", "pitch", "o2", "co2"];
 export const VIEWS = ["front", "back", "left", "right"];
 export const MAX_COMMANDS = 3;
+export const XRAY_STYLES = ["radiograph", "anatomy"];
+/** Anatomy parts a person or the LLM can isolate: the 18 model nodes plus named groups. */
+export const PARTS = ["skull", "spine", "ribcage", "shoulders", "pelvis", "limbs", "brain", "eyes", "heart", "lungs", "airway",
+  "liver", "stomach", "intestines", "pancreas_spleen", "kidneys", "arteries", "veins", "vessels", "bones", "skeleton", "organs"];
 
 /** Drop unknown commands, zones, screens, metrics and views; keep at most `max`. */
 export function validateCommands(cmds, max = MAX_COMMANDS) {
@@ -28,7 +32,13 @@ export function validateCommands(cmds, max = MAX_COMMANDS) {
       case "zoom_body":
         if (c.zone === "reset" || ZONES.includes(c.zone)) out.push({ cmd: "zoom_body", zone: c.zone });
         break;
-      case "xray": out.push({ cmd: "xray", on: c.on !== false }); break;
+      case "xray": {
+        const x = { cmd: "xray", on: c.on !== false };
+        if (XRAY_STYLES.includes(c.style)) x.style = c.style;
+        out.push(x);
+        break;
+      }
+      case "isolate": if (PARTS.includes(c.part)) out.push({ cmd: "isolate", part: c.part }); break;
       case "check_zone": {
         const zs = Array.isArray(c.zones) ? [...new Set(c.zones.filter((z) => ZONES.includes(z)))].slice(0, 3) : [];
         if (zs.length) out.push({ cmd: "check_zone", zones: zs });

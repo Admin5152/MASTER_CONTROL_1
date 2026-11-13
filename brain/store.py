@@ -117,7 +117,9 @@ class Store:
             self.history = raw["history"]
             self.internal = raw.get("internal", {cid: {"storm_received": 0.0, "storm_avoided": 0.0, "reaction_runs": 0} for cid in self.states})
             self.clock = raw.get("clock", self.clock)
+            models = {c["crew_id"]: c.get("body_model", "male") for c in self._mock()}
             for cid in self.states:
+                self.states[cid].setdefault("body_model", models.get(cid, "male"))  # saved before body_model existed
                 validate_full(self.states[cid])
                 self._recompute(cid)
             return True

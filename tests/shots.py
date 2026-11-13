@@ -18,7 +18,8 @@ SIZE = next((a for a in sys.argv[1:] if "x" in a and a[0].isdigit()), "1366x768"
 W, H = map(int, SIZE.split("x"))
 ONLY = [a for a in sys.argv[1:] if not a.startswith("http") and a != SIZE]
 ARGS = ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--ignore-certificate-errors",
-        "--autoplay-policy=no-user-gesture-required", "--ignore-gpu-blocklist"]
+        "--autoplay-policy=no-user-gesture-required", "--ignore-gpu-blocklist",
+        "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
 
 
 def want(n: str) -> bool:
@@ -27,9 +28,11 @@ def want(n: str) -> bool:
 
 def main() -> None:
     with sync_playwright() as p:
-        b = p.chromium.launch(channel="chrome", headless=True, args=ARGS)
+        b = p.chromium.launch(channel="msedge", headless=True, args=ARGS)
         ctx = b.new_context(viewport={"width": W, "height": H}, ignore_https_errors=True, permissions=["camera", "microphone"])
         page = ctx.new_page()
+        # software GL renders a few fps; GSAP lag smoothing would then slow every timeline to a crawl
+        page.add_init_script("(function w(){ if (window.gsap) gsap.ticker.lagSmoothing(0); else setTimeout(w, 20); })()")
         errs: list[str] = []
         page.on("console", lambda m: (errs.append(f"{m.type}: {m.text}"[:240]) if len(errs) < 400 else None) if m.type in ("error", "warning") else None)
         page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"[:300]))
@@ -39,7 +42,7 @@ def main() -> None:
             page.wait_for_timeout(ms)
             if want("intro"):
                 page.screenshot(path=str(OUT / f"{tag}-00-intro-{i}.png"))
-        page.wait_for_selector("#start-screen.is-ready", timeout=20000)
+        page.wait_for_selector("#start-screen.is-ready", timeout=60000)
         page.wait_for_timeout(1200)
         page.screenshot(path=str(OUT / f"{tag}-00-intro-ready.png"))
         page.click("#start-btn")

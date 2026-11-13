@@ -16,7 +16,6 @@ const sleep = (ms, token) => new Promise((res) => {
   token?.onCancel(() => { clearTimeout(t); res(); });
 });
 const INFO_ICON = '<svg class="co-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>';
-const SPAN = { head: [1.9, 1.66], eyes: [1.8, 1.72], lungs: [1.5, 1.2], heart: [1.42, 1.22], gut: [1.25, 0.98], bones: [0.98, 0.35], whole_body: [1.95, 0.0] };
 
 class Token {
   constructor() { this.cancelled = false; this.cbs = []; }
@@ -78,7 +77,20 @@ export function createDirector(deps) {
       }
       case "rotate_body": { const b = await toBody(); return b?.rotate(c.view ?? c.angle); }
       case "zoom_body": { const b = await toBody(); return b?.zoomTo(c.zone); }
-      case "xray": { const b = await toBody(); document.getElementById("btn-xray")?.setAttribute("aria-pressed", String(!!c.on)); return b?.setXray(c.on); }
+      case "xray": {
+        const b = await toBody();
+        document.getElementById("btn-xray")?.setAttribute("aria-pressed", String(!!c.on));
+        if (c.on && c.style) b?.setStyle(c.style);
+        else if (c.on && !b?.xray) b?.focus(null);
+        return b?.setXray(c.on);
+      }
+      case "isolate": {
+        const b = await toBody();
+        document.getElementById("btn-xray")?.setAttribute("aria-pressed", "true");
+        await b?.isolate(c.part);
+        emit("body:isolate", c.part);
+        return;
+      }
       case "close": screens.close(); return;
     }
   }
@@ -205,6 +217,7 @@ export function createDirector(deps) {
     cleanup.push(() => orb.look(0, 0));
     await b.zoomTo(zone, fast ? 0 : 1.3);
     if (token.cancelled) return;
+    b.focus(zone === "whole_body" ? null : zone);
     await b.setXray(true, fast ? 0 : 0.7);
     body.setTarget(zone);
     emit("vision:point", zone);
@@ -252,10 +265,10 @@ export function createDirector(deps) {
     if (token.cancelled) return;
     body.ZONES.forEach((z) => body.zoneEl(z)?.classList.add("scan-pending"));
     cleanup.push(() => body.ZONES.forEach((z) => body.zoneEl(z)?.classList.remove("scan-pending")));
-    b.beginScan(1.95);
+    b.beginScan(b.top);
     say("Running a full scan.", { kind: "scan" });
     const results = [];
-    let y = 1.95;
+    let y = b.top;
     for (const z of order) {
       if (token.cancelled) return;
       const toY = anchors[z].h;
@@ -279,6 +292,9 @@ export function createDirector(deps) {
     await b.sweepTo(-0.02, fast ? 0 : 1.1);
     b.setRing(null);
     await b.endScan(true, fast ? 0 : 1.0);
+    // radiograph first, then the coloured anatomy (brief section 9 item 2)
+    await sleep(fast ? 0 : 1100, token);
+    if (!token.cancelled) b.focus(null);
     document.getElementById("btn-xray")?.setAttribute("aria-pressed", "true");
     runCleanup();
     if (token.cancelled) return;
@@ -313,13 +329,16 @@ export function createDirector(deps) {
       await b.setXray(false, fast ? 0 : 0.4);
       await b.zoomTo(zone, fast ? 0 : 1.3);
       if (token.cancelled) return;
-      const [top, bottom] = SPAN[zone] || SPAN.whole_body;
+      const [top, bottom] = b.zoneSpan(zone);
       b.beginScan(top);
       b.setRing({ head: "head", eyes: "head", lungs: "chest", heart: "chest", gut: "waist", bones: "thighs" }[zone] || null);
       await b.sweepTo(bottom, fast ? 0 : 1.7);
       await b.endScan(true, fast ? 0 : 0.9);
       b.setRing(null);
       if (token.cancelled) return;
+      await sleep(fast ? 0 : 700, token);
+      if (token.cancelled) return;
+      b.focus(zone === "whole_body" ? null : zone);
       body.setTarget(zone);
       const sev = zoneSeverity(zone);
       const rs = readingsFor(zone);
