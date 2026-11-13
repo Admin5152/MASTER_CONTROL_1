@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 900" id="sentinel-body" role="img" aria-label="Crew body model">
+  <!--
+    Sentinel digital dummy. Front-on view: the figure's left side is on the viewer's right.
+    Zones are <g class="zone" id="zone-…" data-zone="…" data-anchor="x,y">.
+    The app sets one state class per zone: is-ok | is-watch | is-alert, and adds is-target
+    to the zone Sentinel is pointing at. data-anchor is where a pointer line should land.
+    Colours come from CSS variables so the app's tokens can override them.
+  -->
+  <defs>
+    <style>
+      #sentinel-body {
+        --ok: var(--sentinel-ok, #2ee6c8);
+        --watch: var(--sentinel-watch, #ffb020);
+        --alert: var(--sentinel-alert, #ff3b4e);
+        --line: var(--sentinel-line, #39d5ff);
+        --dim: var(--sentinel-dim, #1b6f8c);
+      }
+      .shell { fill: var(--line); fill-opacity: .05; stroke: var(--line); stroke-width: 1.6; stroke-linejoin: round; }
+      .mesh { fill: none; stroke: var(--dim); stroke-width: .7; opacity: .7; }
+      .bone { fill: none; stroke: var(--dim); stroke-width: 1.1; stroke-linecap: round; opacity: .8; }
+      .floor { fill: none; stroke: var(--line); opacity: .35; }
+      .zone { color: var(--ok); cursor: pointer; }
+      .zone.is-watch { color: var(--watch); }
+      .zone.is-alert { color: var(--alert); }
+      .zone .organ { fill: currentColor; fill-opacity: .16; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; transition: fill-opacity .3s; }
+      .zone .detail { fill: none; stroke: currentColor; stroke-width: .9; opacity: .75; stroke-linecap: round; }
+      .zone .hit { fill: transparent; stroke: none; }
+      .zone:hover .organ, .zone:focus .organ { fill-opacity: .34; }
+      .zone.is-watch .organ { fill-opacity: .3; }
+      .zone.is-alert .organ { fill-opacity: .5; filter: url(#glow); animation: zone-pulse 1.1s ease-in-out infinite; }
+      .zone .reticle { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: 0; transform-origin: 0px 0px; pointer-events: none; }
+      .zone.is-target .reticle { opacity: 1; animation: reticle-spin 6s linear infinite; }
+      #layer-radiation { opacity: 0; transition: opacity .5s; pointer-events: none; }
+      #sentinel-body.show-radiation #layer-radiation { opacity: 1; }
+      #layer-radiation .ray { stroke: var(--watch); stroke-width: 1; opacity: .55; stroke-dasharray: 3 9; animation: ray-move 1.6s linear infinite; }
+      #scanline { opacity: 0; }
+      #sentinel-body.is-scanning #scanline { opacity: 1; animation: scan 3.2s ease-in-out infinite; }
+      @keyframes zone-pulse { 50% { fill-opacity: .22; } }
+      @keyframes reticle-spin { to { transform: rotate(360deg); } }
+      @keyframes ray-move { to { stroke-dashoffset: -24; } }
+      @keyframes scan { 0% { transform: translateY(20px); } 50% { transform: translateY(860px); } 100% { transform: translateY(20px); } }
+      @media (prefers-reduced-motion: reduce) {
+        .zone.is-alert .organ, .zone.is-target .reticle, #layer-radiation .ray, #sentinel-body.is-scanning #scanline { animation: none; }
+      }
+    </style>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="scan-grad" x1="0" x2="1">
+      <stop offset="0" stop-color="#39d5ff" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#39d5ff" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#39d5ff" stop-opacity="0"/>
+    </linearGradient>
+    <!-- One half of the body outline; mirrored for the other side. -->
+    <path id="half" d="M200,138 L215,138 C216,150 218,156 224,160 C244,166 266,168 281,178
+      C297,188 304,208 305,234 C307,266 309,300 312,330 C316,362 321,392 325,420
+      C329,440 328,462 317,471 C306,476 299,462 299,441 C297,408 293,372 289,340
+      C285,306 281,272 276,240 C275,268 272,300 269,326 C266,356 265,384 268,410
+      C276,438 282,468 282,500 C282,548 279,596 275,640 C273,662 270,682 270,700
+      C274,740 270,790 260,830 L263,860 C265,873 252,878 237,876 L227,872 L229,830
+      C227,782 225,742 227,700 C227,680 225,660 223,640 C218,598 212,556 207,522 L200,512 Z"/>
+  </defs>
+
+  <!-- Floor rings -->
+  <g class="floor">
+    <ellipse cx="200" cy="878" rx="150" ry="14"/>
+    <ellipse cx="200" cy="878" rx="105" ry="9" stroke-dasharray="4 6"/>
+  </g>
+
+  <!-- Body shell -->
+  <g id="body-shell">
+    <ellipse class="shell" cx="200" cy="82" rx="41" ry="52"/>
+    <use href="#half" class="shell"/>
+    <use href="#half" class="shell" transform="translate(400,0) scale(-1,1)"/>
+    <!-- contour mesh -->
+    <g class="mesh">
+      <path d="M124,236 Q200,262 276,236"/>
+      <path d="M131,300 Q200,322 269,300"/>
+      <path d="M133,360 Q200,378 267,360"/>
+      <path d="M132,410 Q200,428 268,410"/>
+      <path d="M121,470 Q200,496 279,470"/>
+      <path d="M121,560 Q158,574 197,560 M203,560 Q242,574 279,560"/>
+      <path d="M126,640 Q152,650 177,640 M223,640 Q248,650 274,640"/>
+      <path d="M131,760 Q152,768 174,760 M226,760 Q248,768 269,760"/>
+      <path d="M96,300 Q104,306 114,300 M286,300 Q296,306 304,300"/>
+      <path d="M82,400 Q92,406 104,400 M296,400 Q308,406 318,400"/>
+      <path d="M160,60 Q200,48 240,60 M159,104 Q200,118 241,104"/>
+    </g>
+  </g>
+
+  <!-- Bones and muscles -->
+  <g class="zone is-ok" id="zone-bones" data-zone="bones" data-anchor="200,455" tabindex="0">
+    <title>Bones and muscles</title>
+    <path class="bone" d="M200,150 V470" stroke-dasharray="7 4"/>
+    <path class="organ" d="M158,462 C168,446 232,446 242,462 C248,480 236,500 220,504 L200,494 L180,504 C164,500 152,480 158,462 Z"/>
+    <path class="bone" d="M172,508 L156,636 M228,508 L244,636 M154,652 L150,822 M246,652 L250,822"/>
+    <path class="bone" d="M150,196 L118,236 M250,196 L282,236 M112,246 L98,330 M288,246 L302,330 M96,342 L84,428 M304,342 L316,428"/>
+    <circle class="detail" cx="155" cy="644" r="7"/><circle class="detail" cx="245" cy="644" r="7"/>
+    <path class="hit" d="M150,446 h100 v62 h-100 Z M140,508 h40 v320 h-40 Z M220,508 h40 v320 h-40 Z"/>
+    <g transform="translate(200,476)"><g class="reticle"><circle r="34" stroke-dasharray="31 23"/><path d="M-41,0 h12 M29,0 h12 M0,-41 v12 M0,29 v12"/></g></g>
+  </g>
+
+  <!-- Gut / nutrition -->
+  <g class="zone is-ok" id="zone-gut" data-zone="gut" data-anchor="200,372" tabindex="0">
+    <title>Digestion and nutrition</title>
+    <path class="organ" d="M176,322 C196,312 228,318 232,340 C234,356 220,364 206,362 C222,372 238,388 234,408 C230,428 204,436 184,430 C164,424 158,404 164,388 C168,376 180,370 190,366 C174,360 166,338 176,322 Z"/>
+    <path class="detail" d="M176,392 Q200,380 222,394 M174,408 Q200,398 224,410 M186,338 Q204,332 218,342"/>
+    <g transform="translate(200,374)"><g class="reticle"><circle r="46" stroke-dasharray="41 31"/><path d="M-53,0 h12 M41,0 h12 M0,-53 v12 M0,41 v12"/></g></g>
+  </g>
+
+  <!-- Lungs -->
+  <g class="zone is-ok" id="zone-lungs" data-zone="lungs" data-anchor="160,240" tabindex="0">
+    <title>Lungs and breathing</title>
+    <path class="organ" d="M190,196 C176,186 154,196 146,220 C138,246 138,280 146,296 C162,302 184,292 191,276 Z"/>
+    <path class="organ" d="M210,196 C224,186 246,196 254,220 C262,246 262,280 254,296 C246,300 236,298 228,292 C234,282 234,268 226,258 C220,250 212,250 209,256 Z"/>
+    <path class="detail" d="M200,170 V200 M200,200 L186,214 M200,200 L214,214 M170,228 L156,250 M172,250 L158,274 M232,226 L246,246"/>
+    <g transform="translate(200,244)"><g class="reticle"><circle r="58" stroke-dasharray="52 39"/><path d="M-65,0 h12 M53,0 h12 M0,-65 v12 M0,53 v12"/></g></g>
+  </g>
+
+  <!-- Heart (on the figure's left, viewer's right) -->
+  <g class="zone is-ok" id="zone-heart" data-zone="heart" data-anchor="218,268" tabindex="0">
+    <title>Heart and circulation</title>
+    <path class="organ" d="M218,250 C226,240 242,244 242,260 C242,276 228,288 216,298 C206,288 196,278 196,264 C196,250 210,242 218,250 Z"/>
+    <path class="detail" d="M214,250 C212,240 214,232 220,226 M224,246 C226,238 232,234 238,234"/>
+    <g transform="translate(219,268)"><g class="reticle"><circle r="30" stroke-dasharray="27 20"/><path d="M-37,0 h12 M25,0 h12 M0,-37 v12 M0,25 v12"/></g></g>
+  </g>
+
+  <!-- Head / brain -->
+  <g class="zone is-ok" id="zone-head" data-zone="head" data-anchor="200,56" tabindex="0">
+    <title>Brain and cognition</title>
+    <path class="organ" d="M166,66 C162,46 180,34 200,34 C220,34 238,46 234,66 C232,74 222,78 200,78 C178,78 168,74 166,66 Z"/>
+    <path class="detail" d="M200,36 V76 M176,52 Q186,46 194,54 M206,54 Q214,46 224,52 M174,66 Q186,60 196,68 M204,68 Q214,60 226,66"/>
+    <g transform="translate(200,56)"><g class="reticle"><circle r="34" stroke-dasharray="31 23"/><path d="M-41,0 h12 M29,0 h12 M0,-41 v12 M0,29 v12"/></g></g>
+  </g>
+
+  <!-- Eyes -->
+  <g class="zone is-ok" id="zone-eyes" data-zone="eyes" data-anchor="200,92" tabindex="0">
+    <title>Eyes and vision</title>
+    <path class="organ" d="M171,92 Q183,83 195,92 Q183,101 171,92 Z"/>
+    <path class="organ" d="M205,92 Q217,83 229,92 Q217,101 205,92 Z"/>
+    <circle class="detail" cx="183" cy="92" r="3"/><circle class="detail" cx="217" cy="92" r="3"/>
+    <rect class="hit" x="166" y="80" width="68" height="24"/>
+    <g transform="translate(200,92)"><g class="reticle"><circle r="30" stroke-dasharray="27 20"/><path d="M-37,0 h12 M25,0 h12 M0,-37 v12 M0,25 v12"/></g></g>
+  </g>
+
+  <!-- Whole-body radiation layer (hidden until #sentinel-body.show-radiation) -->
+  <g id="layer-radiation" data-zone="whole_body" data-anchor="200,450">
+    <path class="ray" d="M20,120 L150,260 M10,330 L130,380 M30,560 L140,520 M380,150 L250,300 M392,380 L272,420 M372,620 L262,560 M60,30 L170,150 M340,40 L232,150"/>
+    <ellipse cx="200" cy="450" rx="178" ry="430" fill="none" stroke="#ffb020" stroke-width="1" stroke-dasharray="2 10" opacity=".5"/>
+  </g>
+
+  <!-- Scan line (shown while #sentinel-body.is-scanning) -->
+  <g id="scanline">
+    <rect x="30" y="-2" width="340" height="4" fill="url(#scan-grad)"/>
+    <rect x="30" y="-22" width="340" height="22" fill="url(#scan-grad)" opacity=".12"/>
+  </g>
+</svg>

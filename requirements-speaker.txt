@@ -1,0 +1,14 @@
+# Optional speaker-ID stack (Resemblyzer). Do NOT pip install -r this file directly:
+# plain `pip install resemblyzer` tries to compile webrtcvad and fails on Windows.
+# Install in this order (run.ps1 does it for you):
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install webrtcvad-wheels==2.0.14.post1
+#   pip install resemblyzer==0.1.4 --no-deps
+#   pip install librosa==1.0.1 scipy==1.18.1 soundfile==0.14.0
+# pip then warns that `typing` and `webrtcvad` are missing; that warning is harmless.
+torch==2.15.0+cpu
+webrtcvad-wheels==2.0.14.post1
+resemblyzer==0.1.4
+librosa==1.0.1
+scipy==1.18.1
+soundfile==0.14.0

@@ -1,0 +1,43 @@
+{
+  "_doc": "ILLUSTRATIVE kit (SIM). Categories follow publicly documented ISS medical pack contents; this is not the real onboard inventory, and doses are not given on purpose.",
+  "label": "SIM",
+  "caveat": "Consult mission medical protocol before use.",
+  "no_match": "No stocked item mapped, consult flight surgeon.",
+  "source": { "title": "NASA ISS Medical Kit Checklist (2015 release)", "url": "https://www.nasa.gov/wp-content/uploads/2015/03/medical_kit_checklist_-_full_release.pdf" },
+  "items": [
+    { "id": "acetaminophen", "name": "Acetaminophen (analgesic)", "pack": "Convenience medication pack" },
+    { "id": "ibuprofen", "name": "Ibuprofen (anti-inflammatory analgesic)", "pack": "Convenience medication pack" },
+    { "id": "promethazine", "name": "Promethazine (anti-nausea, space motion sickness)", "pack": "Oral medication pack" },
+    { "id": "loperamide", "name": "Loperamide (anti-diarrhoeal)", "pack": "Oral medication pack" },
+    { "id": "pseudoephedrine", "name": "Pseudoephedrine (decongestant)", "pack": "Convenience medication pack" },
+    { "id": "diphenhydramine", "name": "Diphenhydramine (antihistamine)", "pack": "Oral medication pack" },
+    { "id": "zolpidem", "name": "Zolpidem (sleep aid)", "pack": "Oral medication pack" },
+    { "id": "artificial_tears", "name": "Artificial tears (eye lubricant)", "pack": "Topical and eye pack" },
+    { "id": "saline_nasal", "name": "Saline nasal spray", "pack": "Topical and eye pack" },
+    { "id": "hydrocortisone_cream", "name": "Hydrocortisone cream (skin irritation)", "pack": "Topical and eye pack" },
+    { "id": "antacid", "name": "Calcium carbonate antacid", "pack": "Convenience medication pack" }
+  ],
+  "symptom_map": {
+    "headache": "acetaminophen",
+    "back pain": "ibuprofen",
+    "muscle ache": "ibuprofen",
+    "nausea": "promethazine",
+    "motion sickness": "promethazine",
+    "diarrhoea": "loperamide",
+    "diarrhea": "loperamide",
+    "congestion": "pseudoephedrine",
+    "stuffy nose": "saline_nasal",
+    "allergy": "diphenhydramine",
+    "insomnia": "zolpidem",
+    "dry eyes": "artificial_tears",
+    "eye irritation": "artificial_tears",
+    "rash": "hydrocortisone_cream",
+    "heartburn": "antacid"
+  },
+  "symptom_zone": {
+    "headache": "head", "insomnia": "head", "dry eyes": "eyes", "eye irritation": "eyes", "blurred vision": "eyes",
+    "nausea": "gut", "motion sickness": "gut", "diarrhoea": "gut", "diarrhea": "gut", "heartburn": "gut",
+    "congestion": "lungs", "stuffy nose": "lungs", "cough": "lungs", "back pain": "bones", "muscle ache": "bones",
+    "rash": "whole_body", "allergy": "whole_body"
+  }
+}
