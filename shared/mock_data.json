@@ -1,0 +1,539 @@
+{
+ "_doc": "Six placeholder crew members. Rename people by editing display_name here only; nothing else in the app hard-codes a name. crew_id is the stable key.",
+ "crew": [
+  {
+   "crew_id": "james",
+   "display_name": "James",
+   "timestamp": "2026-11-14T10:00:00Z",
+   "identity": {
+    "confidence": 0.0,
+    "source": "manual"
+   },
+   "vitals": {
+    "heart_rate": 64,
+    "breathing_rate": 14,
+    "spo2": 98,
+    "source": "sim",
+    "sources": {
+     "heart_rate": "sim",
+     "breathing_rate": "sim",
+     "spo2": "sim"
+    }
+   },
+   "state": {
+    "emotion": "neutral",
+    "emotion_confidence": 0.0,
+    "fatigue": 0.2,
+    "stress": 0.2
+   },
+   "baseline": {
+    "heart_rate": 64,
+    "talk_time": 42.0,
+    "pitch": 118.0
+   },
+   "drift": {
+    "flag": false,
+    "note": "",
+    "items": []
+   },
+   "cabin": {
+    "oxygen_pct": 20.9,
+    "co2_ppm": 600,
+    "alert": false
+   },
+   "action": {
+    "type": "none",
+    "detail": "",
+    "zone": "",
+    "severity": "none",
+    "intervention": ""
+   },
+   "manual": {
+    "bp_systolic": 118,
+    "bp_diastolic": 76,
+    "glucose_mgdl": 94,
+    "temp_c": 36.7,
+    "sleep_hours": 7.2,
+    "mood": 4,
+    "symptoms": [],
+    "updated": "2026-11-14T07:30:00Z"
+   },
+   "voice": {
+    "talk_time": 42.0,
+    "pitch": 118.0
+   },
+   "cognitive": {
+    "reaction_ms": 312,
+    "baseline_ms": 312,
+    "updated": "2026-11-14T08:00:00Z"
+   },
+   "engagement": {
+    "streak_days": 3,
+    "checkins_today": 0,
+    "calm_levels_cleared": 0,
+    "greenhouse_stage": 2
+   },
+   "radiation": {
+    "mission_profile": "mars_transit",
+    "mission_day": 120,
+    "dose_rate_msv_day": 1.8,
+    "cumulative_msv": 216.0,
+    "career_limit_msv": 600,
+    "storm_level": 0,
+    "sheltered": false,
+    "source": "model"
+   },
+   "wellbeing": {
+    "mood_before": null,
+    "mood_after": null,
+    "last_game": "",
+    "updated": null
+   }
+  },
+  {
+   "crew_id": "amara",
+   "display_name": "Amara",
+   "timestamp": "2026-11-14T10:00:00Z",
+   "identity": {
+    "confidence": 0.0,
+    "source": "manual"
+   },
+   "vitals": {
+    "heart_rate": 70,
+    "breathing_rate": 15,
+    "spo2": 98,
+    "source": "sim",
+    "sources": {
+     "heart_rate": "sim",
+     "breathing_rate": "sim",
+     "spo2": "sim"
+    }
+   },
+   "state": {
+    "emotion": "neutral",
+    "emotion_confidence": 0.0,
+    "fatigue": 0.2,
+    "stress": 0.2
+   },
+   "baseline": {
+    "heart_rate": 70,
+    "talk_time": 55.0,
+    "pitch": 205.0
+   },
+   "drift": {
+    "flag": false,
+    "note": "",
+    "items": []
+   },
+   "cabin": {
+    "oxygen_pct": 20.9,
+    "co2_ppm": 600,
+    "alert": false
+   },
+   "action": {
+    "type": "none",
+    "detail": "",
+    "zone": "",
+    "severity": "none",
+    "intervention": ""
+   },
+   "manual": {
+    "bp_systolic": 112,
+    "bp_diastolic": 72,
+    "glucose_mgdl": 88,
+    "temp_c": 36.6,
+    "sleep_hours": 7.5,
+    "mood": 4,
+    "symptoms": [],
+    "updated": "2026-11-14T07:30:00Z"
+   },
+   "voice": {
+    "talk_time": 55.0,
+    "pitch": 205.0
+   },
+   "cognitive": {
+    "reaction_ms": 295,
+    "baseline_ms": 295,
+    "updated": "2026-11-14T08:00:00Z"
+   },
+   "engagement": {
+    "streak_days": 3,
+    "checkins_today": 0,
+    "calm_levels_cleared": 0,
+    "greenhouse_stage": 2
+   },
+   "radiation": {
+    "mission_profile": "mars_transit",
+    "mission_day": 120,
+    "dose_rate_msv_day": 1.8,
+    "cumulative_msv": 216.0,
+    "career_limit_msv": 600,
+    "storm_level": 0,
+    "sheltered": false,
+    "source": "model"
+   },
+   "wellbeing": {
+    "mood_before": null,
+    "mood_after": null,
+    "last_game": "",
+    "updated": null
+   }
+  },
+  {
+   "crew_id": "kenji",
+   "display_name": "Kenji",
+   "timestamp": "2026-11-14T10:00:00Z",
+   "identity": {
+    "confidence": 0.0,
+    "source": "manual"
+   },
+   "vitals": {
+    "heart_rate": 58,
+    "breathing_rate": 13,
+    "spo2": 97,
+    "source": "sim",
+    "sources": {
+     "heart_rate": "sim",
+     "breathing_rate": "sim",
+     "spo2": "sim"
+    }
+   },
+   "state": {
+    "emotion": "neutral",
+    "emotion_confidence": 0.0,
+    "fatigue": 0.2,
+    "stress": 0.2
+   },
+   "baseline": {
+    "heart_rate": 58,
+    "talk_time": 30.0,
+    "pitch": 110.0
+   },
+   "drift": {
+    "flag": false,
+    "note": "",
+    "items": []
+   },
+   "cabin": {
+    "oxygen_pct": 20.9,
+    "co2_ppm": 600,
+    "alert": false
+   },
+   "action": {
+    "type": "none",
+    "detail": "",
+    "zone": "",
+    "severity": "none",
+    "intervention": ""
+   },
+   "manual": {
+    "bp_systolic": 121,
+    "bp_diastolic": 79,
+    "glucose_mgdl": 97,
+    "temp_c": 36.8,
+    "sleep_hours": 6.9,
+    "mood": 3,
+    "symptoms": [],
+    "updated": "2026-11-14T07:30:00Z"
+   },
+   "voice": {
+    "talk_time": 30.0,
+    "pitch": 110.0
+   },
+   "cognitive": {
+    "reaction_ms": 330,
+    "baseline_ms": 330,
+    "updated": "2026-11-14T08:00:00Z"
+   },
+   "engagement": {
+    "streak_days": 3,
+    "checkins_today": 0,
+    "calm_levels_cleared": 0,
+    "greenhouse_stage": 2
+   },
+   "radiation": {
+    "mission_profile": "mars_transit",
+    "mission_day": 120,
+    "dose_rate_msv_day": 1.8,
+    "cumulative_msv": 216.0,
+    "career_limit_msv": 600,
+    "storm_level": 0,
+    "sheltered": false,
+    "source": "model"
+   },
+   "wellbeing": {
+    "mood_before": null,
+    "mood_after": null,
+    "last_game": "",
+    "updated": null
+   }
+  },
+  {
+   "crew_id": "sofia",
+   "display_name": "Sofia",
+   "timestamp": "2026-11-14T10:00:00Z",
+   "identity": {
+    "confidence": 0.0,
+    "source": "manual"
+   },
+   "vitals": {
+    "heart_rate": 72,
+    "breathing_rate": 16,
+    "spo2": 99,
+    "source": "sim",
+    "sources": {
+     "heart_rate": "sim",
+     "breathing_rate": "sim",
+     "spo2": "sim"
+    }
+   },
+   "state": {
+    "emotion": "neutral",
+    "emotion_confidence": 0.0,
+    "fatigue": 0.2,
+    "stress": 0.2
+   },
+   "baseline": {
+    "heart_rate": 72,
+    "talk_time": 48.0,
+    "pitch": 214.0
+   },
+   "drift": {
+    "flag": false,
+    "note": "",
+    "items": []
+   },
+   "cabin": {
+    "oxygen_pct": 20.9,
+    "co2_ppm": 600,
+    "alert": false
+   },
+   "action": {
+    "type": "none",
+    "detail": "",
+    "zone": "",
+    "severity": "none",
+    "intervention": ""
+   },
+   "manual": {
+    "bp_systolic": 109,
+    "bp_diastolic": 70,
+    "glucose_mgdl": 90,
+    "temp_c": 36.5,
+    "sleep_hours": 7.8,
+    "mood": 5,
+    "symptoms": [],
+    "updated": "2026-11-14T07:30:00Z"
+   },
+   "voice": {
+    "talk_time": 48.0,
+    "pitch": 214.0
+   },
+   "cognitive": {
+    "reaction_ms": 288,
+    "baseline_ms": 288,
+    "updated": "2026-11-14T08:00:00Z"
+   },
+   "engagement": {
+    "streak_days": 3,
+    "checkins_today": 0,
+    "calm_levels_cleared": 0,
+    "greenhouse_stage": 2
+   },
+   "radiation": {
+    "mission_profile": "mars_transit",
+    "mission_day": 120,
+    "dose_rate_msv_day": 1.8,
+    "cumulative_msv": 216.0,
+    "career_limit_msv": 600,
+    "storm_level": 0,
+    "sheltered": false,
+    "source": "model"
+   },
+   "wellbeing": {
+    "mood_before": null,
+    "mood_after": null,
+    "last_game": "",
+    "updated": null
+   }
+  },
+  {
+   "crew_id": "lukas",
+   "display_name": "Lukas",
+   "timestamp": "2026-11-14T10:00:00Z",
+   "identity": {
+    "confidence": 0.0,
+    "source": "manual"
+   },
+   "vitals": {
+    "heart_rate": 61,
+    "breathing_rate": 14,
+    "spo2": 98,
+    "source": "sim",
+    "sources": {
+     "heart_rate": "sim",
+     "breathing_rate": "sim",
+     "spo2": "sim"
+    }
+   },
+   "state": {
+    "emotion": "neutral",
+    "emotion_confidence": 0.0,
+    "fatigue": 0.2,
+    "stress": 0.2
+   },
+   "baseline": {
+    "heart_rate": 61,
+    "talk_time": 36.0,
+    "pitch": 124.0
+   },
+   "drift": {
+    "flag": false,
+    "note": "",
+    "items": []
+   },
+   "cabin": {
+    "oxygen_pct": 20.9,
+    "co2_ppm": 600,
+    "alert": false
+   },
+   "action": {
+    "type": "none",
+    "detail": "",
+    "zone": "",
+    "severity": "none",
+    "intervention": ""
+   },
+   "manual": {
+    "bp_systolic": 124,
+    "bp_diastolic": 80,
+    "glucose_mgdl": 99,
+    "temp_c": 36.9,
+    "sleep_hours": 7.0,
+    "mood": 4,
+    "symptoms": [],
+    "updated": "2026-11-14T07:30:00Z"
+   },
+   "voice": {
+    "talk_time": 36.0,
+    "pitch": 124.0
+   },
+   "cognitive": {
+    "reaction_ms": 305,
+    "baseline_ms": 305,
+    "updated": "2026-11-14T08:00:00Z"
+   },
+   "engagement": {
+    "streak_days": 3,
+    "checkins_today": 0,
+    "calm_levels_cleared": 0,
+    "greenhouse_stage": 2
+   },
+   "radiation": {
+    "mission_profile": "mars_transit",
+    "mission_day": 120,
+    "dose_rate_msv_day": 1.8,
+    "cumulative_msv": 216.0,
+    "career_limit_msv": 600,
+    "storm_level": 0,
+    "sheltered": false,
+    "source": "model"
+   },
+   "wellbeing": {
+    "mood_before": null,
+    "mood_after": null,
+    "last_game": "",
+    "updated": null
+   }
+  },
+  {
+   "crew_id": "priya",
+   "display_name": "Priya",
+   "timestamp": "2026-11-14T10:00:00Z",
+   "identity": {
+    "confidence": 0.0,
+    "source": "manual"
+   },
+   "vitals": {
+    "heart_rate": 68,
+    "breathing_rate": 15,
+    "spo2": 98,
+    "source": "sim",
+    "sources": {
+     "heart_rate": "sim",
+     "breathing_rate": "sim",
+     "spo2": "sim"
+    }
+   },
+   "state": {
+    "emotion": "neutral",
+    "emotion_confidence": 0.0,
+    "fatigue": 0.2,
+    "stress": 0.2
+   },
+   "baseline": {
+    "heart_rate": 68,
+    "talk_time": 51.0,
+    "pitch": 198.0
+   },
+   "drift": {
+    "flag": false,
+    "note": "",
+    "items": []
+   },
+   "cabin": {
+    "oxygen_pct": 20.9,
+    "co2_ppm": 600,
+    "alert": false
+   },
+   "action": {
+    "type": "none",
+    "detail": "",
+    "zone": "",
+    "severity": "none",
+    "intervention": ""
+   },
+   "manual": {
+    "bp_systolic": 115,
+    "bp_diastolic": 74,
+    "glucose_mgdl": 86,
+    "temp_c": 36.6,
+    "sleep_hours": 7.3,
+    "mood": 4,
+    "symptoms": [],
+    "updated": "2026-11-14T07:30:00Z"
+   },
+   "voice": {
+    "talk_time": 51.0,
+    "pitch": 198.0
+   },
+   "cognitive": {
+    "reaction_ms": 299,
+    "baseline_ms": 299,
+    "updated": "2026-11-14T08:00:00Z"
+   },
+   "engagement": {
+    "streak_days": 3,
+    "checkins_today": 0,
+    "calm_levels_cleared": 0,
+    "greenhouse_stage": 2
+   },
+   "radiation": {
+    "mission_profile": "mars_transit",
+    "mission_day": 120,
+    "dose_rate_msv_day": 1.8,
+    "cumulative_msv": 216.0,
+    "career_limit_msv": 600,
+    "storm_level": 0,
+    "sheltered": false,
+    "source": "model"
+   },
+   "wellbeing": {
+    "mood_before": null,
+    "mood_after": null,
+    "last_game": "",
+    "updated": null
+   }
+  }
+ ]
+}

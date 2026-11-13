@@ -1,0 +1,13 @@
+{
+  "_doc": "Offline voice pack: eight demo lines spoken through SpeechSynthesis when scripted scenarios run. Shown with a SIM badge. {name} is replaced with the crew member's display name.",
+  "lines": {
+    "greet": "Hello {name}. Sentinel is awake and listening.",
+    "scan": "Let me see you. Running a full scan now.",
+    "scan_ok": "Scan complete. Everything is within your usual range.",
+    "tired": "{name}, you are talking less and your pitch is flatter than your usual, and your heart rate is above your baseline. The fatigue reading around your eyes is raised.",
+    "offer_calm": "Would you like a short Orb Calm session? Breathe in with the orb for four, and out for six.",
+    "calm_done": "Your heart rate is settling back toward your usual. Well done.",
+    "cabin": "Caution. Cabin oxygen is below the safe line. I have flagged it to ground. Please acknowledge.",
+    "hardware": "This is the wearable we have designed for Sentinel. It is a design, not yet built."
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "_doc": "The frozen Sentinel data contract. 'frozen' is the team's original shape and must not change. 'additions' are the fields this build adds (listed in README under Contract additions). The validator merges both into one template: a patch may only use keys that exist here. Values in the template give the type: number, string, boolean, list, object; null means number, string or null. 'enums' restrict string values by path ('*' matches any key).",
+  "frozen": {
+    "crew_id": "james",
+    "timestamp": "2026-11-14T10:00:00Z",
+    "identity": { "confidence": 0.0 },
+    "vitals": { "heart_rate": 0, "breathing_rate": 0, "spo2": 0, "source": "camera" },
+    "state": { "emotion": "neutral", "emotion_confidence": 0.0, "fatigue": 0.0, "stress": 0.0 },
+    "baseline": { "heart_rate": 0, "talk_time": 0.0, "pitch": 0.0 },
+    "drift": { "flag": false, "note": "" },
+    "cabin": { "oxygen_pct": 20.9, "co2_ppm": 400, "alert": false },
+    "action": { "type": "none", "detail": "" }
+  },
+  "additions": {
+    "display_name": "James",
+    "identity": { "source": "manual" },
+    "vitals": { "sources": { "heart_rate": "camera", "breathing_rate": "sim", "spo2": "sim" } },
+    "manual": {
+      "bp_systolic": null, "bp_diastolic": null, "glucose_mgdl": null,
+      "temp_c": null, "sleep_hours": null, "mood": null, "symptoms": [],
+      "updated": null
+    },
+    "voice": { "talk_time": 0.0, "pitch": 0.0 },
+    "cognitive": { "reaction_ms": null, "baseline_ms": null, "updated": null },
+    "drift": { "items": [ { "metric": "", "delta_pct": 0.0, "zone": "", "severity": "info" } ] },
+    "action": { "zone": "", "severity": "none", "intervention": "" },
+    "engagement": { "streak_days": 0, "checkins_today": 0, "calm_levels_cleared": 0, "greenhouse_stage": 0 },
+    "radiation": {
+      "mission_profile": "iss",
+      "mission_day": 0, "dose_rate_msv_day": 0.0, "cumulative_msv": 0.0,
+      "career_limit_msv": 600, "storm_level": 0, "sheltered": false,
+      "source": "model"
+    },
+    "wellbeing": { "mood_before": null, "mood_after": null, "last_game": "", "updated": null }
+  },
+  "enums": {
+    "vitals.source": ["camera", "sim", "sensor"],
+    "vitals.sources.*": ["camera", "sim", "sensor", "manual"],
+    "identity.source": ["voice", "manual"],
+    "action.type": ["none", "gentle_checkin", "offer_orb_calm", "offer_intervention", "suggest_medicine", "flag_cabin", "flag_radiation", "flag_ground"],
+    "action.zone": ["", "head", "eyes", "heart", "lungs", "gut", "bones", "whole_body", "cabin"],
+    "action.severity": ["none", "info", "watch", "alert"],
+    "action.intervention": ["", "breathing", "aurora_run", "earth_window", "music", "connection"],
+    "drift.items.severity": ["info", "watch", "alert"],
+    "drift.items.zone": ["", "head", "eyes", "heart", "lungs", "gut", "bones", "whole_body", "cabin"],
+    "radiation.mission_profile": ["iss", "lunar", "mars_transit", "mars_surface"],
+    "radiation.source": ["model", "live_feed", "sim"]
+  },
+  "vitals_sources_keys": ["heart_rate", "breathing_rate", "spo2"]
+}
