@@ -1,75 +1,137 @@
-/* Sentinel design tokens. Every component uses these; no raw values elsewhere.
-   Direction: glass-cockpit display meets bedside monitor. Deep slate-blue field,
-   phosphor-cyan line art, caution/warning colours used only for status. */
+/* Sentinel v2 design tokens. Every component uses these; no raw colour values elsewhere.
+
+   DESIGN PLAN (frontend-design two-pass process), revised for the team lead's 13 Nov changes
+   ------------------------------------------------------------------------------------------
+   Subject: an onboard crew-health companion on a Mars transit, used on a laptop and a tablet.
+   Base: LIGHT CLINICAL (refs 06-07): calm off-white ground, white glass cards with hairlines, one
+   clinical blue for Sentinel and active states, red dot + white ring for alerts. Inside it, the SPACE
+   look (refs 01-02) lives in framed dark WINDOWS: the orb and starfield, the real moving Earth, the
+   radiation planet, the camera, and the body scanner studio (refs 03-05: navy, slate body, X-ray).
+   The game is the one deliberate break into its own world.
+     Colour (light)  ground #eef1f6, card #ffffff, ink #0f1728 at three opacities, assist #2f6fe4,
+                     nominal #1e9e64 (text) / #b8f5c8 (fill), watch #c77800, alert #ff3b4e.
+     Colour (window) space #05070d -> #0a1424, navy studio #1b2740 -> #26324d, mint #b8f5c8.
+     Dark theme      the same semantic tokens remapped (setting: Settings > Theme).
+     Type    Michroma for small spaced status labels and card titles only (as in ref 02);
+             Inter 200-300 for big display lines, 400-600 for body and tabular numbers.
+     Layout  Top bar, one stage, bottom dock (icon tab bar from ref 04, frosted ask bar from ref 01).
+             Each stage is at most three groups: a window, a short column of cards, and detail one
+             tap away in a side sheet.
+     Principles  Calm and organised. The windows carry the drama; the light UI around them stays
+             quiet. Colour means state. Show less, put detail one tap away.
+
+   Pass 2 review (what changed and why):
+     - The ui-ux-pro-max preset offered Orbitron + JetBrains Mono, the stock sci-fi HUD pairing: rejected.
+     - Draft 1 put the 3D world behind the whole page (dark dashboard, the rejected look). The world is
+       now framed in windows inside a light UI, per the team lead.
+     - Caps Michroma was on every heading in draft 1; now only status labels and card titles use it.
+     - Draft 1 used identical rounded cards everywhere; the body screen's findings are a hairline
+       list, the mission cards carry different content per job, and windows are a separate form.
+*/
+@font-face {
+  font-family: "Inter";
+  src: url("../assets/fonts/inter-latin-var.woff2") format("woff2");
+  font-weight: 200 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Michroma";
+  src: url("../assets/fonts/michroma-latin.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
 :root {
   /* ---- primitives ---- */
-  --c-slate-950: #060b13;
-  --c-slate-900: #0a1220;
-  --c-slate-850: #0e1828;
-  --c-slate-800: #132136;
-  --c-slate-700: #1d3149;
-  --c-slate-600: #2a4562;
-  --c-slate-400: #6f8aa3;
-  --c-slate-300: #9db3c6;
-  --c-slate-100: #e4eef6;
+  --c-paper-0: #f6f7fa;
+  --c-paper-1: #eef1f6;
+  --c-paper-2: #e3e8f0;
   --c-white: #ffffff;
-  --c-cyan-400: #39d5ff;
-  --c-cyan-700: #1b6f8c;
-  --c-teal-400: #2ee6c8;
-  --c-amber-400: #ffb020;
-  --c-red-400: #ff3b4e;
-  --c-red-900: #3a0710;
-  --c-amber-900: #3a2604;
-  --c-violet-300: #c3b1ff;
-  --c-blue-400: #4f8dff;
+  --c-ink-900: #0f1728;
+  --c-space-0: #05070d;
+  --c-space-1: #0a1424;
+  --c-space-2: #12213b;
+  --c-navy-0: #141e33;
+  --c-navy-1: #1b2740;
+  --c-navy-2: #26324d;
+  --c-mint: #b8f5c8;
+  --c-green: #1e9e64;
+  --c-blue: #2f6fe4;
+  --c-cyan: #6fd0ff;
+  --c-alert: #ff3b4e;
+  --c-amber: #ffb547;
+  --c-amber-ink: #c77800;
+  --c-lavender: #7b61d9;
+  --c-lavender-light: #c9bcff;
 
-  /* ---- semantic ---- */
-  --bg: var(--c-slate-950);
-  --bg-raised: var(--c-slate-900);
-  --bg-panel: var(--c-slate-850);
-  --bg-inset: var(--c-slate-800);
-  --rule: var(--c-slate-700);
-  --rule-strong: var(--c-slate-600);
-  --ink: var(--c-slate-100);
-  --ink-dim: var(--c-slate-300);
-  --ink-faint: var(--c-slate-400);
-  --line: var(--c-cyan-400);
-  --line-dim: var(--c-cyan-700);
-  --ok: var(--c-teal-400);
-  --watch: var(--c-amber-400);
-  --alert: var(--c-red-400);
-  --alert-field: var(--c-red-900);
-  --watch-field: var(--c-amber-900);
-  --calm: var(--c-blue-400);
-  --badge-live: var(--c-teal-400);
-  --badge-sim: var(--c-violet-300);
-  --badge-designed: var(--c-slate-300);
-  --focus: var(--c-white);
+  /* ---- semantic: LIGHT (default) ---- */
+  --bg: var(--c-paper-1);
+  --bg-page: linear-gradient(180deg, var(--c-paper-0) 0%, var(--c-paper-1) 55%, var(--c-paper-2) 100%);
+  --surface: rgba(255, 255, 255, 0.82);
+  --surface-solid: var(--c-white);
+  --surface-sunk: rgba(15, 23, 40, 0.04);
+  --ink: var(--c-ink-900);
+  --ink-2: rgba(15, 23, 40, 0.64);
+  --ink-3: rgba(15, 23, 40, 0.42);
+  --rule: rgba(15, 23, 40, 0.09);
+  --rule-2: rgba(15, 23, 40, 0.16);
+  --assist: var(--c-blue);
+  --assist-soft: rgba(47, 111, 228, 0.1);
+  --nominal: var(--c-green);
+  --nominal-fill: var(--c-mint);
+  --watch: var(--c-amber-ink);
+  --watch-fill: rgba(255, 181, 71, 0.18);
+  --alert: var(--c-alert);
+  --alert-fill: rgba(255, 59, 78, 0.1);
+  --alert-ring: var(--c-white);
+  --ok: var(--nominal);
+  --line: var(--c-blue);
+  --line-dim: rgba(47, 111, 228, 0.4);
+  --calm: #4f8dff;
+  --focus: var(--c-blue);
+  --on-accent: var(--c-white);
+  --badge-live-bg: var(--c-green);
+  --badge-live-ink: var(--c-white);
+  --badge-sim: var(--c-lavender);
+  --badge-designed: var(--ink-2);
+  --badge-snapshot: var(--c-amber-ink);
+  --shadow-card: 0 1px 2px rgba(15, 23, 40, 0.05), 0 10px 30px rgba(15, 23, 40, 0.06);
+  --shadow-float: 0 2px 6px rgba(15, 23, 40, 0.08), 0 24px 60px rgba(15, 23, 40, 0.16);
+  --glass-blur: 20px;
 
-  /* body.svg hooks */
-  --sentinel-ok: var(--ok);
-  --sentinel-watch: var(--watch);
-  --sentinel-alert: var(--alert);
-  --sentinel-line: var(--line);
-  --sentinel-dim: var(--line-dim);
+  /* windows: always deep (the space look, framed) */
+  --win-space: radial-gradient(120% 100% at 72% 18%, var(--c-space-2) 0%, var(--c-space-1) 40%, var(--c-space-0) 85%);
+  --win-studio: radial-gradient(80% 75% at 50% 38%, var(--c-navy-2) 0%, var(--c-navy-1) 50%, var(--c-navy-0) 100%);
+  --win-ink: #eef2f8;
+  --win-ink-2: rgba(238, 242, 248, 0.66);
+  --win-ink-3: rgba(238, 242, 248, 0.42);
+  --win-rule: rgba(255, 255, 255, 0.12);
+  --win-glass: rgba(14, 22, 38, 0.52);
+  --win-mint: var(--c-mint);
+  --win-cyan: var(--c-cyan);
+  --win-shadow: 0 2px 8px rgba(5, 7, 13, 0.18), 0 30px 70px rgba(5, 7, 13, 0.28);
 
   /* ---- type ---- */
-  --font: "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-label: "Michroma", "Inter", sans-serif;
+  --fs-2xs: 0.6875rem;  /* 11 */
   --fs-xs: 0.8125rem;   /* 13 */
   --fs-sm: 0.9375rem;   /* 15 */
   --fs-md: 1.0625rem;   /* 17 */
-  --fs-lg: 1.375rem;    /* 22 */
-  --fs-xl: 1.875rem;    /* 30 */
+  --fs-lg: 1.3125rem;   /* 21 */
+  --fs-xl: 1.75rem;     /* 28 */
   --fs-2xl: 2.5rem;     /* 40 */
-  --fs-3xl: 3.5rem;     /* 56 */
-  --lh-tight: 1.1;
-  --lh-body: 1.45;
+  --fs-display: clamp(2.2rem, 4.4vw, 4rem);
+  --fs-prompt: clamp(1.8rem, 3.2vw, 2.8rem);
+  --lh-tight: 1.04;
+  --lh-snug: 1.22;
+  --lh-body: 1.5;
+  --fw-thin: 200;
   --fw-light: 300;
   --fw-regular: 400;
+  --fw-medium: 500;
   --fw-semi: 600;
-  --fw-bold: 700;
+  --track-label: 0.16em;
 
-  /* ---- space (8-pt, dense HUD) ---- */
+  /* ---- space (8-pt) ---- */
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -77,42 +139,76 @@
   --s-5: 24px;
   --s-6: 32px;
   --s-7: 48px;
+  --s-8: 64px;
 
   /* ---- shape ---- */
-  --radius-sm: 3px;
-  --radius-md: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-card: 22px;
+  --radius-window: 28px;
   --radius-pill: 999px;
-  --bracket: 14px;          /* panel corner bracket length */
-  --touch: 48px;            /* minimum touch target */
+  --touch: 48px;
 
   /* ---- glow ---- */
-  --glow-line: 0 0 12px rgba(57, 213, 255, 0.35);
-  --glow-alert: 0 0 24px rgba(255, 59, 78, 0.55);
-  --glow-watch: 0 0 18px rgba(255, 176, 32, 0.45);
-  --shadow-sheet: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --glow-assist: 0 0 22px rgba(111, 208, 255, 0.45);
+  --glow-alert: 0 0 18px rgba(255, 59, 78, 0.7);
+  --glow-watch: 0 0 16px rgba(255, 181, 71, 0.6);
 
   /* ---- motion ---- */
-  --t-fast: 150ms;
-  --t-med: 280ms;
-  --t-slow: 600ms;
+  --t-fast: 160ms;
+  --t-med: 320ms;
+  --t-slow: 700ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
   /* ---- layout ---- */
-  --status-h: 64px;
-  --vitals-h: 132px;
+  --top-h: 64px;
+  --dock-h: 80px;
+  --gutter: clamp(16px, 2.4vw, 36px);
+  --gap: clamp(12px, 1.4vw, 20px);
+  --z-stage: 10;
+  --z-hot: 20;
   --z-beam: 30;
   --z-callout: 40;
+  --z-dock: 45;
   --z-sheet: 50;
+  --z-orb: 60;
   --z-banner: 70;
   --z-demo: 80;
   --z-start: 90;
+  color-scheme: light;
+}
+
+/* ---- semantic: DARK (setting) ---- */
+:root[data-theme="dark"] {
+  --bg: var(--c-space-0);
+  --bg-page: radial-gradient(120% 90% at 70% 0%, var(--c-space-2) 0%, var(--c-space-1) 40%, var(--c-space-0) 85%);
+  --surface: rgba(14, 22, 38, 0.66);
+  --surface-solid: #0e1626;
+  --surface-sunk: rgba(238, 242, 248, 0.05);
+  --ink: #eef2f8;
+  --ink-2: rgba(238, 242, 248, 0.66);
+  --ink-3: rgba(238, 242, 248, 0.42);
+  --rule: rgba(255, 255, 255, 0.10);
+  --rule-2: rgba(255, 255, 255, 0.18);
+  --assist: var(--c-cyan);
+  --assist-soft: rgba(111, 208, 255, 0.12);
+  --nominal: var(--c-mint);
+  --watch: var(--c-amber);
+  --line: var(--c-cyan);
+  --line-dim: rgba(111, 208, 255, 0.45);
+  --focus: var(--c-white);
+  --on-accent: var(--c-space-0);
+  --badge-live-bg: var(--c-mint);
+  --badge-live-ink: var(--c-space-0);
+  --badge-sim: var(--c-lavender-light);
+  --badge-snapshot: var(--c-amber);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-float: 0 18px 48px rgba(0, 0, 0, 0.5);
+  --win-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  color-scheme: dark;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root {
-    --t-fast: 0ms;
-    --t-med: 0ms;
-    --t-slow: 0ms;
-  }
+  :root { --t-fast: 0ms; --t-med: 0ms; --t-slow: 0ms; }
 }

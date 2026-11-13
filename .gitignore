@@ -9,3 +9,4 @@ certs/
 node_modules/
 tests/screenshots/*.png
 video/
+models/
