@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#060b13">
+  <title>Sentinel</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="vendor/gsap/gsap.min.js" defer></script>
+  <script src="vendor/chartjs/chart.umd.js" defer></script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <!-- Start screen: one tap unlocks audio, speech, camera, mic, motion and wake lock -->
+  <section id="start-screen" class="start">
+    <div class="start-inner">
+      <canvas id="start-orb" class="start-orb" aria-hidden="true"></canvas>
+      <h1 class="start-title">Sentinel</h1>
+      <p class="start-sub">Onboard crew-health companion. It reads changes from your own baseline and tells you what to do next. It does not diagnose.</p>
+      <button id="start-btn" class="btn btn-primary btn-xl" type="button">Start Sentinel</button>
+      <p class="start-note">Starting asks for the camera and microphone. Both are optional: Sentinel works with typing and simulated readings.</p>
+      <div class="legend legend-start" aria-label="Badge key">
+        <span class="badge badge-live">LIVE</span><span>measured or computed now</span>
+        <span class="badge badge-sim">SIM</span><span>prepared or simulated data, on purpose</span>
+        <span class="badge badge-designed">DESIGNED</span><span>a design, not running</span>
+      </div>
+    </div>
+  </section>
+
+  <div id="app" class="app" hidden>
+    <header id="statusbar" class="statusbar">
+      <div class="sb-crew">
+        <span class="sb-label">Crew</span>
+        <button id="sb-crew-name" class="sb-crew-name" type="button" aria-label="Choose crew member">—</button>
+        <span id="sb-identity" class="badge badge-sim">manual</span>
+      </div>
+      <div class="sb-clock"><span class="sb-label">Mission</span><span id="sb-clock" class="sb-value num">Day — 00:00</span></div>
+      <div class="sb-cabin">
+        <span class="sb-label">Cabin</span>
+        <span id="sb-o2" class="sb-value num">O2 —</span>
+        <span id="sb-co2" class="sb-value num">CO2 —</span>
+        <span class="badge badge-sim">SIM</span>
+      </div>
+      <div class="sb-tools">
+        <span id="sb-link" class="sb-link" role="status">linking…</span>
+        <button id="btn-mute" class="icon-btn" type="button" aria-pressed="false" aria-label="Mute sound cues">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="mute-waves" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <button id="btn-hardware" class="icon-btn" type="button" aria-label="Show the wearable hardware design">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="4" width="10" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 9h4M10 12h4M10 15h2" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <button id="btn-demo" class="icon-btn" type="button" aria-label="Open the demo panel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="7" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="1.6"/><circle cx="15" cy="12" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="17" r="2" fill="var(--bg)" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div id="banner" class="banner" role="alert" hidden>
+      <div class="banner-mark" aria-hidden="true">!</div>
+      <div class="banner-text">
+        <strong id="banner-title" class="banner-title">Alert</strong>
+        <span id="banner-detail" class="banner-detail"></span>
+        <span id="banner-ground" class="banner-ground"></span>
+      </div>
+      <span id="banner-badge" class="badge badge-sim">SIM</span>
+      <button id="banner-ack" class="btn btn-ack" type="button">Acknowledge</button>
+    </div>
+
+    <main id="grid" class="grid">
+      <section id="col-body" class="panel panel-body" aria-label="Body model">
+        <header class="panel-head">
+          <h2 class="panel-title">Body</h2>
+          <button id="btn-scan" class="btn btn-ghost" type="button">Full scan</button>
+          <button id="btn-radlayer" class="btn btn-ghost" type="button" aria-pressed="false">Radiation layer</button>
+        </header>
+        <div id="body-host" class="body-host"></div>
+        <ol id="scan-list" class="scan-list" aria-live="polite"></ol>
+        <button id="greenhouse-mini" class="greenhouse-mini" type="button" aria-label="Open the greenhouse"></button>
+      </section>
+
+      <section id="col-orb" class="panel panel-orb" aria-label="Sentinel">
+        <div class="orb-wrap">
+          <canvas id="orb" class="orb" aria-hidden="true"></canvas>
+          <p id="orb-caption" class="orb-caption" aria-live="polite">Say “Hey Sentinel”, or type below.</p>
+        </div>
+        <div id="action-card" class="action-card" hidden></div>
+        <div class="console">
+          <ol id="transcript" class="transcript" aria-live="polite" aria-label="Conversation"></ol>
+          <form id="ask-form" class="ask" autocomplete="off">
+            <label for="ask-input" class="visually-hidden">Ask Sentinel</label>
+            <input id="ask-input" class="ask-input" type="text" placeholder="Ask Sentinel…" enterkeyhint="send">
+            <button class="btn btn-primary" type="submit">Send</button>
+            <button id="btn-mic" class="icon-btn mic" type="button" aria-pressed="false" aria-label="Listen">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            </button>
+          </form>
+          <div id="quick" class="quick" aria-label="Quick commands">
+            <button class="chip" type="button" data-say="hey sentinel how am i doing">How am I doing?</button>
+            <button class="chip" type="button" data-say="hey sentinel let me see you">Let me see you</button>
+            <button class="chip" type="button" data-say="hey sentinel start orb calm">Start Orb Calm</button>
+            <button class="chip" type="button" data-say="hey sentinel run a full scan">Full scan</button>
+            <button class="chip" type="button" data-say="hey sentinel how is the cabin">Cabin</button>
+            <button class="chip" type="button" data-say="hey sentinel log my health">Log my health</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="col-cam" class="panel panel-cam" aria-label="Camera">
+        <header class="panel-head">
+          <h2 class="panel-title">Vision</h2>
+          <span id="cam-badge" class="badge badge-sim">SIM</span>
+          <button id="btn-cam" class="btn btn-ghost" type="button">Start camera</button>
+        </header>
+        <div class="cam-stage">
+          <video id="cam-video" class="cam-video" playsinline muted autoplay></video>
+          <canvas id="cam-overlay" class="cam-overlay"></canvas>
+          <p id="cam-msg" class="cam-msg">Camera off. Heart rate comes from the simulator (SIM).</p>
+        </div>
+        <div class="pulse">
+          <span class="pulse-label">Pulse from camera</span>
+          <span id="pulse-value" class="pulse-value num">—</span>
+          <span id="pulse-quality" class="pulse-quality">quality —</span>
+        </div>
+        <p class="fine">Camera pulse is an estimate for trends, not a medical measurement.</p>
+      </section>
+    </main>
+
+    <footer id="vitals" class="vitals" aria-label="Vitals"></footer>
+
+    <div class="legend legend-dock" aria-label="Badge key">
+      <span class="badge badge-live">LIVE</span><span>measured now</span>
+      <span class="badge badge-sim">SIM</span><span>simulated</span>
+      <span class="badge badge-designed">DESIGNED</span><span>design only</span>
+    </div>
+
+    <svg id="beam-layer" class="beam-layer" aria-hidden="true"></svg>
+    <div id="callout" class="callout" hidden></div>
+
+    <section id="sheet" class="sheet" hidden aria-modal="false" role="dialog" aria-labelledby="sheet-title">
+      <header class="sheet-head">
+        <h2 id="sheet-title" class="sheet-title"></h2>
+        <span id="sheet-badge"></span>
+        <button id="sheet-close" class="btn btn-ghost" type="button">Back</button>
+      </header>
+      <div id="sheet-body" class="sheet-body"></div>
+    </section>
+
+    <aside id="demo-panel" class="demo-panel" hidden aria-label="Demo panel"></aside>
+  </div>
+</body>
+</html>

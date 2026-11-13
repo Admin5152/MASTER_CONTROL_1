@@ -1,0 +1,118 @@
+/* Sentinel design tokens. Every component uses these; no raw values elsewhere.
+   Direction: glass-cockpit display meets bedside monitor. Deep slate-blue field,
+   phosphor-cyan line art, caution/warning colours used only for status. */
+:root {
+  /* ---- primitives ---- */
+  --c-slate-950: #060b13;
+  --c-slate-900: #0a1220;
+  --c-slate-850: #0e1828;
+  --c-slate-800: #132136;
+  --c-slate-700: #1d3149;
+  --c-slate-600: #2a4562;
+  --c-slate-400: #6f8aa3;
+  --c-slate-300: #9db3c6;
+  --c-slate-100: #e4eef6;
+  --c-white: #ffffff;
+  --c-cyan-400: #39d5ff;
+  --c-cyan-700: #1b6f8c;
+  --c-teal-400: #2ee6c8;
+  --c-amber-400: #ffb020;
+  --c-red-400: #ff3b4e;
+  --c-red-900: #3a0710;
+  --c-amber-900: #3a2604;
+  --c-violet-300: #c3b1ff;
+  --c-blue-400: #4f8dff;
+
+  /* ---- semantic ---- */
+  --bg: var(--c-slate-950);
+  --bg-raised: var(--c-slate-900);
+  --bg-panel: var(--c-slate-850);
+  --bg-inset: var(--c-slate-800);
+  --rule: var(--c-slate-700);
+  --rule-strong: var(--c-slate-600);
+  --ink: var(--c-slate-100);
+  --ink-dim: var(--c-slate-300);
+  --ink-faint: var(--c-slate-400);
+  --line: var(--c-cyan-400);
+  --line-dim: var(--c-cyan-700);
+  --ok: var(--c-teal-400);
+  --watch: var(--c-amber-400);
+  --alert: var(--c-red-400);
+  --alert-field: var(--c-red-900);
+  --watch-field: var(--c-amber-900);
+  --calm: var(--c-blue-400);
+  --badge-live: var(--c-teal-400);
+  --badge-sim: var(--c-violet-300);
+  --badge-designed: var(--c-slate-300);
+  --focus: var(--c-white);
+
+  /* body.svg hooks */
+  --sentinel-ok: var(--ok);
+  --sentinel-watch: var(--watch);
+  --sentinel-alert: var(--alert);
+  --sentinel-line: var(--line);
+  --sentinel-dim: var(--line-dim);
+
+  /* ---- type ---- */
+  --font: "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  --fs-xs: 0.8125rem;   /* 13 */
+  --fs-sm: 0.9375rem;   /* 15 */
+  --fs-md: 1.0625rem;   /* 17 */
+  --fs-lg: 1.375rem;    /* 22 */
+  --fs-xl: 1.875rem;    /* 30 */
+  --fs-2xl: 2.5rem;     /* 40 */
+  --fs-3xl: 3.5rem;     /* 56 */
+  --lh-tight: 1.1;
+  --lh-body: 1.45;
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-semi: 600;
+  --fw-bold: 700;
+
+  /* ---- space (8-pt, dense HUD) ---- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  /* ---- shape ---- */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-pill: 999px;
+  --bracket: 14px;          /* panel corner bracket length */
+  --touch: 48px;            /* minimum touch target */
+
+  /* ---- glow ---- */
+  --glow-line: 0 0 12px rgba(57, 213, 255, 0.35);
+  --glow-alert: 0 0 24px rgba(255, 59, 78, 0.55);
+  --glow-watch: 0 0 18px rgba(255, 176, 32, 0.45);
+  --shadow-sheet: 0 24px 64px rgba(0, 0, 0, 0.6);
+
+  /* ---- motion ---- */
+  --t-fast: 150ms;
+  --t-med: 280ms;
+  --t-slow: 600ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---- layout ---- */
+  --status-h: 64px;
+  --vitals-h: 132px;
+  --z-beam: 30;
+  --z-callout: 40;
+  --z-sheet: 50;
+  --z-banner: 70;
+  --z-demo: 80;
+  --z-start: 90;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+    --t-slow: 0ms;
+  }
+}

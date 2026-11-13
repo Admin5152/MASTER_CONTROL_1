@@ -53,7 +53,7 @@ def decide(state: dict, absolute: list[dict], drift: dict, kit: dict, flag_storm
     # 1. cabin
     cabin_hits = [r for r in absolute if r["zone"] == "cabin" and r["severity"] == "alert"]
     if cabin.get("alert") or cabin_hits:
-        parts = [f"{r['label']} {r['value']}{'%' if r['unit'] == '%' else ' ' + r['unit']}" for r in cabin_hits]
+        parts = [f"{r['label']} {round(r['value'], 1):g}{'%' if r['unit'] == '%' else ' ' + r['unit']}" for r in cabin_hits]
         detail = ("; ".join(parts) or "Cabin atmosphere out of range") + ". Flagged to ground."
         return _act("flag_cabin", detail, "cabin", "alert")
 

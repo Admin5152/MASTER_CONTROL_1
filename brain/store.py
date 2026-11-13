@@ -92,7 +92,7 @@ class Store:
             "manual.sleep_hours": (s["manual"]["sleep_hours"], 0.4),
             "manual.mood": (s["manual"]["mood"], 0.5),
             "cognitive.reaction_ms": (s["cognitive"]["baseline_ms"], 12.0),
-            "voice.talk_time": (s["baseline"]["talk_time"], 4.0),
+            "voice.talk_time": (s["baseline"]["talk_time"], 0.4),
             "voice.pitch": (s["baseline"]["pitch"], 3.0),
             "cabin.oxygen_pct": (20.9, 0.05),
             "cabin.co2_ppm": (600, 60),
@@ -288,9 +288,11 @@ class Store:
                 zones["whole_body"] = "watch"
             it = self.internal.get(cid, {})
             rad = s["radiation"]
+            provenance = {f: pts[-1]["source"] for f, pts in self.history.get(cid, {}).items() if pts}
             return {
                 "absolute": absolute,
                 "zones": zones,
+                "provenance": provenance,
                 "radiation": {
                     "storm_received_msv": round(it.get("storm_received", 0.0), 4),
                     "storm_avoided_msv": round(it.get("storm_avoided", 0.0), 4),

@@ -28,7 +28,7 @@
    },
    "baseline": {
     "heart_rate": 64,
-    "talk_time": 42.0,
+    "talk_time": 4.2,
     "pitch": 118.0
    },
    "drift": {
@@ -59,7 +59,7 @@
     "updated": "2026-11-14T07:30:00Z"
    },
    "voice": {
-    "talk_time": 42.0,
+    "talk_time": 4.2,
     "pitch": 118.0
    },
    "cognitive": {
@@ -117,7 +117,7 @@
    },
    "baseline": {
     "heart_rate": 70,
-    "talk_time": 55.0,
+    "talk_time": 5.5,
     "pitch": 205.0
    },
    "drift": {
@@ -148,7 +148,7 @@
     "updated": "2026-11-14T07:30:00Z"
    },
    "voice": {
-    "talk_time": 55.0,
+    "talk_time": 5.5,
     "pitch": 205.0
    },
    "cognitive": {
@@ -206,7 +206,7 @@
    },
    "baseline": {
     "heart_rate": 58,
-    "talk_time": 30.0,
+    "talk_time": 3.0,
     "pitch": 110.0
    },
    "drift": {
@@ -237,7 +237,7 @@
     "updated": "2026-11-14T07:30:00Z"
    },
    "voice": {
-    "talk_time": 30.0,
+    "talk_time": 3.0,
     "pitch": 110.0
    },
    "cognitive": {
@@ -295,7 +295,7 @@
    },
    "baseline": {
     "heart_rate": 72,
-    "talk_time": 48.0,
+    "talk_time": 4.8,
     "pitch": 214.0
    },
    "drift": {
@@ -326,7 +326,7 @@
     "updated": "2026-11-14T07:30:00Z"
    },
    "voice": {
-    "talk_time": 48.0,
+    "talk_time": 4.8,
     "pitch": 214.0
    },
    "cognitive": {
@@ -384,7 +384,7 @@
    },
    "baseline": {
     "heart_rate": 61,
-    "talk_time": 36.0,
+    "talk_time": 3.6,
     "pitch": 124.0
    },
    "drift": {
@@ -415,7 +415,7 @@
     "updated": "2026-11-14T07:30:00Z"
    },
    "voice": {
-    "talk_time": 36.0,
+    "talk_time": 3.6,
     "pitch": 124.0
    },
    "cognitive": {
@@ -473,7 +473,7 @@
    },
    "baseline": {
     "heart_rate": 68,
-    "talk_time": 51.0,
+    "talk_time": 5.1,
     "pitch": 198.0
    },
    "drift": {
@@ -504,7 +504,7 @@
     "updated": "2026-11-14T07:30:00Z"
    },
    "voice": {
-    "talk_time": 51.0,
+    "talk_time": 5.1,
     "pitch": 198.0
    },
    "cognitive": {

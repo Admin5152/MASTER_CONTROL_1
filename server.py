@@ -6,6 +6,7 @@ Run one process only (state is in memory):
 from __future__ import annotations
 
 import asyncio
+import mimetypes
 import os
 import socket
 from contextlib import asynccontextmanager
@@ -18,6 +19,11 @@ from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
+# Windows can map these to text/plain from the registry; browsers refuse module scripts then.
+for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".wasm", "application/wasm"),
+                    (".svg", "image/svg+xml"), (".json", "application/json"), (".css", "text/css"),
+                    (".task", "application/octet-stream")):
+    mimetypes.add_type(_type, _ext)
 
 from brain import llm  # noqa: E402
 from brain.contract import ContractError  # noqa: E402
