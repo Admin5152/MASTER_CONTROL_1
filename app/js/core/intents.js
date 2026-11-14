@@ -166,6 +166,21 @@ export function matchIntent(text, ctx = {}) {
   const t = norm(text);
   if (t.trim() === "") return null;
 
+  // suit integrity (SIM): "simulate a suit leak in the left glove", "seal the suit", "start an EVA", "end the EVA"
+  const suitWord = / (suit|spacesuit|space suit|glove|helmet|visor|backpack|boot) /.test(t);
+  if (suitWord && / (leak|leaking|breach|puncture|punctured|tear|torn|crack|cracked|damage|damaged|hole|losing pressure) /.test(t) && !/ (how|is my|what|status|check) /.test(t)) {
+    return { intent: "suit_leak", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "leak", text: String(text).slice(0, 120) }] };
+  }
+  if (/ (seal|patch|fix|fixed|repair|clear|reset|stop) (the |my )?(suit|leak|breach|alarm|suit alarm) /.test(t) || has(t, "leak is fixed") || has(t, "leak fixed")) {
+    return { intent: "suit_seal", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "seal" }] };
+  }
+  if (/ (start|begin) (an |the )?(eva|spacewalk|space walk) / .test(t) || /^ (going outside|eva time|starting the eva) $/.test(t)) {
+    return { intent: "suit_eva", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "eva" }] };
+  }
+  if (/ (end|finish|stop|done with) (the |my )?(eva|spacewalk|space walk) / .test(t) || has(t, "back inside") || has(t, "repress")) {
+    return { intent: "suit_iva", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "iva" }] };
+  }
+
   const wear = wearIntent(text, { open: !!ctx.wearOpen });
   if (wear) return wear;
 

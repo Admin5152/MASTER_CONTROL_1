@@ -39,6 +39,7 @@ export const api = {
   enrol: (id, wav) => req("POST", `../api/enrol/${id}`, wav, { timeout: 30000 }),
   cabin: (body) => req("POST", "../api/cabin", body),
   scenario: (name, params = "") => req("POST", `../api/scenario/${name}${params}`),
+  suit: (cid, body) => req("POST", `../api/suit/${cid}`, body),
   spaceweather: () => req("GET", "../api/spaceweather"),
   clock: (hours) => req("POST", "../api/clock", { advance_hours: hours }),
   json: (path) => req("GET", path),

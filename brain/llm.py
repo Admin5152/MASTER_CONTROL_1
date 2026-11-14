@@ -75,6 +75,10 @@ There are two kinds of question.
 Always: plain spoken English, no markdown, no lists, no emoji, no symbols that cannot be read aloud.
 You cannot raise alerts or change medical actions.
 
+Suit: STATE.suit is the EVA suit's telemetry (SIM). On an EVA, "integrity" is ok, watch or breach; a breach names the
+region. If asked about the suit, answer from it (pressure in psi, how fast it is falling, oxygen flow). A breach is
+an emergency: the first words are what to do (stop, tell your partner, return to the airlock), then the reading.
+
 NASA evidence: when the message includes NASA MRID EVIDENCE, end your answer with one short sentence on how NASA
 monitors this, naming the most relevant document by its ID (for example "On the station NASA tracks this with a
 resting ECG before and after flight, MEDB 1.6."). Use only what the evidence says; never invent an MRID, a schedule
@@ -114,6 +118,9 @@ Allowed commands (at most 3):
                                          radiation or sos: plays that alert's vibration and light pattern on the device); P in chest, wrist, patch (optional);
                                          D in left, right, back, front (only with turn). Use it for "show the hardware",
                                          "the watch", "explode it", "zoom in", "turn it around" while the hardware is shown.
+  {"cmd":"suit","action":A,"region":R}   the EVA suit link (SIM): A in eva (start an EVA), iva (end it), leak (simulate
+                                         a leak; R in helmet, torso, backpack, left_arm, right_arm, left_glove,
+                                         right_glove, left_leg, right_leg, left_boot, right_boot), seal (leak fixed)
   {"cmd":"set_theme","theme":T}          T in dark, light
   {"cmd":"switch_crew","name":NAME}      NAME is a crew display name from STATE.app.crew (when someone else takes over)
   {"cmd":"close"}                        close what is open and go back
@@ -164,6 +171,11 @@ def validate_commands(cmds: Any) -> list[dict]:
             out.append({"cmd": "show_radiation", "on": bool(c.get("on", True))})
         elif name == "close":
             out.append({"cmd": "close"})
+        elif name == "suit" and c.get("action") in ("eva", "iva", "leak", "seal"):
+            w = {"cmd": "suit", "action": c["action"]}
+            if isinstance(c.get("region"), str) and re.fullmatch(r"helmet|torso|backpack|(left|right)_(arm|glove|leg|boot)", c["region"]):
+                w["region"] = c["region"]
+            out.append(w)
         elif name == "wearable" and c.get("action") in ("open", "close", "explode", "assemble", "zoom_in", "zoom_out", "turn", "reset", "alert"):
             if c["action"] == "alert" and c.get("kind") not in ("normal", "health", "radiation", "sos"):
                 continue

@@ -27,6 +27,7 @@ for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".
 
 from brain import llm, speech  # noqa: E402
 from brain.ground import Ground  # noqa: E402
+from brain.suit import Suits, REGIONS as SUIT_REGIONS, region_from_text  # noqa: E402
 from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
@@ -38,6 +39,7 @@ from brain.race_rooms import RaceRooms  # noqa: E402
 from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
+suits = Suits()
 spaceweather = SpaceWeather()
 scenarios = Scenarios(store, spaceweather)
 ground = Ground(persist=os.getenv("SENTINEL_NO_PERSIST") != "1")
@@ -176,7 +178,24 @@ def aux(cid: str):
     _need(cid)
     clock = store.mission_clock()
     return {"assessment": store.assessment(cid), "scenario": scenarios.status, "clock": clock,
-            "skin": skin.aux(cid, store.get(cid), int(clock.get("mission_day", 0)))}
+            "skin": skin.aux(cid, store.get(cid), int(clock.get("mission_day", 0))), "suit": suits.status(cid)}
+
+
+@app.post("/api/suit/{cid}")
+def suit_action(cid: str, body: dict = Body(default={})):
+    """SIM suit telemetry: {"action": "eva" | "iva" | "leak" | "seal", "region": ..., "size": "slow" | "leak" | "major"}."""
+    _need(cid)
+    a = str(body.get("action", ""))
+    if a in ("eva", "iva"):
+        return suits.set_mode(cid, a)
+    if a == "leak":
+        region = body.get("region") or region_from_text(str(body.get("text", "")))
+        if region not in SUIT_REGIONS:
+            raise HTTPException(400, f"unknown suit region {region}")
+        return suits.leak(cid, region, str(body.get("size", "leak")))
+    if a == "seal":
+        return suits.seal(cid)
+    raise HTTPException(400, "action must be eva, iva, leak or seal")
 
 
 @app.post("/api/skin/{cid}")
@@ -235,6 +254,7 @@ def chat_stream(body: dict = Body(...)):
     transcript = llm.normalize(str(body.get("transcript", ""))[:500])
     state = dict(store.get(cid))
     state["app"] = _app_context(body.get("context"))
+    state["suit"] = suits.status(cid)
 
     def gen():
         for ev in llm.chat_stream(state, transcript, crew_id=cid):

@@ -665,6 +665,7 @@ async function handleCommand(text, meta = {}) {
       followUp();
       return;
     }
+    if (m.commands?.[0]?.cmd === "suit") { await suitCommand(m.commands[0]); followUp(); return; }
     if (m.intent === "vision") say("Let me see you.", { source: "local" });
     else if (m.commands?.[0]?.cmd === "wearable") {
       const w = m.commands[0], P = { chest: "the chest hub", wrist: "the watch", patch: "the patch" };
@@ -701,9 +702,10 @@ async function handleCommand(text, meta = {}) {
     // commands for the app itself (theme, who is here); the rest go to the director
     for (const c of r.commands || []) {
       if (c.cmd === "set_theme") ctx.setTheme?.(c.theme);
+      if (c.cmd === "suit") suitCommand(c);
       if (c.cmd === "switch_crew") { const m = view.crew.find((x) => x.display_name.toLowerCase() === String(c.name).toLowerCase()); if (m && m.crew_id !== view.crewId) switchCrew(m.crew_id, "manual"); }
     }
-    r.commands = (r.commands || []).filter((c) => c.cmd !== "set_theme" && c.cmd !== "switch_crew");
+    r.commands = (r.commands || []).filter((c) => c.cmd !== "set_theme" && c.cmd !== "switch_crew" && c.cmd !== "suit");
     emit("voice:thinking", false);
     if (!spoke && r.reply) say(r.reply, { source: r.source === "llm" ? "LLM" : "rules" });
     followUp();
@@ -763,10 +765,68 @@ function openIntervention(name) {
   screens.open(map[name] || "interventions");
 }
 
+// ---------- suit integrity (SIM): the twin goes red where the suit is leaking ----------
+let suitShown = null, suitAnnounced = 0, suitLabelLoop = false;
+const SUIT_WORD = { watch: "Suit pressure dropping", breach: "Suit breach" };
+function updateSuit(suit) {
+  const bad = suit && suit.mode === "eva" && (suit.integrity === "watch" || suit.integrity === "breach");
+  const key = bad ? `${suit.region}:${suit.integrity}` : "";
+  const banner = $("suit-alert");
+  ctx.body3d?.setBreach?.(bad ? suit.region : null, bad ? suit.integrity : undefined);
+  if (!bad) {
+    if (suitShown) { banner.hidden = true; $("suit-tag").hidden = true; suitShown = null; ctx.wearCmd?.({ cmd: "wearable", action: "alert", kind: "normal" }); }
+    $("sb-suit").hidden = !(suit && suit.mode === "eva");
+    if (suit?.mode === "eva") $("sb-suit").textContent = `EVA · suit ${suit.pressure_psi} psi`;
+    return;
+  }
+  $("sb-suit").hidden = false; $("sb-suit").textContent = `EVA · suit ${suit.pressure_psi} psi`;
+  banner.hidden = false;
+  banner.className = `suit-alert is-${suit.integrity}`;
+  banner.innerHTML = `<div class="sa-head"><span class="sa-dot"></span><b>${SUIT_WORD[suit.integrity]}: ${esc(suit.region_label)}</b><span class="badge badge-sim">SIM</span></div>
+    <p class="sa-read"><span>${suit.pressure_psi} <small>psi</small></span><span>${suit.pressure_rate_psi_min} <small>psi/min</small></span><span>O₂ ${suit.o2_flow_lb_hr} <small>lb/hr</small></span><span>CO₂ ${suit.co2_mmhg} <small>mmHg</small></span></p>
+    <ol>${(suit.steps || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
+    <p class="fine">Illustrative steps; the mission's EVA procedures and your cue card come first.</p>`;
+  $("suit-tag").textContent = suit.region_label;
+  if (suitShown !== key) {
+    suitShown = key;
+    if (suit.incident !== suitAnnounced || suit.integrity === "breach") {
+      const first = suit.incident !== suitAnnounced;
+      suitAnnounced = suit.incident;
+      if (stages.current !== "body") stages.go("body");
+      ctx.wearCmd?.({ cmd: "wearable", action: "alert", kind: "suit" });
+      cue.nudge?.();
+      say(suit.integrity === "breach"
+        ? `Suit breach in your ${suit.region_label}. Stop work and tell your partner. Pressure is ${suit.pressure_psi} psi and falling. Check the ${suit.region_label}, then head back to the airlock.`
+        : first ? `Your suit is losing pressure slowly, near the ${suit.region_label}. ${suit.pressure_psi} psi. Check it now.` : "", { source: "local", interrupt: true });
+    }
+  }
+  if (!suitLabelLoop) {   // the label rides on the red patch of the twin
+    suitLabelLoop = true;
+    world.onFrame(() => {
+      const tag = $("suit-tag"), p = suitShown && stages.current === "body" ? ctx.body3d?.breachScreen?.() : null;
+      tag.hidden = !p || p.behind;
+      if (p && !p.behind) tag.style.transform = `translate(${Math.round(p.x)}px, ${Math.round(p.y)}px)`;
+    });
+  }
+}
+async function suitCommand(c) {
+  try {
+    const st = await api.suit(view.crewId, { action: c.action, region: c.region, text: c.text, size: c.size });
+    if (view.aux) view.aux.suit = st;
+    updateSuit(st);
+    if (c.action === "eva") say("EVA started. I'm watching your suit: pressure 4.3 psi, steady.", { source: "local" });
+    if (c.action === "iva") say("EVA ended. Suit stowed.", { source: "local" });
+    if (c.action === "seal") say("Leak sealed. Suit pressure is holding.", { source: "local" });
+  } catch (e) { showNotice(`Suit link: ${e.message}`); }
+}
+
+ctx.suitCommand = suitCommand;
+
 // ---------- every poll ----------
 function onState(v) {
   const s = v.state, aux = v.aux;
   if (!s) return;
+  updateSuit(aux?.suit);
   $("sb-crew-name").textContent = s.display_name;
   $("greet-hello").textContent = `Hello ${s.display_name}`;
   const id = $("sb-identity");

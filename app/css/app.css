@@ -765,3 +765,19 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 @keyframes fs-hint { 50% { transform: scale(1.18); } }
 
 .elsewhere { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 24px; text-align: center; background: rgba(3, 5, 10, .86); color: var(--ink); font-size: 16px; }
+
+/* ---------- suit integrity: the alert and the label on the twin ---------- */
+.suit-alert { position: fixed; z-index: 60; top: calc(var(--top-h) + 10px); right: var(--gutter); width: min(380px, calc(100vw - 2 * var(--gutter))); padding: 14px 16px; border-radius: 16px;
+  background: #24070a; border: 1px solid #ff3b3b; color: #ffecec; box-shadow: 0 0 0 4px rgba(255, 43, 43, .15), 0 18px 50px rgba(0, 0, 0, .4); }
+.suit-alert.is-watch { background: #241806; border-color: #ffb02e; color: #fff6e6; box-shadow: 0 0 0 4px rgba(255, 176, 46, .14), 0 18px 50px rgba(0, 0, 0, .4); }
+.suit-alert .sa-head { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.suit-alert .sa-head .badge { margin-left: auto; }
+.sa-dot { width: 10px; height: 10px; border-radius: 50%; background: #ff3b3b; animation: sa-pulse 1s ease-in-out infinite; }
+.suit-alert.is-watch .sa-dot { background: #ffb02e; }
+@keyframes sa-pulse { 50% { box-shadow: 0 0 0 7px rgba(255, 59, 59, .25); } }
+.sa-read { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 14px; margin: 10px 0 6px; font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 600; }
+.sa-read small { font-size: 10px; font-weight: 400; opacity: .7; }
+.suit-alert ol { margin: 6px 0 4px; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.suit-alert .fine { margin: 6px 0 0; opacity: .7; font-size: 10.5px; }
+.suit-tag { position: fixed; z-index: 55; left: 0; top: 0; margin: -38px 0 0 14px; padding: 4px 10px; border-radius: 999px; background: #ff2b2b; color: #fff; font-size: 12px; font-weight: 600; pointer-events: none; white-space: nowrap; box-shadow: 0 0 18px rgba(255, 43, 43, .6); }
+#sb-suit:not([hidden]) { border-color: #ff9d3b; color: #ffcf9a; }

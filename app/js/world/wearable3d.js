@@ -322,6 +322,7 @@ export const ALERTS = {
   normal: { name: "Normal", color: 0x9b6bff, pattern: [], note: "All clear: the status light glows steady." },
   health: { name: "Health warning", color: 0xffb02e, pattern: [180, 140, 180, 900], title: "Health warning", sub: "Check your heart rate", note: "Two short pulses, repeating: a vital sign is outside your range." },
   radiation: { name: "Radiation alert", color: 0xff4b2e, pattern: [650, 300, 650, 300, 650, 1100], title: "High radiation", sub: "Seek shielding", note: "Three long pulses: the radiation system reports an alert condition." },
+  suit: { name: "Suit pressure", color: 0xff2b2b, pattern: [110, 70, 110, 70, 110, 70, 110, 450], title: "Suit pressure", sub: "Return to the airlock", note: "Rapid pulses, repeating: the suit is losing pressure." },
   sos: { name: "Manual SOS", color: 0xff2244, pattern: [140, 110, 140, 110, 140, 320, 420, 140, 420, 140, 420, 320, 140, 110, 140, 110, 140, 900], title: "SOS sent", sub: "Crew and ground notified", note: "S-O-S in Morse: the astronaut pressed the emergency button." },
 };
 const patternOn = (pat, ms) => { const total = pat.reduce((a, b) => a + b, 0); if (!total) return false; let t = ms % total; for (let i = 0; i < pat.length; i++) { if (t < pat[i]) return i % 2 === 0; t -= pat[i]; } return false; };
@@ -498,7 +499,7 @@ export function mountWearableFigure(panel, ctx) {
     paint();
   };
   raf = requestAnimationFrame(draw);
-  const offCmd = on("wear:cmd", (c) => {
+  const onWear = (c) => {
     if (c.action === "close") return;
     if (c.action === "alert") { panel.scrollIntoView({ behavior: "smooth", block: "center" }); setAlert(c.kind); return; }
     panel.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -513,7 +514,9 @@ export function mountWearableFigure(panel, ctx) {
       case "reset": explodeTo = 0; zoomTo = 1; turnTo = current.base; tiltTo = 0; break;
       default: break;
     }
-  });
+  };
+  const offCmd = on("wear:cmd", onWear);
+  if (ctx) ctx.wearCmd = (c) => { if (c?.action === "alert") setAlert(c.kind); else onWear(c); };
   select("wrist");
   setOpen();
   setAlert("normal");

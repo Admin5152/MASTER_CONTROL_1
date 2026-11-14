@@ -212,6 +212,41 @@ export async function createBody(world, host, { tablet = false, onZoneClick, onB
   radShell.scale.setScalar(1.012); radShell.renderOrder = 12; radShell.visible = false;
   root.add(radShell);
 
+  // ---- suit breach: the part of the twin under a leaking suit region glows red and pulses ----
+  const breachU = { uT: { value: 0 }, uC: { value: new THREE.Color("#ff2b2b") }, uOp: { value: 0 } };
+  const breachMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: breachU,   // light added on top: it reads on both bodies and in X-ray
+    vertexShader: "attribute float aB; varying float vB; varying vec3 vN; varying vec3 vV; void main(){ vB = aB; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }",
+    fragmentShader: "uniform float uT; uniform vec3 uC; uniform float uOp; varying float vB; varying vec3 vN; varying vec3 vV; void main(){ if (vB < 0.02) discard; float f = pow(1.0 - abs(dot(vN, vV)), 1.4); float pulse = 0.62 + 0.38 * sin(uT * 5.0); gl_FragColor = vec4(uC * (0.95 + 0.8 * f), vB * (0.62 + 0.38 * f) * pulse * uOp); }",
+  });
+  const breachShell = new THREE.Mesh(clay.geometry, breachMat);
+  breachShell.scale.setScalar(1.016); breachShell.renderOrder = 26; breachShell.visible = false;
+  root.add(breachShell);
+  let breach = null;   // { region, severity, centre: Vector3 }
+  /** Which suit region a body point is under (the same landmarks "where does it hurt?" uses). Person's left is +x. */
+  function suitRegionOf(x, y, z, lm, zMid) {
+    const ax = Math.abs(x), side = x > 0 ? "left" : "right";
+    if (y >= lm.shoulderY) return "helmet";
+    if (y < lm.hipY && ax < lm.height * 0.15) return y < lm.ankleY ? `${side}_boot` : `${side}_leg`;
+    if (ax > lm.trunkHalf) return ax >= lm.handX ? `${side}_glove` : `${side}_arm`;
+    return z < zMid ? "backpack" : "torso";
+  }
+  function paintBreach() {
+    const g = clay.geometry, pos = g.attributes.position;
+    if (!pos || !M.landmarks) return;
+    const n = pos.count, a = new Float32Array(n), lm = M.landmarks;
+    let zs = 0, zc = 0;
+    for (let i = 0; i < n; i++) { const y = pos.getY(i); if (y > lm.hipY && y < lm.shoulderY && Math.abs(pos.getX(i)) < lm.trunkHalf) { zs += pos.getZ(i); zc++; } }
+    const zMid = zc ? zs / zc : 0;
+    const centre = new THREE.Vector3(); let hits = 0;
+    if (breach) for (let i = 0; i < n; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      if (suitRegionOf(x, y, z, lm, zMid) === breach.region) { a[i] = 1; centre.add(new THREE.Vector3(x, y, z)); hits++; }
+    }
+    g.setAttribute("aB", new THREE.BufferAttribute(a, 1));
+    if (breach) breach.centre = hits ? centre.divideScalar(hits) : new THREE.Vector3(0, lm.height * 0.5, 0);
+  }
+
   // the 18 anatomy nodes; each has its own material whose look eases toward a target every frame
   const anat = new THREE.Group();
   root.add(anat);
@@ -362,7 +397,7 @@ vec3 eyeColor(vec3 p) {
   }
 
   function applyModel(m) {
-    clay.geometry = skin.geometry = radShell.geometry = m.geom;
+    clay.geometry = skin.geometry = radShell.geometry = breachShell.geometry = m.geom;
     wire.geometry = m.wire;
     for (const n of NODES) {
       nodes[n].mesh.geometry = m.parts[n] || new THREE.BufferGeometry(); nodes[n].mesh.visible = !!m.parts[n];
@@ -421,6 +456,7 @@ vec3 eyeColor(vec3 p) {
     shadow.scale.setScalar(h / 1.89);
     for (const k in hot) placeHot(k);
     resize(W, H);
+    if (breach) { breach.centre = null; paintBreach(); }
   }
 
   // ---- camera, controls ----
@@ -650,6 +686,10 @@ vec3 eyeColor(vec3 p) {
       l.material.color.lerp(tmpC.set(act ? 0x6fd0ff : 0xffffff), Math.min(1, dt * 5));
     }
     if (radOn) radMat.uniforms.uAmt.value = 0.55 + 0.25 * Math.sin(t * 2.2);
+    breachU.uT.value = t;
+    breachU.uOp.value += ((breach ? (breach.severity === "breach" ? 1 : 0.7) : 0) - breachU.uOp.value) * Math.min(1, dt * 4);
+    breachU.uC.value.set(breach?.severity === "watch" ? "#ffb02e" : "#ff2b2b");
+    breachShell.visible = breachU.uOp.value > 0.01;
     // X-ray reads on near-black with little bloom; the solid body keeps the navy studio
     const xv = style === "real" ? 0 : Math.max(xa, wireU.uOn.value * 0.6);   // organ views keep the theme's own backdrop
     world.setSkyFade(1 - 0.82 * xv);
@@ -679,6 +719,18 @@ vec3 eyeColor(vec3 p) {
     setPointing(on) { pointing = !!on; host.classList.toggle("is-pointing-mode", pointing); },
     get pointing() { return pointing; },
     screenPoint(z) { const p = project(z); return { x: p.x, y: p.y }; },
+    /** Suit breach on the twin: region ("left_glove", "helmet", ...) glows red; null clears it. */
+    setBreach(region, severity = "breach") {
+      const was = breach?.region;
+      breach = region ? { region, severity } : null;
+      if (region !== was || !breach?.centre) paintBreach();
+    },
+    /** Where the breach is on screen (for its label), or null. */
+    breachScreen() {
+      if (!breach?.centre) return null;
+      const v = breach.centre.clone(); root.localToWorld(v); v.project(camera);   // same mapping as the zone hotspots
+      return { x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, behind: v.z > 1 };
+    },
     setZoneStates(zones) {
       for (const z of Object.keys(ZLABEL)) {
         const st = zones?.[z] || "ok";

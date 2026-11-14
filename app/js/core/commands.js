@@ -9,7 +9,7 @@ export const METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose",
 export const VIEWS = ["front", "back", "left", "right"];
 export const MAX_COMMANDS = 3;
 export const WEAR_ACTIONS = ["open", "close", "explode", "assemble", "zoom_in", "zoom_out", "turn", "reset", "alert"];
-export const WEAR_ALERTS = ["normal", "health", "radiation", "sos"];
+export const WEAR_ALERTS = ["normal", "health", "radiation", "sos", "suit"];
 export const WEAR_PARTS = ["chest", "wrist", "patch"];
 export const XRAY_STYLES = ["radiograph", "anatomy"];
 /** Anatomy parts a person or the LLM can isolate: the 18 model nodes plus named groups. */
@@ -29,6 +29,14 @@ export function validateCommands(cmds, max = MAX_COMMANDS) {
       case "start_scan": out.push({ cmd: "start_scan" }); break;
       case "show_radiation": out.push({ cmd: "show_radiation", on: c.on !== false }); break;
       case "close": out.push({ cmd: "close" }); break;
+      case "suit": {
+        if (!["eva", "iva", "leak", "seal"].includes(c.action)) break;
+        const w = { cmd: "suit", action: c.action };
+        if (typeof c.region === "string" && /^(helmet|torso|backpack|(left|right)_(arm|glove|leg|boot))$/.test(c.region)) w.region = c.region;
+        if (typeof c.text === "string") w.text = c.text.slice(0, 120);
+        out.push(w);
+        break;
+      }
       case "wearable": {
         if (!WEAR_ACTIONS.includes(c.action)) break;
         const w = { cmd: "wearable", action: c.action };
