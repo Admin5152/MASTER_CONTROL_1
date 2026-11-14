@@ -116,6 +116,22 @@ def test_stream_endpoint_without_key_returns_rules_ndjson(client):
     assert any(x["type"] == "sentence" for x in lines)
 
 
+FIXTURE = ROOT / "tests" / "fixtures" / "kokoro_check_heart_lungs_16k.wav"
+
+
+@pytest.mark.skipif(not WHISPER or not FIXTURE.exists(), reason="local Whisper model or the Kokoro fixture is missing")
+def test_stt_local_whisper_transcribes_kokoro_speech(client):
+    """The fixture is Kokoro (af_heart) saying "Hey Sentinel, check my heart and my lungs.", resampled to 16 kHz."""
+    r = client.post("/api/stt?prefer=local", content=FIXTURE.read_bytes(), headers={"Content-Type": "audio/wav"})
+    assert r.status_code == 200, r.text
+    r = r.json()
+    assert r["source"] == "local"
+    t = r["text"].lower()
+    assert "heart" in t and "lung" in t and "sentinel" in t.replace("centinel", "sentinel")
+
+
+# runs after the STT test: on a laptop short of commit memory, Kokoro loaded in this process
+# can leave too little for the separate Whisper worker
 @pytest.mark.skipif(not KOKORO, reason="Kokoro model not present")
 def test_tts_returns_audio_and_caches(client):
     body = {"text": "Sentinel test line, cached.", "engine": "kokoro", "voice": "af_heart"}
@@ -125,24 +141,3 @@ def test_tts_returns_audio_and_caches(client):
     r2 = client.post("/api/tts", json=body)
     assert r2.headers["x-tts-cached"] == "true" and r2.content == r1.content
     assert client.post("/api/tts", json={"text": "  "}).status_code == 400
-
-
-@pytest.mark.skipif(not (KOKORO and WHISPER), reason="Kokoro or local Whisper model not present")
-def test_stt_local_whisper_transcribes_kokoro_speech(client):
-    import io
-    import wave
-
-    import numpy as np
-    from brain import speech
-    wav = speech.tts_kokoro("Hey Sentinel, check my heart and my lungs.", "af_heart")
-    with wave.open(io.BytesIO(wav)) as w:
-        rate, pcm = w.getframerate(), np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype("float32")
-    n = int(len(pcm) * 16000 / rate)
-    pcm16 = np.interp(np.linspace(0, len(pcm) - 1, n), np.arange(len(pcm)), pcm).astype("<i2")
-    buf = io.BytesIO()
-    with wave.open(buf, "wb") as w:
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(pcm16.tobytes())
-    r = client.post("/api/stt?prefer=local", content=buf.getvalue(), headers={"Content-Type": "audio/wav"}).json()
-    assert r["source"] == "local"
-    t = r["text"].lower()
-    assert "heart" in t and "lung" in t and "sentinel" in t.replace("centinel", "sentinel")
