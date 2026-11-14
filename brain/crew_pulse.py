@@ -25,7 +25,8 @@ class CrewPulse:
         self.weeks: dict[str, dict[str, dict]] = {}
         if self.persist:
             try:
-                self.weeks = json.loads((DATA / "crew_pulse.json").read_text(encoding="utf-8"))
+                from brain.vault import read_json
+                self.weeks = read_json(DATA / "crew_pulse.json")
             except (OSError, ValueError):
                 self.weeks = {}
 
@@ -36,8 +37,8 @@ class CrewPulse:
         with self.lock:
             self.weeks.setdefault(str(week), {})[cid] = clean   # one answer per person per week; a new one replaces it
             if self.persist:
-                DATA.mkdir(exist_ok=True)
-                (DATA / "crew_pulse.json").write_text(json.dumps(self.weeks), encoding="utf-8")
+                from brain.vault import write_json
+                write_json(DATA / "crew_pulse.json", self.weeks)
         return self.result(week, cid)
 
     def result(self, week: int, cid: str | None = None) -> dict:

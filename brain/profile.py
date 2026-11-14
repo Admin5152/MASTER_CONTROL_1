@@ -69,16 +69,15 @@ class Profiles:
         self.p: dict[str, dict] = {}
         if self.persist:
             try:
-                self.p = json.loads((DATA / "profiles.json").read_text(encoding="utf-8"))
+                from brain.vault import read_json
+                self.p = read_json(DATA / "profiles.json")
             except (OSError, ValueError):
                 self.p = {}
 
     def _save(self) -> None:
         if self.persist:
-            DATA.mkdir(exist_ok=True)
-            tmp = DATA / "profiles.json.tmp"
-            tmp.write_text(json.dumps(self.p, indent=1), encoding="utf-8")
-            tmp.replace(DATA / "profiles.json")
+            from brain.vault import write_json
+            write_json(DATA / "profiles.json", self.p)   # allergies and medicines: encrypted at rest
 
     def get(self, cid: str) -> dict:
         with self.lock:

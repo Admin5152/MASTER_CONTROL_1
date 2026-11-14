@@ -134,7 +134,8 @@ class Store:
 
     def _load_saved(self) -> bool:
         try:
-            raw = json.loads((DATA / "state.json").read_text(encoding="utf-8"))
+            from brain.vault import read_json
+            raw = read_json(DATA / "state.json")   # encrypted at rest (plaintext from older installs is read once)
             self.states = raw["states"]
             self.history = raw["history"]
             self.internal = raw.get("internal", {cid: {"storm_received": 0.0, "storm_avoided": 0.0, "reaction_runs": 0} for cid in self.states})
@@ -160,11 +161,8 @@ class Store:
         if not self.persist:
             return
         try:
-            DATA.mkdir(exist_ok=True)
-            tmp = DATA / "state.json.tmp"
-            tmp.write_text(json.dumps({"states": self.states, "history": self.history,
-                                       "internal": self.internal, "clock": self.clock}))
-            tmp.replace(DATA / "state.json")
+            from brain.vault import write_json
+            write_json(DATA / "state.json", {"states": self.states, "history": self.history, "internal": self.internal, "clock": self.clock})
         except OSError:
             pass
 

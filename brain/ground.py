@@ -25,17 +25,16 @@ class Ground:
         self.packets: list[dict] = []
         if persist:
             try:
-                self.packets = json.loads((DATA / "ground.json").read_text(encoding="utf-8"))
+                from brain.vault import read_json
+                self.packets = read_json(DATA / "ground.json")
             except (OSError, ValueError):
                 self.packets = []
 
     def _save(self) -> None:
         if not self.persist:
             return
-        DATA.mkdir(exist_ok=True)
-        tmp = DATA / "ground.json.tmp"
-        tmp.write_text(json.dumps(self.packets[-200:]), encoding="utf-8")
-        tmp.replace(DATA / "ground.json")
+        from brain.vault import write_json
+        write_json(DATA / "ground.json", self.packets[-200:])   # encrypted at rest
 
     def status(self, p: dict, now: float | None = None) -> dict:
         now = self.clock() if now is None else now
