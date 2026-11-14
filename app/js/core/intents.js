@@ -78,6 +78,22 @@ export function findZones(text) {
   return [...new Set(hits.sort((a, b) => a[0] - b[0]).map((h) => h[1]))];
 }
 
+/** Who is speaking, from what they said: "I'm Seth", "this is Annie", "switch to Stanley", "Gadiel here".
+ *  A name that is also an everyday word (like "Sad") needs an unambiguous phrase, so "I'm sad" stays a feeling.
+ *  bare: also accept the name on its own (used while the "Who are you?" chooser is open). Returns a crew_id or null. */
+export function crewFromSpeech(text, crew, { bare = false } = {}) {
+  const t = ` ${String(text || "").toLowerCase().replace(/[^a-z' ]+/g, " ").replace(/\s+/g, " ").trim()} `;
+  const COMMON = new Set(["sad", "will", "may", "mark", "grace", "joy", "hope"]);
+  for (const c of crew || []) {
+    const n = String(c.display_name || "").toLowerCase();
+    if (!n) continue;
+    const strict = new RegExp(` (this is|switch to|change to|log in as|sign in as|my name is|crew member|it is) ${n} | ${n} (here|speaking) `);
+    const loose = new RegExp(` (i'm|i am|im|it's|its) ${n} `);
+    if (strict.test(t) || (!COMMON.has(n) && loose.test(t)) || (bare && t.trim() === n)) return c.crew_id;
+  }
+  return null;
+}
+
 export function matchIntent(text) {
   const t = norm(text);
   if (t.trim() === "") return null;

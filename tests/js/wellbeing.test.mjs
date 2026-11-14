@@ -209,3 +209,18 @@ test("ranking: tools with 2+ sessions by mean mood change; the rest after", () =
   ]);
   assert.deepEqual(r.map((x) => x.id), ["e", "c", "a", "b", "d"]);
 });
+
+// ---------- who is speaking ----------
+import { crewFromSpeech } from "../../app/js/core/intents.js";
+test("crew by speech: names are recognised; 'I'm sad' stays a feeling", () => {
+  const crew = [{ crew_id: "james", display_name: "Eliah" }, { crew_id: "kenji", display_name: "Seth" }, { crew_id: "sofia", display_name: "Sad" }, { crew_id: "amara", display_name: "Annie" }];
+  assert.equal(crewFromSpeech("I'm Seth", crew), "kenji");
+  assert.equal(crewFromSpeech("this is Annie.", crew), "amara");
+  assert.equal(crewFromSpeech("Switch to Eliah please", crew), "james");
+  assert.equal(crewFromSpeech("I'm sad", crew), null);
+  assert.equal(crewFromSpeech("I am sad today", crew), null);
+  assert.equal(crewFromSpeech("this is Sad", crew), "sofia");
+  assert.equal(crewFromSpeech("Sad", crew), null);
+  assert.equal(crewFromSpeech("Sad", crew, { bare: true }), "sofia");
+  assert.equal(crewFromSpeech("how is my heart rate", crew), null);
+});

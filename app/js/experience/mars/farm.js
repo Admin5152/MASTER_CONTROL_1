@@ -40,7 +40,7 @@ export const UPGRADES = {
 };
 export const POD_COST = [0, 0, 0, 25, 50, 90, 150, 240, 360];   // price of planter n (the first three are free)
 
-const CREW = ["Vega", "Orion", "Lyra", "Kenji", "Amara", "Sofia", "Priya", "Lukas"];
+const CREW = ["Eliah", "Seth", "Sad", "Stanley", "Annie", "Gadiel"];
 const DISHES = [["salad", 2], ["stir-fry", 3], ["soup", 3], ["tacos", 2], ["snack", 1], ["bouquet", 1]];
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));

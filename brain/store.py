@@ -126,7 +126,11 @@ class Store:
             self.internal = raw.get("internal", {cid: {"storm_received": 0.0, "storm_avoided": 0.0, "reaction_runs": 0} for cid in self.states})
             self.clock = raw.get("clock", self.clock)
             models = {c["crew_id"]: c.get("body_model", "male") for c in self._mock()}
+            names = {c["crew_id"]: c["display_name"] for c in self._mock()}
             for cid in self.states:
+                if cid in names and self.states[cid].get("display_name") != names[cid]:   # the roster changed: it wins
+                    self.states[cid]["display_name"] = names[cid]
+                    self.states[cid]["body_model"] = models[cid]
                 self.states[cid].setdefault("body_model", models.get(cid, "male"))  # saved before body_model existed
                 self.states[cid].setdefault("manual", {}).setdefault("symptom_log", [])  # saved before symptom_log existed
                 validate_full(self.states[cid])

@@ -1,9 +1,9 @@
 {
-  "_doc": "Six placeholder crew members. Rename people by editing display_name here only; nothing else in the app hard-codes a name. crew_id is the stable key.",
+  "_doc": "Six placeholder crew members. Rename people by editing display_name here only; nothing else in the app hard-codes a name. crew_id is the stable key. Crew roster (display names): Eliah, Annie, Seth, Sad, Stanley, Gadiel. crew_id values are stable internal keys and do not change when a display name does.",
   "crew": [
     {
       "crew_id": "james",
-      "display_name": "James",
+      "display_name": "Eliah",
       "timestamp": "2026-11-14T10:00:00Z",
       "identity": {
         "confidence": 0.0,
@@ -94,7 +94,7 @@
     },
     {
       "crew_id": "amara",
-      "display_name": "Amara",
+      "display_name": "Annie",
       "timestamp": "2026-11-14T10:00:00Z",
       "identity": {
         "confidence": 0.0,
@@ -185,7 +185,7 @@
     },
     {
       "crew_id": "kenji",
-      "display_name": "Kenji",
+      "display_name": "Seth",
       "timestamp": "2026-11-14T10:00:00Z",
       "identity": {
         "confidence": 0.0,
@@ -276,7 +276,7 @@
     },
     {
       "crew_id": "sofia",
-      "display_name": "Sofia",
+      "display_name": "Sad",
       "timestamp": "2026-11-14T10:00:00Z",
       "identity": {
         "confidence": 0.0,
@@ -363,11 +363,11 @@
         "last_game": "",
         "updated": null
       },
-      "body_model": "female"
+      "body_model": "male"
     },
     {
       "crew_id": "lukas",
-      "display_name": "Lukas",
+      "display_name": "Stanley",
       "timestamp": "2026-11-14T10:00:00Z",
       "identity": {
         "confidence": 0.0,
@@ -458,7 +458,7 @@
     },
     {
       "crew_id": "priya",
-      "display_name": "Priya",
+      "display_name": "Gadiel",
       "timestamp": "2026-11-14T10:00:00Z",
       "identity": {
         "confidence": 0.0,
@@ -545,7 +545,7 @@
         "last_game": "",
         "updated": null
       },
-      "body_model": "female"
+      "body_model": "male"
     }
   ]
 }

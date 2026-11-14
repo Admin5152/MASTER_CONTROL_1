@@ -2,7 +2,7 @@
 import { api } from "./core/api.js";
 import { emit, on } from "./core/bus.js";
 import { createDirector } from "./core/director.js";
-import { matchIntent } from "./core/intents.js";
+import { crewFromSpeech, matchIntent } from "./core/intents.js";
 import { audioContext, cue, setMuted, isMuted } from "./core/sound.js";
 import { createStages } from "./core/stages.js";
 import { patch, pollOnce, setCrew, startPolling, view } from "./core/state.js";
@@ -137,8 +137,36 @@ async function start() {
     } catch { note("Microphone not available: type, or use the menu."); }
   }
   applyListening();
-  const name = view.state?.display_name || "";
-  say(`Hello${name ? ` ${name}` : ""}. I'm Sentinel. Ask me anything, or say hey Sentinel.`, { source: "local" });
+  openWho();
+}
+
+// ---------- "Who's here?": pick your name by tap or by saying it ----------
+let choosing = false;
+function openWho() {
+  let last = null; try { last = localStorage.getItem("sentinel.crew"); } catch { /* private mode */ }
+  const el = document.createElement("section");
+  el.id = "who"; el.className = "who"; el.setAttribute("aria-label", "Who is here?");
+  el.innerHTML = `<div class="who-card"><p class="label">Crew</p><h2>Who's here?</h2>
+    <p class="who-sub">Tap your name, or say it: "I'm ${esc(view.crew[0]?.display_name || "Eliah")}".</p>
+    <div class="who-grid">${view.crew.map((c) => `<button type="button" data-who="${esc(c.crew_id)}" class="${c.crew_id === last ? "is-last" : ""}"><span>${esc(c.display_name[0])}</span><b>${esc(c.display_name)}</b>${c.crew_id === last ? "<small>last time</small>" : ""}</button>`).join("")}</div></div>`;
+  document.body.appendChild(el);
+  choosing = true;
+  el.querySelectorAll("[data-who]").forEach((b) => b.addEventListener("click", () => chooseCrew(b.dataset.who)));
+  if (window.gsap) {
+    window.gsap.fromTo(el.querySelector(".who-card"), { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" });
+    window.gsap.fromTo(el.querySelectorAll("[data-who]"), { opacity: 0, y: 16, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.05, delay: 0.15, ease: "back.out(1.6)" });
+  }
+  say("Who's here? Tap your name, or say it.", { source: "local" });
+}
+function chooseCrew(id) {
+  const c = view.crew.find((x) => x.crew_id === id);
+  if (!c) return;
+  switchCrew(id, "manual");
+  try { localStorage.setItem("sentinel.crew", id); } catch { /* private mode */ }
+  const was = choosing; choosing = false;
+  const el = document.getElementById("who");
+  if (el) { el.classList.add("is-out"); setTimeout(() => el.remove(), 400); }
+  say(was ? `Hello ${c.display_name}. I'm Sentinel. Ask me anything, or say hey Sentinel.` : `Hello ${c.display_name}.`, { source: "local" });
 }
 
 async function requestWakeLock() {
@@ -265,7 +293,8 @@ async function mountApp() {
     closeMenus();
   });
 
-  const first = view.crew[0]?.crew_id;
+  let first = view.crew[0]?.crew_id;
+  try { const last = localStorage.getItem("sentinel.crew"); if (view.crew.some((c) => c.crew_id === last)) first = last; } catch { /* private mode */ }
   if (first) setCrew(first, "manual");
   startPolling();
   setInterval(() => view.crewId && refreshSparks($("vitals"), view.crewId), 5000);
@@ -535,6 +564,8 @@ async function handleCommand(text, meta = {}) {
   }
   const firstTime = !interacted;
   interacted = true;
+  const who = crewFromSpeech(text, view.crew, { bare: choosing });
+  if (who && (choosing || who !== view.crewId)) { chooseCrew(who); return; }
   const m = matchIntent(text);
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
