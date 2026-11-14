@@ -1,0 +1,2 @@
+# Browser checks and screenshots (optional): pip install -r requirements-dev.txt
+playwright==1.65.1

@@ -1,258 +1,161 @@
 # Sentinel
 
-An onboard crew-health companion for long missions (NASA Space Apps 2026). A crew member talks to a glowing orb; Sentinel reads their pulse from the camera, compares every reading with **their own baseline**, points at the body system that changed, explains what it means, and offers something to do about it, with no doctor on the line. On Mars a message to Earth takes about 4 to 24 minutes each way.
+An onboard crew-health assistant for long missions, built for the NASA Space Apps Challenge 2026. NASA calls the problem **Earth-Independent Medical Operations**: on a Mars transit there is no evacuation and a message to ground takes minutes each way. A crew member talks to Sentinel; it reads their pulse from the camera, compares every reading with **their own baseline**, shows them the body system that changed on a real anatomy X-ray, explains what it means, guides the next step, and packages findings for the flight surgeon to review later.
 
 Sentinel describes change from baseline. It never diagnoses. Every value on screen carries a badge: **LIVE** (measured or entered now), **SIM** (simulated or prepared on purpose) or **DESIGNED** (a design, not running).
 
+New here? Read this file, then [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Credits and licences: [CREDITS.md](CREDITS.md).
+
 ---
 
-## Start it
+## Quickstart (from a clean clone)
 
-**Laptop (Windows):**
+Requirements: Windows 10/11 (macOS and Linux work for the server and tests; `run.ps1` is Windows), Python 3.10+ (3.12 used), Chrome or Edge. Node 18+ only for the JS tests.
 
 ```powershell
-cd C:\Users\USER\Desktop\sentinel
-powershell -ExecutionPolicy Bypass -File run.ps1
+git clone <repo> sentinel; cd sentinel
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt -r requirements-voice.txt
+copy .env.example .env          # optional: add keys (see "Keys")
+powershell -ExecutionPolicy Bypass -File run.ps1 -Http
 ```
 
-`run.ps1` checks the venv (creating it and installing `requirements.txt` on a clean clone), installs the optional speaker-ID stack in the order that works on Windows, regenerates the HTTPS certificate if the LAN address changed, prints the laptop and tablet URLs in large text, opens Chrome at `https://localhost:8443/app/`, and runs one uvicorn process on `0.0.0.0:8443`. Options: `-Http` (plain HTTP on `http://localhost:8000/app/`, laptop only), `-NoBrowser`, `-SkipSpeaker`.
+Open **http://127.0.0.1:8000/app/** (plain HTTP on localhost keeps the camera and microphone working). Tap anywhere to skip the intro, then **Begin**.
 
-The first time Chrome shows a certificate warning for localhost: click **Advanced → Proceed**.
+For the **Samsung tablet** (or any second device) run `run.ps1` without `-Http`: it serves HTTPS on `0.0.0.0:8443`, regenerates the self-signed certificate for the laptop's LAN address and prints the tablet URL.
 
-**Samsung Galaxy Tab (Chrome for Android, not Samsung Internet):**
+1. Laptop and tablet on the same network (a phone hotspot beats venue WiFi, which often blocks device-to-device traffic).
+2. First run: allow Python through Windows Firewall on **Private networks**.
+3. On the tablet open the printed `https://<laptop-ip>:8443/app/` in **Chrome** (not Samsung Internet), tap **Advanced → Proceed**, tap **Begin**, allow camera and microphone.
 
-1. Put the laptop and the tablet on the same network. A phone hotspot is safer than venue WiFi, which often blocks device-to-device traffic.
-2. The first time `run.ps1` starts, Windows asks whether Python may use the network: allow **Private networks** (on a hotspot, mark the network as Private).
-3. On the tablet open the **TABLET** URL that `run.ps1` prints (for example `https://192.168.100.8:8443/app/`; it is also shown in the demo panel).
-4. Chrome warns about the certificate: tap **Advanced → Proceed to … (unsafe)**. (iPad Safari: **Show details → visit this website**.)
-5. Tap **Start Sentinel**. Allow the camera and microphone.
+`run.ps1` options: `-Http` (laptop only, port 8000), `-NoBrowser`, `-SkipSpeaker` (skip the optional speaker-ID install).
 
-**Demo panel:** press `D`, tap the sliders button at the top right, or tap with three fingers. **Hardware slide:** `H` or the wearable button at the top right.
+### Models (git-ignored, fetch once)
+
+Both are optional: without them the browser's own voice and recognition are the fallbacks.
+
+```powershell
+# Kokoro text-to-speech (Apache 2.0), the offline fallback voice
+mkdir models\tts
+curl.exe -L -o models\tts\kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
+curl.exe -L -o models\tts\voices-v1.0.bin  https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+# Whisper base.en for offline speech recognition (CTranslate2 build, MIT)
+.venv\Scripts\python -c "from faster_whisper import download_model; download_model('base.en', output_dir='models/whisper/base.en')"
+```
+
+### Keys
+
+Copy `.env.example` to `.env`. Every variable is documented there and all are optional.
+
+- `LLM_API_KEY` (Groq): the brain (`openai/gpt-oss-120b`, `reasoning_effort: low`) and Groq Whisper speech recognition. Without it, the rules bank answers health and mission questions and general questions get "I need a connection to answer that".
+- `ELEVENLABS_API_KEY`: the primary voice (flash model, premade voices only; River by default). Characters spent are counted in `data/tts_usage.json` and capped by `ELEVENLABS_CHAR_BUDGET` (default 9000). Every line is cached on disk, so the demo lines cost nothing after the first time. `SENTINEL_TTS=kokoro` never calls ElevenLabs (rehearsals, tests).
+
+Never commit `.env`. It is git-ignored, and a scan of the full history on 14 Nov found no keys (see "Repository hygiene").
+
+---
+
+## What it does
+
+| Area | What you see | Label | Status |
+|---|---|---|---|
+| Intro | Camera sweeps over a textured solar system; the planets drift out and Sentinel's orb forms; **Begin** unlocks audio, camera and mic | — | run (Playwright) |
+| Sentinel (home) | The glass orb in one continuous space world, greeting above, live caption below, input bar with push-to-talk; a quiet status line and a pill nav (Overview, Body, Vitals, Mission, Radiation, Wellbeing) | — | run |
+| Body | The 3D body (male or female per crew member), a left rail of body systems that isolates each one, data chips pinned to the body, the selected system on the right (status chip, metric cards with sourced gradient range bars, care strategy tabs: action plan / onboard kit / lifestyle), insights card | per reading | run |
+| X-ray | Real anatomy (BodyParts3D, 18 systems) in two styles: radiograph and coloured anatomy, the checked zone in full colour and the rest dimmed | visualisation; readings keep their badges | run |
+| Mesh scan, zone check, pointing | The body's own mesh sweeps down and dissolves into the X-ray; Sentinel turns and zooms to the zone, shows a red dot, leader line and callout, and says one sentence | per reading | run + test |
+| Organ view | One organ isolated in a realistic lit material, turn and zoom, its readings with range bars, next step; organ thumbnails rendered in Blender | DESIGNED (reference anatomy) | run |
+| Vitals | Heartbeat strip at the measured rate (labelled as an illustration), pressure gauge, every reading with its sparkline, the day's plan schedule | per reading | run |
+| Reaction test | 3-minute psychomotor vigilance test like the ISS Reaction Self Test: mean, median, lapses (> 500 ms), false starts, change from baseline, sleep link; 30 s practice mode | LIVE | test (logic) + run (opens); tapping: human |
+| Guided exam | A periodic-health-status-style exam, step by step by voice and screen, ending in a one-page ground packet | LIVE entries, SIM where simulated | run (opens) |
+| Messages to ground | Store-and-forward queue with the one-way delay: queued, in transit, delivered, awaiting reply | SIM transport | test + run |
+| Weekly measures | Reaction test, mood and sleep, timed sit-to-stand and tandem walk, guided exam; "inspired by NASA Spaceflight Standard Measures" | LIVE | run (opens) |
+| Space race | Original Blender-made racer vs three ghost racers, three laps past textured planets; Earth shield, Mars boost, Jupiter slingshot + magnet, Saturn ring dash, Moon low gravity; mood before/after logged; keys, drag or tilt | mood LIVE, HR own badge | test (logic) + run (menu → finish → mood saved) |
+| Sentinel Skin | The DESIGNED wearable: smart shirt (CSA Astroskin), ultrasound patches (MIT BAUS), eye module for optic nerve sheath diameter (SANS), pocket compute; each with its source; chips on the body | DESIGNED | run |
+| Voice in | VAD on the mic → `/api/stt` (Groq Whisper; local faster-whisper offline); wake phrase "hey Sentinel" or push-to-talk (tap the orb or mic); browser recognition only as the last fallback | — | test (VAD, STT) ; live mic: human |
+| Voice out | Sentence-by-sentence `/api/tts` (ElevenLabs → Kokoro → browser), played through Web Audio so the orb pulses with the real audio | — | test (Kokoro, cache) + live ElevenLabs call; listening: human |
+| Brain | Health questions answered only from the state (numeric guard), general questions answered naturally, last 8 turns remembered, streamed sentence by sentence, commands validated | reply tagged LLM or rules | test (mocked) + live Groq run |
+| Face scan, pulse | MediaPipe face mesh and pose on the webcam, camera pulse (POS rPPG) with a quality gate | LIVE | logic: test; real face: human |
+| Radiation Watch | NOAA GOES live feed, storm level, dose passport, storm response | LIVE · NOAA / SNAPSHOT / SIM | test + run |
+| Cabin, Orb Calm, health log, trends, greenhouse, crew, scenarios, alert banner | As in v1, restyled | as labelled | test + run (v1) |
+| Themes | Dark (space) is the default; **Clinical light** in Settings, remembered per browser | — | run (screenshots of both) |
+
+Live checks on 14 Nov with the real keys: the brain's first sentence arrived in 0.56–0.92 s; a follow-up ("And how long would a radio message take?") used the memory; Groq Whisper transcribed a Kokoro test phrase exactly in 0.68 s; ElevenLabs returned the first line in 1.07 s and the cached repeat in 11 ms (42 characters spent).
 
 ---
 
 ## The 90-second demo
 
-Opening hook (every fact from `shared/facts.json`):
+| # | Who | Says / does | Screen |
+|---|---|---|---|
+| 1 | Presenter | Taps **Begin** after the intro | The orb forms; "Hello, I'm Sentinel." |
+| 2 | Presenter | "Hey Sentinel, let me see you." (or tap the mic) | Face scan with the mesh; pulse "about N bpm" (LIVE) |
+| 3 | Presenter | "Check my heart." | Body turns and zooms, mesh sweep, radiograph, then the heart in colour (ref 11), callout with the change from baseline |
+| 4 | Presenter | "How far is Mars?" then "And how long would a message take?" | General answer, then a follow-up that uses memory |
+| 5 | Presenter | Opens **Wellbeing → Space race** | One lap, a planet power-up, the finish, mood logged |
+| 6 | Presenter | Opens **Guided exam**, then **Send to ground** | The packet queued with the one-way delay (SIM) |
+| 7 | Presenter | Opens **Sentinel Skin** | The DESIGNED wearable with its real sources |
 
-> "On Mars, a message to a doctor on Earth takes up to 24 minutes each way. NASA counts radiation, isolation and distance among the five hazards of spaceflight, and about 69% of long-duration astronauts show the earliest signs of eye changes. Sentinel lets the crew check themselves."
-
-| # | Who | Says / does | What the screen does | Badge |
-|---|---|---|---|---|
-| 1 | Presenter | "Hey Sentinel." | Orb wakes (listening ripples), "Yes, James?" | LIVE voice |
-| 2 | Presenter | "Let me see you." | Camera draws face and pose lines; pulse reads "about N bpm" after ~10 s; full scan sweeps the body model and lists each zone in green | pulse LIVE, others SIM |
-| 3 | Teammate | speaks (tired, quiet) | Speaker ID names them (if enrolled); talk time and pitch drop vs. their baseline; beam from orb to the eye zone, zoom, callout: "fatigue raised, heart rate 25% above your usual" | voice LIVE, fatigue SIM |
-| 4 | Sentinel | "Would you like a short Orb Calm session?" | Orb Calm: red turbulent orb settles to calm blue as heart rate falls; level cleared | HR LIVE (camera) or SIM |
-| 5 | Demo panel | Cabin O2 slider down (or scenario "Cabin O2 dip") | Full-width red banner, alarm tone, spoken warning, "flagged to ground, one-way delay 12.7 min (SIM)" | SIM |
-| 6 | Presenter | "Show me the hardware." | Exploded wearable diagram | DESIGNED |
-
-No internet, no camera or no microphone? Run **Full demo** from the demo panel: it drives all six steps from the server with the eight offline lines in `app/assets/demo_lines.json` (spoken by the browser, logged as "SIM line"). `POST /api/scenario/full_demo` does the same.
-
-During questions: **Radiation Watch** (tile "Dose (model)" or "NOAA storm level", or "open radiation"), the **solar storm** scenario, **Aurora Run** and the **Greenhouse**.
+No internet, camera or mic? The demo panel (`D`, or the sliders button) runs the scripted scenarios with the offline lines; everything stays badged SIM.
 
 ---
 
-## Feature status
-
-Status key: **test** = verified by an automated test; **run** = verified by running it in headless Chrome (Playwright) or through the API; **human** = needs a person to check; **not built**.
-
-| Feature | Label on screen | Status |
-|---|---|---|
-| State store, contract validation (422 on unknown fields), history | — | test |
-| Baseline + drift engine (notes worded as change from baseline) | LIVE when inputs are LIVE, else SIM | test |
-| Absolute thresholds with kind + source carried to the UI | shown with kind and link | test + run |
-| Decision layer (8 action types, 5 distinct interventions) | — | test |
-| Medicine suggestion (only stocked items, caveat text) | kit list is SIM | test |
-| `/api/chat` rules fallback (no key) | reply tagged "rules" | test + run |
-| `/api/chat` LLM path (Groq / any OpenAI-compatible) | reply tagged "LLM" | **not verified: no key** (invalid-JSON and command validation tested with a mocked LLM) |
-| LLM numbers guard (reply citing a number not in the state falls back to rules) | — | test (mocked) |
-| Wake phrase matcher, pitch estimator, talk time, WAV encoder | — | test |
-| Speech recognition, speech synthesis, mic capture | — | **human** |
-| Typed input + quick-command buttons | — | run |
-| rPPG pulse (POS + green fallback, quality gate) | LIVE | pure logic: test; live camera: **human** |
-| MediaPipe face + pose landmarks drawn on video | LIVE | models load and run in headless Chrome on the fake camera (no face); real face: **human** |
-| No-face / no-camera fallback to SIM heart rate | SIM | run (fake camera) |
-| Live-video ring on the zone Sentinel points at | — | **human** (needs a face) |
-| Orb (idle / listening / speaking / warning, drive()) | — | run (visual) |
-| Body model zones, panels, radiation layer, scan line | per reading | run |
-| Director: command bus, pointing sequence, full scan, intents | — | test (intents, validator, scan order) + run |
-| Vitals tiles with status word, badge, sparkline; trend charts with baseline + threshold bands | per reading | run |
-| Manual health log with microgravity hints and range validation | LIVE | run (opens); save path covered by API tests |
-| Routine prompts + mission-clock time skip | — | run (card shows "Due now") |
-| Alert banner + Web Audio tone + spoken warning, persists until acknowledged | SIM (cabin) | run |
-| Cabin monitor (sliders, scenario) | SIM | test + run |
-| Cognitive check (25 s reaction game, first 3 runs set baseline, false starts excluded) | LIVE | logic: test; tapping: **human** |
-| Speaker ID (Resemblyzer, 0.75 cut-off) + enrolment in demo panel | LIVE on match, "manual" otherwise | test with two synthetic Windows TTS voices + noise; real voices: **human** |
-| Orb Calm (red → amber → blue, 10 s hold, logs to history) | HR badge LIVE or SIM | test + run (simulated HR) |
-| Intervention menu: breathing, Aurora Run, Earth window, music, connection nudge | Earth window SIM, connection DESIGNED | run (menu); audio: **human** |
-| Hardware slide | DESIGNED | run |
-| Radiation Watch: NOAA GOES live feed, S-level, 24 h log chart with bands | LIVE · NOAA GOES / SNAPSHOT | test (parser, fallback) + run (live fetch worked on 13 Nov) |
-| Dose passport (profile selector, career limit, margin days) | SIM · modelled | test + run |
-| Storm response: banner, checklist, shelter toggle + timer, dose received vs avoided | SIM in scenario | test + run |
-| Real storm replay (DONKI 2024-05-10 onset; flux curve scripted) | SIM | run |
-| Reaction time beside cumulative dose | SIM / LIVE | run |
-| Aurora Run (drag / arrows / tilt, pacer, no-fail, mood before/after) | mood LIVE, HR own badge | logic: test; play and tilt: **human** |
-| Greenhouse (grows, wilts, never dies; Veggie sources) | — | logic: test; run (screen) |
-| Scenarios: tired_crew, calm_down, cabin_dip, solar_storm, full_demo, reset | SIM | test + run |
-| HTTPS with LAN certificate, tablet URL | — | run (`curl -k` on the LAN IP) |
-| Tablet layouts 1366×768, 1024×768, 768×1024 | — | run (headless); real tablet: **human** |
-| Wake lock, iPad motion permission | — | **human** |
-
----
-
-## LIVE / SIM / DESIGNED
-
-| On screen | Label | Why |
-|---|---|---|
-| Camera pulse ("about N bpm") | LIVE | measured from the webcam now (rPPG); falls back to SIM with no face |
-| Breathing rate, SpO2 | SIM | webcam SpO2 is not credible and is never shown as measured |
-| Fatigue and stress indices | SIM | no sensor; set by scenarios |
-| Talk time, pitch | LIVE when computed from the mic, SIM when a scenario set them | |
-| Health-log entries (BP, glucose, temperature, sleep, mood, symptoms) | LIVE once you save them; SIM for the prepared mock values | provenance comes from the history source |
-| Reaction time | LIVE after a run; SIM for the prepared baseline | |
-| Cabin O2 / CO2 | SIM always | there is no cabin sensor |
-| Dose passport | SIM · modelled from measured rates | rate × days + storm dose, never a dosimeter |
-| NOAA storm level and flux chart | LIVE · NOAA GOES, or SNAPSHOT with its data time, or SIM during the storm scenario | |
-| Identity | LIVE "voice NN%" on a voice match; "manual" otherwise | |
-| Medicine kit list | SIM | illustrative list |
-| Ground-link delay (12.7 min) | SIM | a value inside NASA's 4-24 min range |
-| Hardware slide, exercise log, crew messaging, onboard dosimeter | DESIGNED | |
-
-A scenario or the demo panel can never produce LIVE: scenario patches carry `source: "sim"`, the heart-rate override sets `vitals.sources.heart_rate: "sim"`, and the camera stops writing while a scenario runs or the override is on.
-
----
-
-## Architecture
-
-```
-run.ps1            starts uvicorn over HTTPS (or -Http), regenerates the cert, prints the tablet URL
-server.py          FastAPI: /app (static), /shared (data files), /api/*
-brain/             contract.py (template + validation), store.py (state, history, persistence),
-                   thresholds.py, drift.py, decision.py, medicine.py, radiation.py, llm.py
-systems/           speaker.py (Resemblyzer), scenarios.py (scripted demo, cabin dip, storm replay)
-shared/            contract.json, mock_data.json, thresholds.json, med_kit.json, facts.json, SOURCES.md,
-                   swpc_*.json (NOAA snapshot), donki_sep_events.json
-app/               index.html, css/tokens.css + app.css, js/{core,interface,voice,vision,systems,experience}
-                   vendor/ (MediaPipe bundle + wasm + models, Chart.js, GSAP), assets/ (body.svg, demo_lines.json)
-tests/             pytest (brain, systems, radiation), node --test (tests/js), browser_check.py, resource_check.py
-tools/make_cert.py self-signed certificate for localhost, 127.0.0.1 and every LAN IPv4 address
-```
-
-API: `GET /api/crew`, `GET /api/state/{id}`, `POST /api/state/{id}/patch`, `GET /api/history/{id}?field=`, `POST /api/chat`, `POST /api/identify`, `POST /api/enrol/{id}`, `POST /api/cabin`, `POST /api/scenario/{name}?speed=&crew_id=`, `GET /api/spaceweather`, `GET /api/health`. Added (see choices below): `GET /api/assessment/{id}`, `GET /api/aux/{id}`, `POST /api/log/{id}`, `GET /api/scenario`, `GET|POST /api/clock`.
-
-The browser polls `GET /api/state/{id}` and `GET /api/aux/{id}` every 500 ms. No WebSockets.
-
-## Contract additions
-
-The frozen block is unchanged. These are the additions this build uses, exactly as listed in the spec (no others):
-
-- `display_name`
-- `identity.source` (`voice | manual`)
-- `vitals.sources.{heart_rate, breathing_rate, spo2}` (`camera | sim | sensor`; `manual` also accepted)
-- `manual.{bp_systolic, bp_diastolic, glucose_mgdl, temp_c, sleep_hours, mood, symptoms[], updated}`
-- `voice.{talk_time, pitch}`
-- `cognitive.{reaction_ms, baseline_ms, updated}`
-- `drift.items[] {metric, delta_pct, zone, severity}`
-- `action.{zone, severity, intervention}`
-- `engagement.{streak_days, checkins_today, calm_levels_cleared, greenhouse_stage}`
-- `radiation.{mission_profile, mission_day, dose_rate_msv_day, cumulative_msv, career_limit_msv, storm_level, sheltered, source}`
-- `wellbeing.{mood_before, mood_after, last_game, updated}`
-
-Anything else in a patch returns **422**. Things that are not contract fields live outside the state object: threshold results with kind and source (`/api/assessment`), Orb Calm and Aurora Run session numbers (history fields `session.*` via `/api/log`), the storm dose received/avoided, and the scenario status.
-
-## Thresholds and sources
-
-All limits are in `shared/thresholds.json`, each with `kind` and `source`; how each was checked is in `shared/SOURCES.md`. Highlights:
-
-- CO2 alert above **3,947 ppm** = NASA-STD-3001 [V2 6004] 3 mmHg one-hour average at 760 mmHg (3 / 760 × 10⁶). Watch above 3,289 ppm (2.5 mmHg, headache risk < 1%).
-- O2 alarm below **19.5%** (OSHA oxygen-deficient atmosphere, `clinical_reference`, not NASA); NASA's absolute hypoxia floor is PIO2 122 mmHg = **17.1%** at 14.7 psia.
-- Career limit **600 mSv** [V1 4030]; SPE limit 250 mSv per event; shelter factor 50% for SPE dose (OCHMO radiation brief).
-- Dose rates: ISS 0.35 mSv/day (midpoint of NASA's 0.2–0.5), Mars transit 1.8, Mars surface **0.67** (the spec's 0.64 was only found in secondary press, so the primary SwRI figure is used), lunar 1.37 (`demo_placeholder`, Chang'e-4, not NASA).
-- Eye statistic: **about 69% of long-duration astronauts show the earliest indications of SANS** (NASA NTRS 20220000516). The team's **81% could not be confirmed** on a nasa.gov or NTRS page and is not used.
-- Vital-sign ranges are `clinical_reference` (MedlinePlus, CDC, AHA, ADA), never labelled NASA.
-
-**Every `demo_placeholder`:** all drift percentages (HR 15%, talk time 25%, pitch 10%, reaction 15%, systolic 12%, glucose 20%, temperature 2%, sleep 20%, mood 30%; alert at 2×); heart-rate alert above 130 and low watch below 50; SpO2 alert below 90; temperature low watch below 36.0; mood watch below 3; fatigue watch 0.5 / alert 0.7; stress watch 0.6; S2 as the shelter-alert level; storm extra dose per hour by S level; lunar dose rate; speaker-ID similarity 0.75; rPPG quality 0.35. Decision-layer cut-offs in `brain/decision.py` (stress 0.6, fatigue 0.6, poor sleep < 6 h, mood ≤ 2, HR ≥ 15% above baseline) are demo settings too.
-
-## Choices made where the spec was silent
-
-- **`action` is owned by the rules engine.** A patch may include `action`, but it is recomputed on every patch, so the "patch `action.zone: eyes`" test is driven through the real pipeline by raising `state.fatigue` (the eye zone) and checking that `zone-eyes` gets `is-target` and `is-alert`.
-- **Zones.** fatigue → eyes; talk time, pitch, reaction, sleep, mood → head; HR, BP, stress → heart; breathing, SpO2 → lungs; glucose → gut; temperature and radiation → whole body. Bones has no sensor in this build (exercise log is DESIGNED).
-- **Five interventions:** stress or HR ≥ 15% above baseline → breathing (Orb Calm); mood ≤ 2 → connection; fatigue ≥ 0.6 → Earth window; sleep < 6 h → music; emotion "bored" → Aurora Run.
-- **Mock data:** six crew (`james`, `amara`, `kenji`, `sofia`, `lukas`, `priya`). Rename people by editing `display_name` in `shared/mock_data.json` only. The mock crew have an established reaction baseline. Fourteen days of SIM history are seeded at start so charts have context; seeded points are drawn hollow and badged SIM.
-- **Provenance:** a manual or voice value shows LIVE only when its latest history point came from the user/microphone/camera.
-- **Mission clock:** day 120 of a Mars transit, starting 08:00; the demo panel adds 3 h or 1 day. Routine completion per mission day is kept in the browser's localStorage (a convenience; the greenhouse stage and streak themselves are in the state).
-- **Storm dose** accrues 60× faster during the scripted storm (1 s = 1 mission minute) so the passport moves visibly; real live-feed storms accrue in real time.
-- **Ground-link delay** shown in the banner is a fixed SIM 12.7 min one-way, inside NASA's 4–24 min range.
-- **rPPG quality**: share of in-band power within ±0.15 Hz of the peak, cut to 40% when the two halves of the window disagree on the peak. On 199 synthetic pure-noise windows this passed the 0.35 gate 3 times (1.5%); a median over the last five estimates further smooths the display.
-- **DONKI** gives event times, not flux, so `solar_storm` replays the real onset of the 2024-05-10 GOES >10 MeV SEP event with a scripted S3 flux curve, and says so in its label.
-- **Design:** "glass-cockpit display meets bedside monitor": deep slate-blue base, cyan line art, amber/red only for status, Bahnschrift (DIN, ships with Windows; falls back to Roboto on Android) so no font is fetched at runtime, corner-bracket panel frames instead of rounded cards, and the orb as the one bold element. Tokens are in `app/css/tokens.css`.
-- **Build order:** phases 2–9 were built together and committed in one commit, then verified as a whole; Phase 0, Phase 1 and Phase 10 have their own commits.
-
-## Cuts taken
-
-- No cut lines from section 7 were needed for features. What is simpler than it could be: the Earth window is a CSS illustration; crew messaging only notes the message (DESIGNED, nothing is sent); the exercise log is DESIGNED; the ScriptProcessorNode is used for mic capture (deprecated, prints a console warning, works in Chrome and Android Chrome).
-- The LLM path is built but untested against a real provider (no key).
-
-## LLM key
-
-Copy `.env.example` to `.env` and set `LLM_API_KEY` (Groq: https://console.groq.com/keys). Restart `run.ps1`. `/api/health` then reports `"llm": true` and replies are tagged "LLM". Any OpenAI-compatible endpoint works: change `LLM_BASE_URL` and `LLM_MODEL`. With no key, a 429, an error, a 6 s timeout, or a reply that cites a number not in the state, the rules bank answers ("rules").
-
-## Enrolling voices
-
-Open the demo panel → **Voice enrolment** → tap a name, and that person reads aloud for 10 seconds (any text). Voiceprints are stored in `voiceprints/` (git-ignored). After enrolment, saying "Hey Sentinel …" identifies the speaker (cosine similarity ≥ 0.75), switches to them, greets them by name, and shows "voice NN%" (LIVE). Below 0.75 the current person stays selected. If Resemblyzer is missing, the buttons are disabled and the crew selector is used.
-
-## Tests
-
-```powershell
-.venv\Scripts\python -m pytest              # brain, systems, radiation, scenarios
-node --test tests/js                          # pure JS: wake, pitch, WAV, rPPG, intents, validator, Orb Calm, Aurora, greenhouse
-.venv\Scripts\python tests\browser_check.py https://localhost:8443    # Playwright, 3 viewports, needs the server running
-.venv\Scripts\python tests\resource_check.py https://localhost:8443   # every requested file returns 200, no external hosts
-```
-
-### Results (13 Nov 2026, this laptop)
+## Verification (14 Nov)
 
 | Check | Result |
 |---|---|
-| `pytest` | **27 passed, 1 skipped**. Skipped: `test_with_key_reply_contains_a_state_number` (no `.env`, no LLM key). |
-| `node --test tests/js` | **20 passed, 0 failed** (pitch 220 Hz ±5, wake table 10 positive / 10 negative, rPPG 72 ±3 bpm on 1.2 Hz with noise and ±6 ms jitter, pure noise gives no number, 26 intent phrases + 7 rejections, validator, scan order, Orb Calm 96→70 red→amber→blue + clear, Aurora path width and +2 mood, greenhouse, reaction median) |
-| `run.ps1` from a fresh shell | starts uvicorn on `0.0.0.0:8443`, prints the URLs; `/api/health` answers on `https://localhost:8443` and on the LAN address `https://192.168.100.8:8443` (`curl -k`); certificate SANs: localhost, 127.0.0.1, 192.168.100.8, 192.168.136.1, 192.168.163.1 |
-| `tests/resource_check.py` | 51 URLs requested after Start, 7 under `app/vendor/`, all 200, **no external hosts** |
-| `tests/browser_check.py` (headless Chrome via Playwright, fake camera and mic, HTTPS) | **97 passed, 0 failed** at 1366×768, 1024×768 and 768×1024: no horizontal scroll, no overlapping panels, every tile has a value and a badge, touch-sized controls, all six zone panels open, eye zone gets `is-target` + `is-alert` and the pointing sequence zooms, beams, shows the callout and eases back, full scan visits head, eyes, lungs, heart, gut, bones in order with a badge on every line, every screen opens through the Director, trend chart renders, the no-face camera keeps the pulse SIM, typed questions get replies, the demo panel opens by button, every scenario runs, **zero console errors** (one MediaPipe line, "INFO: Created TensorFlow Lite XNNPACK delegate for CPU", is printed through `console.error` by the WASM runtime and is filtered as not an error) |
-| `full_demo` via the API | action types for the tired crew member pass through `none → offer_orb_calm → offer_intervention → flag_cabin → offer_intervention` and the script ends at step "done". After Orb Calm the action becomes `offer_intervention` (Earth window), not `none`, because the simulated fatigue index stays raised; breathing lowers heart rate, not fatigue. |
-| `tests/offline_check.py` | with `/api/*` blocked the page greys out, says "Brain offline: showing last known values", keeps the last values, and typed questions get a local reply |
-| `tests/experience_check.py` | Aurora Run plays (drag + space), mood 2 → 4 stored as +2 in `wellbeing`; cognitive check by tapping stores a median and compares with the baseline; no page errors |
-| Absolute URLs in the frontend | none loaded at runtime (only the SVG namespace string) |
-| Thresholds | every level in `thresholds.json` has `kind` and `source` (pytest checks it) |
+| `pytest` | **45 passed** (brain, systems, radiation, voice and brain v2, ground link). The local-Whisper test skips itself with a stated reason if the machine is short of memory (it did once on this laptop with many apps open) |
+| `node --test tests/js` | **28 passed** (wake phrase, pitch, WAV, rPPG, intents incl. isolate and X-ray styles, validator, scan order, Orb Calm, greenhouse, VAD, race logic, range bars, PVT) |
+| Playwright (Edge, software WebGL), 1366×768 | every main screen in both themes (`tests/layout_shots.py both`), the body X-ray, zone check and pointing (`tests/body_shots.py`), the race from menu to saved mood (`tests/race_check.py`); no page errors |
+| Live keys | brain, Groq Whisper and ElevenLabs as above |
+| Secret scan | no Groq (`gsk_`) or ElevenLabs keys anywhere in the git history; `.env`, `certs/`, `models/`, `data/` never committed |
 
-Screenshots of every state are in `tests/screenshots/` (git-ignored; regenerate with the browser check).
+Screenshots: `tests/screenshots/v2/dark/`, `tests/screenshots/v2/light/`, `tests/screenshots/v2/body/`, `tests/screenshots/v2/race/` (git-ignored; regenerate with the scripts above).
+
+### Not verified (needs a person)
+
+- A real face on the webcam (face mesh, pulse accuracy), the real microphone (VAD tuning on a real room, wake phrase, push-to-talk), how the voice sounds and its latency through speakers, the Samsung tablet (layout, touch, tilt in the race, Chrome speech), frame rate on a real GPU (Playwright used software WebGL at 1–4 fps).
+- `tests/browser_check.py`, `tests/offline_check.py` and `tests/resource_check.py` are the v1 browser scripts; they were not re-run against the v2 interface.
 
 ## Human checklist
 
-Do these on the laptop in Chrome, then on the Samsung tablet.
+1. **Mic and voice:** Begin, allow the mic. Tap the mic, say "how far is Mars?": the orb listens, then answers aloud (ElevenLabs River). Say "hey Sentinel, check my heart". In Settings switch to "Push to talk only" if the room is noisy.
+2. **Follow-up:** "and how long would a radio message take?" should continue the topic.
+3. **Camera:** Face scan: the cyan face mesh, then "about N bpm" after 10–15 s in good light; cover the camera and the badge returns to SIM.
+4. **Body:** tap each system on the rail, open an organ view, run a full scan and a zone check; drag to turn, scroll to zoom.
+5. **Reaction test:** run the 30 s practice, then the full 3 minutes; lapses and false starts are counted.
+6. **Race:** one race with the keyboard; on the tablet try drag and "Use tilt".
+7. **Themes:** Settings → Clinical light; check each screen.
+8. **Tablet:** connect over HTTPS as above; Begin; camera, mic, race tilt, every control by touch.
 
-1. **Microphone + wake phrase:** tap Start, allow the mic. Say "Hey Sentinel". Expect a chime, "Yes, James?", the orb rippling with your voice. Then "Hey Sentinel, how am I doing?" → a spoken reply tagged "rules" (or "LLM" with a key) in the transcript.
-2. **Speech intents:** "Hey Sentinel, show me my heart" (beam + zoom to heart), "…run a full scan", "…open radiation", "…show my heart rate trend", "…go back", "…show me the hardware", "…stop".
-3. **Voice features:** after a few commands, open the Voice tile chart: new points should be solid (LIVE). Speak quietly and briefly: talk time falls.
-4. **Camera + pulse:** sit facing a window or lamp, still, face filling a third of the frame. Expect face and pose lines within seconds, "reading…" then "about N bpm" after 10–15 s, the camera badge turning LIVE, and the Heart rate tile badge LIVE. Compare with a finger on your wrist for 30 s; expect it within about ±10 bpm in good light (not a medical device). Cover the camera: within ~5 s the badge returns to SIM.
-5. **Live-video ring:** with your face in view, raise fatigue (demo panel → Tired crew): the eye zone is pointed at and a red ring with "eyes" appears on your face.
-6. **Speaker ID:** enrol two people in the demo panel (10 s each), then have each say "Hey Sentinel, how am I doing?". Expect the crew name to switch and "Hello <name>". A third, unenrolled person should not switch it.
-7. **Orb Calm with the camera:** start Orb Calm and breathe slowly with the pacer; the HR badge should be LIVE and the orb should move toward blue as your pulse falls (it may not fall far enough to clear in a short test).
-8. **Sound:** banner alarm, scan ticks, Orb Calm chime, ambient music; the mute button silences cues.
-9. **Tablet:** connect (hotspot), accept the certificate, tap Start, allow camera and mic. Check: layout in landscape and portrait; the camera shows your face (front camera, not black); speech recognition in Chrome for Android, or the quick buttons; tilt in Aurora Run (tap "Use tilt"); the screen does not sleep during the demo (wake lock); three-finger tap opens the demo panel; every control works by touch.
-10. **Offline:** turn WiFi off on the laptop (keep the hotspot link for the tablet, or test on the laptop alone): the page still loads, chat answers "rules", speech recognition stops (Chrome needs Google's servers) and the quick buttons take over, the radiation tile shows SNAPSHOT with its data time.
+---
 
-## Environment (Phase 0, 13 Nov 2026)
+## Choices made (where the brief left room)
 
-| Step | Result |
-|---|---|
-| Preflight | Python 3.12.10, git 2.49.0, Node v26.13.0 |
-| Repo | `git init`, branch `build`, `.gitignore` covers .env, .venv, __pycache__, data, voiceprints, certs; `video/` is ignored and untouched |
-| Python env | `.venv` already present; FastAPI 0.162.5, uvicorn 0.54.0, httpx 0.28.1, numpy 2.5.4, pytest 9.2.0, cryptography 50.0.2 verified by import; `requirements.txt` rewritten to the core pins; `requirements-speaker.txt` holds the speaker stack and its install order. Playwright 1.65.1 and pypdf added to the venv for testing and source checking (not in requirements). |
-| Speaker ID | Resemblyzer 0.1.4 on torch 2.15.0+cpu imports and embeds 1 s of synthetic audio to a 256-value vector |
-| Vendored JS | MediaPipe `vision_bundle.mjs`, `wasm/` (4 files), `face_landmarker.task`, `pose_landmarker_lite.task`, Chart.js UMD, GSAP: present, non-empty, all served 200 |
-| NOAA | `shared/swpc_*.json` snapshot present; live feeds fetched 13 Nov and their structure matches the parser |
-| DONKI | `shared/donki_sep_events.json`: 60 SEP events (two 60-day windows in 2024; DONKI rejects longer ranges) |
-| LLM | no `.env`: rules fallback is the default |
-| Certificate | `tools/make_cert.py` → `certs/` for localhost, 127.0.0.1, 192.168.100.8, 192.168.136.1, 192.168.163.1 |
-| Skills | frontend-design, ui-ux-pro-max, design-system, dataviz loaded and followed; webapp-testing's approach (Playwright) used for the browser checks; gsap skills not loaded (GSAP is used only for three tweens) |
+- **Brain model.** `openai/gpt-oss-120b` on Groq with `reasoning_effort: low`; only the final `content` is spoken, Unicode is normalised (U+202F, U+2011) before speech. `llama-3.3-70b-versatile` is no longer available on Groq. The model replies in plain text with an optional final `COMMANDS: [...]` line, which streams cleanly; the v1 JSON format is still accepted.
+- **Why not OpenClaw.** OpenClaw is a self-hosted personal agent that runs on a computer, connects to messaging apps and acts on the machine. It still needs an LLM underneath, adds latency and setup, and giving it system access on the demo laptop is a security risk. Sentinel needs a fast conversational model behind a deterministic rules engine, which it has.
+- **Health vs general questions** are told apart by a word list; the numeric guard (no number that is not in the state) applies only to health answers, checked sentence by sentence while streaming.
+- **Local Whisper runs in its own process** (`brain/whisper_worker.py`): on this laptop the Kokoro (onnxruntime) and Whisper (CTranslate2) models did not fit together in one process, and the venv's PyAV is incompatible with faster-whisper's decoder, so the worker decodes WAV itself.
+- **Heart-rate drift is two-sided**: a 20% drop against the 15% line is a change from baseline (watch), never "within your usual range".
+- **Anchors, rings, scan spans and camera framings** are derived from each loaded model's geometry, so the 1.60 m female and the 1.89 m male both frame correctly. The six mock crew are a mix (`body_model` in each profile).
+- **The X-ray is a visualisation** of one adult male reference specimen (BodyParts3D) fitted to both bodies; the lungs are generated to fit the ribcage because the dataset has no lung tissue. The About panel says so.
+- **Store and forward** uses a fixed SIM one-way delay of 12.7 min (inside NASA's 4–24 min Earth–Mars range); packets are stored in `data/ground.json`.
+- **The race replaced Aurora Run**; the backend's intervention id `aurora_run` is kept for contract compatibility and opens the race.
+
+## Contract additions
+
+The frozen block is unchanged. Additions used: `display_name`, `identity.source`, `vitals.sources.*`, `manual.*`, `voice.*`, `cognitive.*`, `drift.items[]`, `action.{zone, severity, intervention}`, `engagement.*`, `radiation.*`, `wellbeing.*` (all from v1) and, new in v2, **`body_model`** (`"male" | "female"`). Anything else in a patch returns 422. Session numbers that are not state (race, reaction-test lapses, timed measures) go to the history through `POST /api/log/{id}` with a whitelisted field name.
+
+## Thresholds and sources
+
+All limits are in `shared/thresholds.json`, each with `kind` (`nasa`, `clinical_reference`, `demo_placeholder`) and `source`; see `shared/SOURCES.md`. All drift percentages are `demo_placeholder`. NASA monitoring background for the pitch: `design/NASA_MONITORING_RESEARCH.md`. Sentinel is designed around NASA's problems; it does not claim compliance with NASA-STD-3001, EIMO or CHP-IDA, and it is not a medical device.
+
+## Cuts
+
+- **Sentinel Skin SIM data feed** (module readings and simulated ultrasound panels flowing into zone checks): the screen ships, the data source in the demo panel does not.
+- **Measurement rings on the upper arms** (horizontal slices of A-pose arms read badly); chest, waist, thighs and head rings ship.
+- **Exploded view** of the wearable; modules are listed and pinned on the body instead.
+- **v1 browser scripts** not ported to the v2 interface (see "Not verified").
+
+## Repository hygiene
+
+`.gitignore` covers `.env`, `.venv/`, `certs/`, `models/`, `data/` (state, TTS cache, usage, ground queue), `voiceprints/`, caches and screenshots. The largest tracked files are the vendored MediaPipe WASM (14 MB each); nothing is near 50 MB. A scan of all commits found no `gsk_` keys and no ElevenLabs keys; two long tokens flagged by the pattern were minified vendor code.

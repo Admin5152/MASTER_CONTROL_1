@@ -1,0 +1,7 @@
+# Offline voice (optional): local speech recognition and the Kokoro fallback voice.
+# pip install -r requirements-voice.txt, then fetch the models (README: Models).
+faster-whisper==1.2.1
+ctranslate2==4.9.0
+kokoro-onnx==0.6.1
+onnxruntime==1.32.0
+soundfile==0.14.0

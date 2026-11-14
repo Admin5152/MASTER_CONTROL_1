@@ -19,6 +19,15 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "Installing backend packages ..."
     & $py -m pip install -r requirements.txt
 }
+# 1b. Optional offline voice (local Whisper + Kokoro). Failure is fine: the browser voice takes over.
+& $py -c "import faster_whisper, kokoro_onnx" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Installing the offline voice packages (requirements-voice.txt) ..."
+    & $py -m pip install -r requirements-voice.txt
+}
+if (-not (Test-Path (Join-Path $PSScriptRoot "models\tts\kokoro-v1.0.onnx"))) { Write-Host "Kokoro model missing: see README > Models (the fallback voice will be the browser's)." -ForegroundColor Yellow }
+if (-not (Test-Path (Join-Path $PSScriptRoot "models\whisper\base.en\model.bin"))) { Write-Host "Local Whisper model missing: see README > Models (speech needs Groq or the browser then)." -ForegroundColor Yellow }
+
 # 2. Optional speaker ID (Resemblyzer). Plain `pip install resemblyzer` fails on Windows (webrtcvad needs a
 #    C++ compiler), so install in this order. Failure here is fine: the app uses the manual crew selector.
 if (-not $SkipSpeaker) {
