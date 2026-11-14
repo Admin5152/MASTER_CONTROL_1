@@ -211,7 +211,7 @@ export function matchIntent(text, ctx = {}) {
   }
 
   // full scan
-  if (/ (full|body|whole body) scan /.test(t) || / (run|do|start) (a |the )?(full )?scan /.test(t) || has(t, "scan me") || has(t, "scan my body")) {
+  if (/ (full|body|whole body) scan /.test(t) || / (run|do|start|make|perform|begin) (a |the |me a )?(full |quick |complete )?scan /.test(t) || / scan (me|my (whole |full |entire )?body|everything|all of me) /.test(t) || has(t, "check everything") || has(t, "check my whole body")) {
     return { intent: "scan", action: "start_check", target: "whole_body", commands: [{ cmd: "start_scan" }] };
   }
 

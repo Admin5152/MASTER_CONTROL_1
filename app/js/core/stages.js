@@ -25,9 +25,12 @@ export function createStages({ world, space, orb }) {
     }
     if (mode === "calm") return { x: W / 2, y: H * 0.36, size: Math.min(H * 0.34, W * 0.36, 300) };   // Stillpoint: room below for the cue
     if (mode === "off") return { x: W / 2, y: H / 2, size: 0, opacity: 0 };
-    const s = big ? 92 : 62;
-    if (W < 1000 && H > W) return { x: W - g - 40, y: top + 46, size: s };
-    return { x: g + 44, y: Math.min(H - dock / 2 - 2, H - s * 0.75 - 12), size: s };   // fully on screen
+    // docked: the orb lives inside the bottom bar, beside the menu button, so no card can ever sit over it.
+    // Its particles spread about 1.2x its size, so the size is capped by the bar's height; speaking or
+    // listening makes it brighter and a little larger, but never tall enough to reach the cards above.
+    const room = Math.max(40, (dock - 10) / 1.2);
+    const s = Math.min(big ? 74 : 58, room);
+    return { x: g + 40, y: H - dock / 2 - 2, size: s };
   }
 
   function placeOrb(seconds = 1.0) {

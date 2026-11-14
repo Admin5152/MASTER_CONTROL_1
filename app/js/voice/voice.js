@@ -10,6 +10,7 @@
 import { emit } from "../core/bus.js";
 import { audioContext, unlockAudio } from "../core/sound.js";
 import { matchWake } from "./wake.js";
+import { matchIntent } from "../core/intents.js";
 import { medianPitch, rms, talkTime } from "./pitch.js";
 import { encodeWav, resample } from "./wav.js";
 import { createVad } from "./vad.js";
@@ -112,10 +113,10 @@ async function ttsOnce(text, engine) {
   } finally { clearTimeout(t); }
 }
 
-/** The voice chain: the server's first choice (ElevenLabs, or Kokoro if that fails there), then Kokoro
- *  explicitly, then null (the caller uses browser speech). Every failure is logged with its status. */
+/** The voice comes from the server (ElevenLabs); null means it failed
+ *  (the caller then uses browser speech as the last resort). Every failure is logged with its status. */
 async function fetchAudio(text, myGen) {
-  for (const engine of ["auto", "kokoro"]) {
+  for (const engine of ["auto"]) {   // the server speaks with ElevenLabs
     if (myGen !== gen) return null;
     try {
       const { buf, source } = await ttsOnce(text, engine);
@@ -333,6 +334,15 @@ async function transcribe(audio) {
   handleText(text, audio, { ptt, awaiting });
 }
 
+/** An unmistakable command ("do a full body scan", "open my vitals", "explode it"): acted on without the wake
+ *  phrase. Questions and conversation still need "Sentinel" first, so talk in the room is not answered. */
+function isClearCommand(text) {
+  const m = matchIntent(text);
+  if (!m || !m.commands?.length) return false;
+  if (m.intent === "clarify" || m.intent === "point") return false;   // "heart", "my eyes": too easy to say in passing
+  return String(text).trim().split(/\s+/).length <= 12;
+}
+
 function handleText(text, audio, { ptt = false, awaiting = false } = {}) {
   emit("voice:transcript", { text, final: true });
   const w = matchWake(text);
@@ -344,7 +354,7 @@ function handleText(text, audio, { ptt = false, awaiting = false } = {}) {
       onCommand(w.command, { via: "voice", heard: text });
     }
     else { awaitingUntil = Date.now() + 8000; emit("voice:open", 8000); onCommand("", { via: "voice", heard: text, wakeOnly: true }); }
-  } else if (ptt || awaiting || Date.now() < awaitingUntil || openMic()) {
+  } else if (ptt || awaiting || Date.now() < awaitingUntil || openMic() || isClearCommand(text)) {
     const open = !(ptt || awaiting || Date.now() < awaitingUntil);
     awaitingUntil = 0;
     if (audio) onUtteranceAudio(audio);

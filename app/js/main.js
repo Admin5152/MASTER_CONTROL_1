@@ -111,7 +111,24 @@ async function boot() {
 }
 
 // ---------- the Begin tap: unlock everything that needs a user gesture ----------
+// One Sentinel at a time: a second tab on the same device would hear the same words and answer in a second voice.
+// The newest tab wins; older ones go quiet (no listening, no speech) and say so, and can take over with a tap.
+let sleeping = false;
+const instanceId = Math.random().toString(36).slice(2);
+const tabs = "BroadcastChannel" in window ? new BroadcastChannel("sentinel-instance") : null;
+function goQuiet() {
+  if (sleeping) return;
+  sleeping = true;
+  voiceMod.stopSpeaking(); voiceMod.stopListening();
+  const el = document.createElement("div"); el.id = "elsewhere"; el.className = "elsewhere";
+  el.innerHTML = `<p>Sentinel is open in another tab, so this one is quiet.</p><button type="button" class="pill pill-light">Use this tab</button>`;
+  el.querySelector("button").addEventListener("click", () => { el.remove(); sleeping = false; tabs?.postMessage({ type: "active", id: instanceId }); applyListening(); });
+  document.body.appendChild(el);
+}
+tabs?.addEventListener("message", (e) => { if (e.data?.type === "active" && e.data.id !== instanceId && document.getElementById("app") && !$("app").hidden) goQuiet(); });
+
 async function start() {
+  tabs?.postMessage({ type: "active", id: instanceId });   // any other open Sentinel goes quiet
   audioContext();
   voiceMod.unlockSpeech();
   try {
@@ -183,6 +200,7 @@ async function requestWakeLock() {
 }
 
 function applyListening() {
+  if (sleeping) return;   // another tab is the live one
   const ptt = settings.get("listen") === "ptt";
   if (!voiceMod.voice.micReady && !voiceMod.voice.recognitionAvailable) { $("voice-mode").textContent = "typing"; return; }
   if (ptt) { voiceMod.stopListening(); $("voice-mode").textContent = "push to talk"; }
@@ -578,6 +596,7 @@ function say(text, opts = {}) {
   speakingSource = opts.source || "";
   // the caption follows what is being said: a queued sentence is captioned when it starts playing
   if (!opts.append || !voiceMod.voice.speaking) caption(text, opts.source);
+  if (sleeping) return Promise.resolve();   // the quiet tab never speaks
   return voiceMod.speak(text, { interrupt: opts.append ? false : true });
 }
 

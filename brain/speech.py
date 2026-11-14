@@ -259,9 +259,9 @@ def tts(text: str, voice: str = DEFAULT_VOICE, engine: str = "auto") -> dict:
     CACHE.mkdir(parents=True, exist_ok=True)
     eleven_voice = voice if voice in ELEVEN_VOICES else DEFAULT_VOICE
     kokoro_voice = voice if voice in KOKORO_VOICES else "af_heart"
-    order = ["elevenlabs", "kokoro"]
-    if engine == "kokoro" or voice in KOKORO_VOICES or os.getenv("SENTINEL_TTS") == "kokoro":
-        order = ["kokoro"]   # SENTINEL_TTS=kokoro: test runs that must not spend ElevenLabs credit
+        # ElevenLabs is the voice. Kokoro runs only when asked for by name (SENTINEL_TTS=kokoro, or test runs that must
+    # not spend ElevenLabs credit); it is not in the live chain. If ElevenLabs fails, the page uses browser speech.
+    order = ["kokoro"] if (engine == "kokoro" or voice in KOKORO_VOICES or os.getenv("SENTINEL_TTS") == "kokoro") else ["elevenlabs"]
     # cached ElevenLabs audio is free: use it even past the budget or offline
     for eng in order:
         p = _cache_path(eng, eleven_voice if eng == "elevenlabs" else kokoro_voice, text, "mp3" if eng == "elevenlabs" else "wav")
@@ -273,7 +273,8 @@ def tts(text: str, voice: str = DEFAULT_VOICE, engine: str = "auto") -> dict:
                 audio, mime, v = tts_eleven(text, eleven_voice), "audio/mpeg", eleven_voice
             else:
                 audio, mime, v = tts_kokoro(text, kokoro_voice), "audio/wav", kokoro_voice
-        except Exception:
+        except Exception as e:
+            print(f"[sentinel voice] {eng} failed: {e}", flush=True)
             continue
         p = _cache_path(eng, v, text, "mp3" if eng == "elevenlabs" else "wav")
         try:

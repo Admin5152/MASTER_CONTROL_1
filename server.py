@@ -289,9 +289,11 @@ async def stt(request: Request, prefer: str = "auto"):
         raise HTTPException(413, "utterance longer than 20 s")
     loop = asyncio.get_running_loop()
     try:
-        return await loop.run_in_executor(None, lambda: speech.stt(wav, prefer))
+        out = await loop.run_in_executor(None, lambda: speech.stt(wav, prefer))
     except Exception as e:
         raise HTTPException(503, f"speech recognition unavailable: {type(e).__name__}")
+    print(f"[sentinel heard] ({out.get('source')}) {out.get('text', '')!r}", flush=True)
+    return out
 
 
 @app.post("/api/tts")

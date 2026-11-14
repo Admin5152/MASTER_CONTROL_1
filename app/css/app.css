@@ -763,3 +763,5 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 #btn-fullscreen[aria-pressed="true"] .fs-out { display: inline; }
 #btn-fullscreen.is-hint { animation: fs-hint 1s ease-in-out 3; box-shadow: 0 0 0 2px var(--accent); }
 @keyframes fs-hint { 50% { transform: scale(1.18); } }
+
+.elsewhere { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 24px; text-align: center; background: rgba(3, 5, 10, .86); color: var(--ink); font-size: 16px; }
