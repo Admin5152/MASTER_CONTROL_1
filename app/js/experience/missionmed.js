@@ -250,6 +250,7 @@ function renderOrgan(el, ctx, zone = "heart") {
     const sheetLeft = document.getElementById("sheet").getBoundingClientRect().left;
     b.setFrameRect({ left: host.left, top: host.top, width: Math.max(200, Math.min(host.right, sheetLeft - 16) - host.left), height: host.height });
     ctx.organZone = zone;
+    document.body.dataset.organ = zone;   // only this organ's dot and chip stay visible
     b.setStyle("real");
     await b.isolate(part);
   })();
@@ -259,6 +260,7 @@ function renderOrgan(el, ctx, zone = "heart") {
     clearInterval(t);
     const b = ctx.body3d;
     ctx.organZone = null;
+    delete document.body.dataset.organ;
     if (b) { b.setFrameRect(null); b.setStyle("radiograph"); b.focus(null); b.setStyle("radiograph"); b.setXray(false, 0.8); b.zoomReset(1.0); }
   };
 }

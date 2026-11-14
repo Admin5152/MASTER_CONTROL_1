@@ -433,7 +433,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     }
     const radio = style === "radiograph";
     skinMat.uniforms.c.value.set(radio ? "#9fb9d6" : "#4f9dff");
-    skinMat.uniforms.vis.value = real ? 0.35 : 1;
+    skinMat.uniforms.vis.value = real ? 0 : 1;   // an organ view shows the organ alone (refs 13-14)
     // a softer key and a warmer fill for the lit organ views; the studio set-up otherwise
     key.intensity = real ? 1.05 : 1.7; fill.intensity = real ? 0.95 : 0.5; rimL.intensity = real ? 1.6 : 2.4;
   }
@@ -477,7 +477,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     }
     if (radOn) radMat.uniforms.uAmt.value = 0.55 + 0.25 * Math.sin(t * 2.2);
     // X-ray reads on near-black with little bloom; the solid body keeps the navy studio
-    const xv = Math.max(xa, wireU.uOn.value * 0.6);
+    const xv = style === "real" ? 0 : Math.max(xa, wireU.uOn.value * 0.6);   // organ views keep the theme's own backdrop
     world.setSkyFade(1 - 0.82 * xv);
     world.setBloom(world.bloomBase * (1 - 0.72 * xv));
     updateHotspots();
