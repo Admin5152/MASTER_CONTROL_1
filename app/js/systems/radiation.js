@@ -51,13 +51,14 @@ export function renderRadiation(el, ctx) {
 
       <div class="card-head"><span class="label">Space weather</span><span data-sw-badge></span></div>
 
-      <div class="rad-location" aria-live="polite"><span class="label">Mission location · SIM</span><strong data-location-world></strong><p class="note" data-location-coords></p><p class="fine">Demo position only. The marker follows the selected mission world; no astronaut telemetry is connected.</p></div>
 
       <p class="note" data-sw-time></p>
 
       <div class="chart-box"><canvas data-flux role="img" aria-label="Proton flux, 24 hours, log scale"></canvas></div>
 
       <p class="fine">Protons at or above 10 MeV, NOAA GOES near Earth, log scale with S-level lines. On a deep-space mission the onboard dosimeter would feed this display ${badgeHTML("DESIGNED")}.</p>
+
+      <div class="rad-location" aria-live="polite"><span class="label">Mission location · SIM</span><strong data-location-world></strong><p class="note" data-location-coords></p><p class="fine">Demo position only. The marker follows the selected mission world; no astronaut telemetry is connected.</p></div>
 
     </section>
 
@@ -230,7 +231,8 @@ export function renderRadiation(el, ctx) {
     const explorerKey = `${ctx.view.crewId}:${r.mission_profile}`;
     if (explorerKey !== explorerProfile) {
       closeExplorer?.();
-      closeExplorer = mountPlanetExplorer(explorerHost, r.mission_profile, s.display_name);
+      const others = (ctx.view.crew || []).filter((c) => c.crew_id !== ctx.view.crewId).map((c) => c.display_name);
+      closeExplorer = mountPlanetExplorer(explorerHost, r.mission_profile, s.display_name, others);
       explorerProfile = explorerKey;
     }
 

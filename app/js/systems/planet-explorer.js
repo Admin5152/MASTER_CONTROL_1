@@ -1,14 +1,14 @@
 import * as THREE from "three";
 
 // All surface occupants and shelter sites in this explorer are fictional demo data.
-export function mountPlanetExplorer(host, profile, crewName = "Selected astronaut") {
+export function mountPlanetExplorer(host, profile, crewName = "Selected astronaut", others = []) {
   const moon = profile === "lunar", surface = moon || profile.startsWith("mars");
   const name = moon ? "Moon" : profile.startsWith("mars") ? "Mars" : "Earth";
   const base = moon ? [0.6741, 23.4729] : [-4.5895, 137.4417];
   const points = surface ? [
     { name: crewName, type: "Astronaut", lat: base[0], lon: base[1], status: "Surface survey" },
-    { name: "Crew member 2", type: "Astronaut", lat: base[0] + 8, lon: base[1] + 12, status: "Field traverse" },
-    { name: "Crew member 3", type: "Astronaut", lat: base[0] - 12, lon: base[1] - 15, status: "At habitat" },
+    { name: others[0] || "Crew member 2", type: "Astronaut", lat: base[0] + 8, lon: base[1] + 12, status: "Field traverse" },
+    { name: others[1] || "Crew member 3", type: "Astronaut", lat: base[0] - 12, lon: base[1] - 15, status: "At habitat" },
     { name: "Primary shelter", type: "Shelter", lat: base[0] + 3, lon: base[1] + 4, status: "Demo shelter site; capacity 6" },
     { name: "Field shelter", type: "Shelter", lat: base[0] - 15, lon: base[1] + 22, status: "Demo shelter site; capacity 3" },
   ] : [];

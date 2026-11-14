@@ -578,6 +578,7 @@ async def scenario(name: str, speed: float = 1.0, crew_id: str | None = None):
     if name == "reset":   # a clean, calm demo: every crew member at their own baseline, nothing left switched on
         global ops, suits
         ops, suits = Ops(), Suits()
+        ground.clear()   # no leftover digests in "Messages to ground"
         audit.record("brain", "demo.reset", None)
     return scenarios.start(name, crew_id, speed)
 

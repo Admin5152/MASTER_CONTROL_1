@@ -42,3 +42,11 @@ def test_sentinel_skin_sim_feed(client):
     assert client.get("/api/aux/amara").json()["skin"] == {"on": False}
     client.post("/api/skin/james", json={"on": False})
     assert client.get("/api/aux/james").json()["skin"] == {"on": False}
+
+
+def test_demo_reset_clears_the_queue():
+    g = Ground(persist=False)
+    g.send("james", "exam", "Guided exam", {"hr": 64})
+    assert g.list("james")
+    g.clear()
+    assert g.list("james") == []

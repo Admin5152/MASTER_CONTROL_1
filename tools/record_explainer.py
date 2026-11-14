@@ -278,9 +278,9 @@ async def run(narr: dict):
         await pg.click("#start-btn"); await pg.wait_for_selector("#who [data-who]"); await quiet()
 
         await narrate("you")
-        # the chooser is a voice moment: the words go in exactly as the microphone's transcript would
-        print(f"[{len(frames):5d} frames] hear: I'm Eliah", flush=True)
-        await pg.wait_for_timeout(600); await pg.evaluate("window.sentinel.hear(\"I'm Eliah\")"); await quiet(); await pg.wait_for_timeout(500)
+        # the chooser: tap the name (nothing in the app exists only for this video)
+        print(f"[{len(frames):5d} frames] tap: Eliah", flush=True)
+        await pg.wait_for_timeout(600); await pg.click("#who [data-who=james]"); await quiet(); await pg.wait_for_timeout(500)
         await say("How am I doing today?", 700)
         await narrate("twin")
         await say("Do a full body scan", 0, max_s=60)

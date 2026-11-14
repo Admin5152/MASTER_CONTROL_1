@@ -36,6 +36,12 @@ class Ground:
         from brain.vault import write_json
         write_json(DATA / "ground.json", self.packets[-200:])   # encrypted at rest
 
+    def clear(self) -> None:
+        """Empty the queue (the demo reset: a clean start, no leftover digests)."""
+        with self.lock:
+            self.packets = []
+            self._save()
+
     def status(self, p: dict, now: float | None = None) -> dict:
         now = self.clock() if now is None else now
         depart = p.get("depart", p["sent"])

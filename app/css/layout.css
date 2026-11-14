@@ -7,7 +7,15 @@
 .topnav button:hover { color: var(--ink); }
 .topnav button[aria-current="true"] { background: var(--nav-on); color: var(--nav-on-ink); }
 .statusline .sl-tools { margin-left: 0; }
-@media (max-width: 1180px) { .statusline #sb-cabin-word, .statusline #sb-rad { display: none; } .topnav button { padding: 7px 10px; } }
+/* tablets (Galaxy Tab 1280, iPad 1180): the status bar keeps what matters and never runs off the edge;
+   a cabin alert always shows, the calm readouts live on Mission and Radiation */
+@media (max-width: 1366px) {
+  .statusline .brand-sub, .statusline #sb-identity { display: none; }
+  .statusline #sb-rad, .statusline #sb-rad-badge { display: none; }
+  .statusline .sb-cabin:not(.is-alert) { display: none; }
+  .topnav button { padding: 7px 11px; }
+}
+@media (max-width: 1180px) { .topnav button { padding: 7px 10px; } }
 @media (max-width: 900px) { .topnav { display: none; } }
 
 /* ---- body stage: rail | body | selected system ---- */
@@ -22,7 +30,7 @@
 .rail-dot { position: absolute; right: 7px; top: 7px; width: 7px; height: 7px; border-radius: 50%; display: none; }
 .rail-dot.is-watch { display: block; background: var(--watch); box-shadow: var(--glow-watch); }
 .rail-dot.is-alert { display: block; background: var(--alert); box-shadow: var(--glow-alert); }
-.body-zoom { position: absolute; left: 8px; bottom: 64px; display: grid; gap: 6px; }
+.body-zoom { position: absolute; right: 8px; bottom: 64px; display: grid; gap: 6px; }
 .body-zoom .icon-btn { background: var(--surface); border: 1px solid var(--rule); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 @media (max-width: 620px) {
   .body-tools .pill { padding-inline: 8px; }

@@ -52,6 +52,7 @@
   --rule-2: rgba(255, 255, 255, 0.16);
   --surface: rgba(12, 19, 34, 0.84);
   --surface-strong: rgba(12, 19, 34, 0.95);
+  --surface-solid: #101a2c;   /* opaque panels (alerts): the same navy as the glass cards */
   --surface-solid: #0c1424;
   --surface-sunk: rgba(255, 255, 255, 0.05);
   --assist: var(--c-cyan);
@@ -113,9 +114,9 @@
   --touch: 48px;
 
   /* ---- glow ---- */
-  --glow-assist: 0 0 22px rgba(111, 208, 255, 0.45);
-  --glow-alert: 0 0 18px rgba(255, 59, 78, 0.75);
-  --glow-watch: 0 0 16px rgba(255, 181, 71, 0.6);
+  --glow-assist: 0 0 14px rgba(111, 208, 255, 0.28);
+  --glow-alert: 0 0 12px rgba(255, 59, 78, 0.38);
+  --glow-watch: 0 0 10px rgba(255, 181, 71, 0.32);
 
   /* ---- motion ---- */
   --t-fast: 160ms;
@@ -168,6 +169,7 @@
   --rule-2: rgba(15, 29, 51, 0.16);
   --surface: rgba(255, 255, 255, 0.78);
   --surface-strong: rgba(255, 255, 255, 0.94);
+  --surface-solid: #ffffff;
   --surface-solid: #ffffff;
   --surface-sunk: rgba(15, 29, 51, 0.05);
   --assist: #1f5fe0;

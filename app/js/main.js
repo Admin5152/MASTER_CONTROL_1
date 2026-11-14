@@ -534,8 +534,6 @@ function pushToTalk() {
 
 function wireVoice() {
   voiceMod.initVoice({ onCommand: (text, meta) => handleCommand(text, meta), onUtterance: (audio) => onUtterance(audio) });
-  // for the test harness and recorded demos: words as if heard by the microphone (after transcription), same path as speech
-  ctx.hear = (text) => { caption(`“${text}”`, ""); return handleCommand(text, { via: "voice", heard: text }); };
   voiceMod.setOpenMic(() => choosing);   // "Who's here?": just say your name, no wake phrase and no tap
   on("voice:open", () => { $("btn-mic").classList.add("is-open"); clearTimeout(wireVoice.t); wireVoice.t = setTimeout(() => $("btn-mic").classList.remove("is-open"), 8000); });
   on("voice:transcript", ({ text, final }) => { if (!final && text) caption(`“${text}”`, ""); });
@@ -878,18 +876,30 @@ function updateSuit(suit) {
   const banner = $("suit-alert");
   ctx.body3d?.setBreach?.(bad ? suit.region : null, bad ? suit.integrity : undefined);
   if (!bad) {
-    if (suitShown) { banner.hidden = true; $("suit-tag").hidden = true; suitShown = null; ctx.wearCmd?.({ cmd: "wearable", action: "alert", kind: "normal" }); }
+    if (suitShown) { banner.hidden = true; document.body.classList.remove("suit-on"); $("suit-tag").hidden = true; suitShown = null; ctx.wearCmd?.({ cmd: "wearable", action: "alert", kind: "normal" }); }
     $("sb-suit").hidden = !(suit && suit.mode === "eva");
     if (suit?.mode === "eva") $("sb-suit").textContent = `EVA · suit ${suit.pressure_psi} psi`;
     return;
   }
   $("sb-suit").hidden = false; $("sb-suit").textContent = `EVA · suit ${suit.pressure_psi} psi`;
   banner.hidden = false;
+  document.body.classList.add("suit-on");
+  if (!updateSuit.ro) {   // on the Body screen the right column moves down by the alert's height: nothing hides under it
+    updateSuit.ro = new ResizeObserver(() => document.documentElement.style.setProperty("--suit-h", `${banner.offsetHeight}px`));
+    updateSuit.ro.observe(banner);
+  }
   banner.className = `suit-alert is-${suit.integrity}`;
-  banner.innerHTML = `<div class="sa-head"><span class="sa-dot"></span><b>${SUIT_WORD[suit.integrity]}: ${esc(suit.region_label)}</b><span class="badge badge-sim">SIM</span></div>
-    <p class="sa-read"><span>${suit.pressure_psi} <small>psi</small></span><span>${suit.pressure_rate_psi_min} <small>psi/min</small></span><span>O₂ ${suit.o2_flow_lb_hr} <small>lb/hr</small></span><span>CO₂ ${suit.co2_mmhg} <small>mmHg</small></span></p>
-    <ol>${(suit.steps || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
-    <p class="fine">Illustrative steps; the mission's EVA procedures and your cue card come first.</p>`;
+  const region = String(suit.region_label || "");
+  banner.innerHTML = `<div class="sa-head"><span class="sa-dot" aria-hidden="true"></span><span class="sa-kicker">${SUIT_WORD[suit.integrity]}</span><span class="badge badge-sim">SIM</span></div>
+    <h3 class="sa-title">${esc(region.charAt(0).toUpperCase() + region.slice(1))}</h3>
+    <div class="sa-read">
+      <span><b>${suit.pressure_psi}</b><small>psi</small></span>
+      <span class="${Number(suit.pressure_rate_psi_min) < 0 ? "is-falling" : ""}"><b>${suit.pressure_rate_psi_min}</b><small>psi/min</small></span>
+      <span><b>${suit.o2_flow_lb_hr}</b><small>O₂ lb/hr</small></span>
+      <span><b>${suit.co2_mmhg}</b><small>CO₂ mmHg</small></span>
+    </div>
+    <ol class="sa-steps">${(suit.steps || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
+    <p class="sa-fine">Illustrative steps; the mission's EVA procedures and your cue card come first.</p>`;
   $("suit-tag").textContent = suit.region_label;
   if (suitShown !== key) {
     suitShown = key;

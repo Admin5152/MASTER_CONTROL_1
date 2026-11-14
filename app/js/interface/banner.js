@@ -36,7 +36,8 @@ export function createBanner({ say }) {
     detail.textContent = d;
     const now = new Date();
     const reply = new Date(now.getTime() + SIM_DELAY_MIN * 2 * 60000);
-    ground.textContent = `Flagged to ground at ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. One-way signal delay ${SIM_DELAY_MIN} min (SIM); earliest reply about ${reply.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`;
+    const hm = (d) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    ground.textContent = `Ground notified ${hm(now)} · earliest reply ${hm(reply)} (${SIM_DELAY_MIN} min each way, SIM)`;
     badge.className = `badge ${badgeText.startsWith("LIVE") ? "badge-live" : "badge-sim"}`;
     badge.textContent = badgeText;
     startAlarm(sev);
@@ -52,7 +53,7 @@ export function createBanner({ say }) {
     if (a.type === "flag_cabin" || cabin.alert) {
       key = `cabin`;
       t = "Cabin atmosphere alert";
-      d = `${a.detail || "Cabin air out of range."} Cabin readings are simulated (SIM).`;
+      d = `${a.detail || "Cabin air out of range."}`;
       spoken = `Caution. ${a.detail || "Cabin air is out of range."} I have flagged it to ground. Please acknowledge.`;
     } else if (a.type === "flag_radiation") {
       key = `rad-${state.radiation.storm_level}`;
