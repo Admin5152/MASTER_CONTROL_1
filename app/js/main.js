@@ -36,6 +36,7 @@ import { mountVitals, renderVitals } from "./interface/vitals.js";
 import { registerMissionMed } from "./experience/missionmed.js";
 import { registerProfile } from "./experience/profile.js";
 import { registerAudit } from "./experience/audit.js";
+import { registerPulse } from "./experience/pulse.js";
 import * as reminders from "./core/reminders.js";
 import { auditBuf } from "./core/bus.js";
 import { registerSymptom } from "./systems/symptom.js";
@@ -258,6 +259,7 @@ async function mountApp() {
   registerMissionMed(registerScreen);
   registerProfile(registerScreen);
   registerAudit(registerScreen);
+  registerPulse(registerScreen);
   registerSymptom(registerScreen);
   registerScreen("orb_calm", { title: "Stillpoint", full: true, render: renderOrbCalm });
   registerScreen("race", { title: "Slipstream", full: true, render: renderRace });
@@ -295,7 +297,10 @@ async function mountApp() {
     moodOptIn: () => settings.get(`mood_optin:${view.crewId}`) !== "off",
     deviceId: () => settings.get("camera"),
     canPatch: () => !view.aux?.scenario?.running && !view.hrOverride,
-    patchHr: (bpm) => patch({ vitals: { heart_rate: bpm, source: "camera", sources: { heart_rate: "camera" } } }).catch(() => {}),
+    patchHr: (bpm, q) => {
+      if (typeof q === "number") api.context(view.crewId, { hr_confidence: q }).catch(() => {});   // S5: the brain knows how sure the camera is
+      return patch({ vitals: { heart_rate: bpm, source: "camera", sources: { heart_rate: "camera" } } }).catch(() => {});
+    },
     onFallback: () => {
       const src = view.state?.vitals?.sources || {};
       const back = {};
@@ -636,6 +641,13 @@ ctx.showNotice = showNotice;
 // ---------- commands ----------
 // ---------- W14 urgent wellbeing concern: fixed lines, people brought in, grounding open ----------
 let safetyOn = false;
+let pendingEnv = null;   // a spoken environment waiting for "yes" (no answer means no change)
+function showEnvBanner(out) {
+  const el = document.createElement("section"); el.className = "env-banner"; el.setAttribute("role", "status");
+  el.innerHTML = `<b>Environment: ${esc(out.environment)}</b><ul>${(out.changes || []).map((c) => `<li>${esc(c)}</li>`).join("")}</ul><button type="button" class="pill pill-ghost">OK</button>`;
+  el.querySelector("button").addEventListener("click", () => el.remove());
+  document.body.appendChild(el); setTimeout(() => el.remove(), 15000);
+}
 const earlyNoted = new Set();   // an early sign is answered once per session
 const SAFETY_FIRST = "I'm here. Please call a crewmate now. I'm letting them know.";
 async function safetyFlow(category) {
@@ -701,10 +713,35 @@ async function handleCommand(text, meta = {}) {
   }
   // conversation: after Sentinel answers a spoken request, the next thing said needs no wake phrase
   const followUp = () => { if (meta.via === "voice" && settings.get("listen") !== "ptt") voiceMod.expectReply(9000); };
-  const m = matchIntent(text, { wearOpen: stages.current === "vitals" });
+  let m = matchIntent(text, { wearOpen: stages.current === "vitals" });
+  if (m && (m.local === "yes" || m.local === "no") && !pendingEnv) m = null;
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
     if (m.local === "digest") { await sendDigest(); followUp(); return; }
+    if (m.local === "environment") {
+      let r = null; try { r = (await api.envMatch(text)).match; } catch { /* offline */ }
+      if (r?.env) {
+        pendingEnv = r;
+        say(`Switching to ${r.label}. Ranges, kit, reminders and what I advise will update. Confirm?`, { source: "local" });
+      } else say(r?.question || "Which applies: space station, deep-space transit, or a planetary base?", { source: "local" });
+      followUp(); return;
+    }
+    if (m.local === "yes" && pendingEnv) {
+      const r = pendingEnv; pendingEnv = null;
+      try {
+        const out = await api.envSet(view.crewId, { profile: r.profile });
+        showEnvBanner(out);
+        say(`Done. For the next ${out.settling_days_left || 3} days I'll treat small changes as you settling in, and I'll still alert on air and safety limits.`, { source: "local" });
+      } catch (e) { showNotice(e.message); }
+      return;
+    }
+    if (m.local === "no" && pendingEnv) { pendingEnv = null; say("No change. I'll keep the current environment.", { source: "local" }); return; }
+    if ((m.local === "yes" || m.local === "no") && !pendingEnv) { /* nothing pending: let the brain answer */ }
+    else if (m.local === "post_exercise") {
+      try { await api.context(view.crewId, { activity: "post_exercise", minutes: 30 }); } catch { /* offline */ }
+      say("Logged. For the next half hour I'll expect your pulse and breathing to be up and won't flag them.", { source: "local" });
+      followUp(); return;
+    }
     if (m.local === "snooze") { if (dueRoutine()) snoozeDue(); else say("There's nothing to snooze right now.", { source: "local" }); return; }
     if (m.local === "mode") { await setMode(m.mode); followUp(); return; }
     if (m.local === "blackout") {
@@ -741,7 +778,7 @@ async function handleCommand(text, meta = {}) {
         orb_calm: "Stillpoint", race: "Slipstream", greenhouse: "Red Harvest", grounding: "grounding", settings: "settings", about: "the credits",
         trends: "your trends", health_log: "the health log", cognitive: "the reaction test", symptom: "the symptom map", crew: "the crew",
         hardware: "the hardware", vision: "the camera", cabin: "the cabin", interventions: "what helps you", exam: "the health exam",
-        measures: "weekly measures", ground: "messages to ground", evidence: "the NASA evidence", profile: "your health profile", audit: "the audit log" };
+        measures: "weekly measures", ground: "messages to ground", evidence: "the NASA evidence", profile: "your health profile", audit: "the audit log", pulse: "the crew pulse" };
       const n = m.commands[0].name;
       if (NAMES[n]) say(`${["race", "greenhouse", "orb_calm", "grounding", "cognitive", "exam"].includes(n) ? "Starting" : "Opening"} ${NAMES[n]}.`, { source: "local" });
     }

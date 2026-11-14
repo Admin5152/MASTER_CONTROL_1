@@ -285,7 +285,7 @@ export function createVision({ video, overlay, msg, badge, pulseValue, pulseQual
       pulseValue.textContent = `about ${state.bpm} bpm`;
       pulseQuality.textContent = `quality ${Math.round(e.quality * 100)}% (${e.method})`;
       refreshBadge();
-      if (canPatch()) patchHr(state.bpm);
+      if (canPatch()) patchHr(state.bpm, e.quality);   // the quality goes with it: the brain treats a weak signal as an estimate
       emit("vision:hr", state.bpm);
       emit("reading.added", {
         indicator: "heart_rate",

@@ -103,7 +103,8 @@ class Ops:
         # never from statistics alone; a personal-baseline change is at most level 2.
         drift_lv = max([min(2, SEV_LEVEL.get(i.get("severity", "ok"), 0)) for i in (state.get("drift") or {}).get("items", [])] or [0])
         limit_lv = max([SEV_LEVEL.get(i.get("severity", "ok"), 0) for i in (assessment or {}).get("absolute", [])] or [0])
-        level = max(min(2, SEV_LEVEL.get(act.get("severity", "ok"), 0)), drift_lv, limit_lv)
+        hard = act.get("type") in ("flag_cabin", "flag_redflag", "flag_radiation", "flag_ground")   # limits, red flags, cabin, storm
+        level = max(SEV_LEVEL.get(act.get("severity", "ok"), 0) if hard else min(2, SEV_LEVEL.get(act.get("severity", "ok"), 0)), drift_lv, limit_lv)
         if (state.get("cabin") or {}).get("alert") or (suit and suit.get("integrity") == "breach"):
             level = 3
         v, b, m = state.get("vitals") or {}, state.get("baseline") or {}, state.get("manual") or {}

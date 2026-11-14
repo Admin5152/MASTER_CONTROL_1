@@ -13,6 +13,8 @@ The LLM never touches this.
 """
 from __future__ import annotations
 
+import re
+
 from .contract import get_path
 from .medicine import suggest
 from .thresholds import SEV_RANK
@@ -55,13 +57,33 @@ def decide(state: dict, absolute: list[dict], drift: dict, kit: dict, flag_storm
     if cabin.get("alert") or cabin_hits:
         parts = [f"{r['label']} {round(r['value'], 1):g}{'%' if r['unit'] == '%' else ' ' + r['unit']}" for r in cabin_hits]
         detail = ("; ".join(parts) or "Cabin atmosphere out of range") + ". Flagged to ground."
-        return _act("flag_cabin", detail, "cabin", "alert")
+        return _act("flag_cabin", f"{detail} Crew alerted.", "cabin", "alert")   # S6: the crew is told, not only ground
 
     # 2. radiation storm
     level = int(rad.get("storm_level") or 0)
     if level >= flag_storm_level and not rad.get("sheltered"):
         return _act("flag_radiation", f"Solar radiation storm S{level}. Move to the shelter area and log the time.",
                     "whole_body", "alert")
+
+    # 2b. red-flag symptoms (section 19.3: level 3 may come from red-flag symptoms). DRAFT list for clinician review.
+    log = [e for e in (get_path(state, "manual.symptom_log") or []) if isinstance(e, dict) and e.get("type")]
+    types = " ".join(str(e.get("type", "")).lower() for e in log)
+    zones_hit = {e.get("zone") for e in log}
+    red = None
+    if "head" in zones_hit and ("eyes" in zones_hit or "vision" in types or "blurred" in types or "double" in types):
+        red = ("head", "A head symptom with a change in vision")
+    elif re.search(r"chest pain|chest pressure|crushing", types):
+        red = ("heart", "Chest pain")
+    elif re.search(r"can.?t breathe|short(ness)? of breath|breathless", types):
+        red = ("lungs", "Trouble breathing")
+    elif re.search(r"faint|passed out|blacked out|confus|slurred|weakness on one side", types):
+        red = ("head", "Fainting, confusion or one-sided weakness")
+    elif any(int(e.get("severity") or 0) >= 3 and e.get("onset") == "now" for e in log):
+        e = next(e for e in log if int(e.get("severity") or 0) >= 3)
+        red = (e.get("zone") or "whole_body", f"A severe {e.get('type')}")
+    if red:
+        return _act("flag_redflag", f"{red[1]} is a red-flag symptom. Stop, alert a crewmate and follow the medical procedure; a priority digest goes to the flight surgeon.",
+                    red[0], "alert")
 
     # 3. alert-severity vital
     vital_alerts = [r for r in absolute if r["metric"] in VITAL_METRICS and r["severity"] == "alert"]

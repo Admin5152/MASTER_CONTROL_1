@@ -801,3 +801,7 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 .safety-big { font-size: clamp(34px, 6vw, 52px); font-weight: 300; margin: 0; }
 .safety-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }
 .safety .fine { font-size: 11px; opacity: .6; }
+
+.env-banner { position: fixed; z-index: 58; top: calc(var(--top-h) + 10px); left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 2 * var(--gutter)));
+  padding: 14px 16px; border-radius: 16px; background: var(--surface-strong); border: 1px solid var(--accent); box-shadow: 0 18px 50px rgba(0, 0, 0, .35); }
+.env-banner ul { margin: 8px 0; padding-left: 18px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }

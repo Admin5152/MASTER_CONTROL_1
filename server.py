@@ -32,6 +32,8 @@ from brain.ops import Ops, MODES as OPS_MODES  # noqa: E402
 from brain import safety  # noqa: E402
 from brain.profile import profiles  # noqa: E402
 from brain.audit import Audit  # noqa: E402
+from brain import environment as envmod  # noqa: E402
+from brain.crew_pulse import CrewPulse  # noqa: E402
 from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
@@ -45,6 +47,7 @@ from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
 suits = Suits()
 audit = Audit()
+pulse = CrewPulse()
 ops = Ops()
 spaceweather = SpaceWeather()
 scenarios = Scenarios(store, spaceweather)
@@ -190,7 +193,7 @@ def aux(cid: str):
     clock = store.mission_clock()
     return {"assessment": store.assessment(cid), "scenario": scenarios.status, "clock": clock,
             "skin": skin.aux(cid, store.get(cid), int(clock.get("mission_day", 0))), "suit": suits.status(cid),
-            "ops": ops.status(cid, store.get(cid))}
+            "ops": ops.status(cid, store.get(cid)), "extras": store.extras(cid)}
 
 
 @app.post("/api/ops/{cid}")
@@ -271,6 +274,47 @@ def audit_batch(body: dict = Body(...)):
 @app.get("/api/audit")
 def audit_list(limit: int = 200, crew_id: str | None = None, q: str = ""):
     return {"entries": audit.recent(min(limit, 1000), crew_id, q[:60])}
+
+
+@app.get("/api/environment/match")
+def environment_match(text: str = ""):
+    """What a spoken place means: {"env"} to confirm, {"ask"} to clarify, or null (section 13.1)."""
+    return {"match": envmod.match(text[:200])}
+
+
+@app.post("/api/environment/{cid}")
+def environment_set(cid: str, body: dict = Body(...)):
+    """A CONFIRMED switch (the page asks first): reload, settle in, recompute; returns the banner of changes."""
+    _need(cid)
+    prof = body.get("profile") or envmod.ENVS.get(body.get("env", ""), {}).get("profile")
+    if prof not in envmod.PROFILE_ENV:
+        raise HTTPException(400, "unknown environment")
+    r = store.set_environment(cid, prof)
+    audit.record("brain", "environment.changed", cid, {"from": r["from"], "to": r["to"]})
+    return r
+
+
+@app.post("/api/context/{cid}")
+def context_set(cid: str, body: dict = Body(...)):
+    """Reading context: {"activity": "post_exercise"|"none", "minutes"} and/or {"hr_confidence": 0-1} (S4, S5)."""
+    _need(cid)
+    return store.set_context(cid, body.get("activity"), float(body.get("minutes", 30)), body.get("hr_confidence"))
+
+
+@app.get("/api/pulse")
+def pulse_get(crew_id: str | None = None):
+    return pulse.result(int(store.mission_clock()["mission_day"]) // 7, crew_id)
+
+
+@app.post("/api/pulse/{cid}")
+def pulse_answer(cid: str, body: dict = Body(...)):
+    _need(cid)
+    try:
+        r = pulse.answer(int(store.mission_clock()["mission_day"]) // 7, cid, body)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    audit.record("brain", "pulse.answered", cid)   # that someone answered, never what
+    return r
 
 
 @app.post("/api/safety/{cid}")

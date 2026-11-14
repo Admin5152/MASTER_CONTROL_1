@@ -313,14 +313,98 @@ class Store:
         absolute = evaluate_absolute(s, th)
         s["cabin"]["alert"] = any(r["zone"] == "cabin" and r["severity"] == "alert" for r in absolute)
         d = compute_drift(s, th, self._history_baselines(cid))
-        s["drift"] = {"flag": d["flag"], "note": d["note"], "items": d["items"]}
-        s["action"] = decide(s, absolute, d, self.kit, self.flag_storm_level)
+        # context (S4, S5): pulse and breathing right after exercise, or a low-confidence camera pulse, are
+        # estimates: shown, never alarming
+        quiet = self._quiet(cid)
+        if quiet:
+            absolute = self._mute(absolute, quiet)
+            d = {**d, "items": [i for i in d["items"] if i.get("metric") not in quiet]}
+        s["drift"] = {"flag": d["flag"] if d["items"] else False, "note": d["note"] if d["items"] else "", "items": d["items"]}
+        act = decide(s, absolute, d, self.kit, self.flag_storm_level)
+        # settling in (S16): after an environment switch, a personal-baseline change reads as adjusting;
+        # ranges, cabin air, radiation and red flags still alert
+        day = int(self.mission_clock()["mission_day"]) if self.clock else 0
+        if it.get("settling_until_day", -1) > day and act.get("severity") != "alert" and act.get("type") in ("offer_orb_calm", "offer_intervention", "gentle_checkin"):
+            act = {**act, "severity": "info", "detail": "Adjusting to the new environment: " + (act.get("detail") or "")}
+        # same problem, different plan (S17): urgent cards carry what this environment means for help
+        if act.get("severity") == "alert":
+            from brain.environment import card_note
+            note = card_note(rad["mission_profile"], "air" if act.get("type") == "flag_cabin" else "severe")
+            if note and note not in (act.get("detail") or ""):
+                act = {**act, "detail": f"{act.get('detail', '')} {note}".strip()}
+        s["action"] = act
+        it["wellbeing"] = self._wellbeing(cid, s, d)
+
+    # ---- context, environment and wellbeing (outside the frozen contract; read through extras()) ----
+    def _quiet(self, cid: str) -> set:
+        """Readings that are estimates right now (S4 post-exercise, S5 low confidence): shown, never alarming."""
+        it, q = self.internal.get(cid, {}), set()
+        if it.get("post_exercise_until", 0) > time.time():
+            q |= {"vitals.heart_rate", "vitals.breathing_rate"}
+        if it.get("hr_confidence") is not None and it["hr_confidence"] < 0.35:
+            q.add("vitals.heart_rate")
+        return q
+
+    @staticmethod
+    def _mute(absolute: list, quiet: set) -> list:
+        return [r if r["metric"] not in quiet else {**r, "severity": "ok", "estimate": True} for r in absolute]
+
+    def set_context(self, cid: str, activity: str | None = None, minutes: float = 30, hr_confidence: float | None = None) -> dict:
+        with self.lock:
+            it = self.internal.setdefault(cid, {})
+            if activity == "post_exercise":
+                it["post_exercise_until"] = time.time() + max(1.0, minutes) * 60
+            elif activity == "none":
+                it.pop("post_exercise_until", None)
+            if hr_confidence is not None:
+                it["hr_confidence"] = max(0.0, min(1.0, float(hr_confidence)))
+            self._recompute(cid)
+            return self.extras(cid)
+
+    def set_environment(self, cid: str, profile: str) -> dict:
+        """Confirmed switch (S9, S11): new profile, settling-in starts, statuses recompute; returns what changed."""
+        from brain.environment import SETTLING_DAYS, changes
+        with self.lock:
+            old = self.states[cid]["radiation"]["mission_profile"]
+        self.patch(cid, {"radiation": {"mission_profile": profile}}, record=False)
+        with self.lock:
+            it = self.internal.setdefault(cid, {})
+            it["settling_until_day"] = int(self.mission_clock()["mission_day"]) + SETTLING_DAYS
+            self._recompute(cid)
+            return {"from": old, "to": profile, "changes": changes(old, profile), **self.extras(cid)}
+
+    def _wellbeing(self, cid: str, s: dict, d: dict) -> dict:
+        """Four dimensions against the person's usual (section 15.2); level 0-2 here (3 only from the safety flow);
+        the top three tools in the order that suits this person (profile "what helps me" first)."""
+        mood, fatigue, stress = get_path(s, "manual.mood"), get_path(s, "state.fatigue") or 0, get_path(s, "state.stress") or 0
+        talk = next((i for i in d.get("items", []) if i.get("metric") == "voice.talk_time"), None)
+        dims = {"mood": 1 if isinstance(mood, (int, float)) and mood <= 2 else 0, "energy": 1 if fatigue >= 0.6 else 0,
+                "stress": 1 if stress >= 0.6 else 0, "connection": 1 if talk and talk.get("delta_pct", 0) <= -40 else 0}
+        low = sum(dims.values())
+        try:
+            from brain.profile import profiles
+            helps = list(profiles.get(cid)["wellbeingPlan"].get("whatHelps") or [])
+        except Exception:
+            helps = []
+        order = list(dict.fromkeys(helps + ["orb_calm", "grounding", "greenhouse", "race"]))
+        return {"level": 0 if low == 0 else 1 if low == 1 else 2, "dims": dims, "tools": order[:3] if low else []}
+
+    def extras(self, cid: str) -> dict:
+        it = self.internal.get(cid, {})
+        day = int(self.mission_clock()["mission_day"])
+        prof = self.states[cid]["radiation"]["mission_profile"]
+        from brain.environment import PROFILE_ENV
+        return {"environment": PROFILE_ENV.get(prof, "station"), "profile": prof,
+                "settling_in": it.get("settling_until_day", -1) > day, "settling_days_left": max(0, it.get("settling_until_day", -1) - day),
+                "post_exercise": it.get("post_exercise_until", 0) > time.time(),
+                "hr_estimate": it.get("hr_confidence") is not None and it["hr_confidence"] < 0.35,
+                "wellbeing": it.get("wellbeing") or {"level": 0, "dims": {}, "tools": []}}
 
     def assessment(self, cid: str) -> dict:
         """Threshold results with kind and source, zone status, and the dose passport numbers."""
         with self.lock:
             s = self.states[cid]
-            absolute = evaluate_absolute(s, self.thresholds)
+            absolute = self._mute(evaluate_absolute(s, self.thresholds), self._quiet(cid))
             zones = {z: "ok" for z in ZONES}
             for item in absolute + s["drift"]["items"]:
                 z = item.get("zone")

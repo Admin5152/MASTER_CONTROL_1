@@ -44,6 +44,7 @@ export const SCREEN_WORDS = {
   vision: ["camera", "vision", "face scan"],
   vitals: ["vitals", "vital signs", "my vitals", "the vitals", "vital"],
   wellbeing: ["wellbeing", "well being", "wellness", "the games", "games"],
+  pulse: ["crew pulse", "team pulse", "pulse survey", "team survey"],
   audit: ["audit log", "the audit", "audit trail", "event log", "activity log"],
   profile: ["health profile", "my profile", "wellbeing plan", "my plan", "action plan", "my allergies", "allergies"],
   settings: ["settings", "preferences"],
@@ -184,6 +185,14 @@ export function matchIntent(text, ctx = {}) {
   if (/^ (snooze( it| that| the reminder)?|remind me later|later|not now|in a bit) $/.test(t) || / (snooze|remind me later|remind me in) /.test(t)) {
     return { intent: "snooze", local: "snooze", commands: [] };
   }
+  // environment (section 13.1): any sentence about where the crew is goes to the brain's matcher, then a confirmation
+  if (/ (we re|we are|were|were now|i m|im|i am|now) (now )?(in|on|at|aboard|somewhere|arrived|landed|moved) /.test(t) && / (station|orbit|transit|spacecraft|cabin|cruise|base|habitat|moon|mars|surface|somewhere|module|place) /.test(t) || / (switch|change|set) (the )?environment /.test(t)) {
+    return { intent: "environment", local: "environment", commands: [] };
+  }
+  if (/^ (yes|yeah|yep|confirm|confirmed|do it|go ahead|correct|affirmative) $/.test(t)) return { intent: "yes", local: "yes", commands: [] };
+  if (/^ (no|nope|cancel|don t|do not|negative) $/.test(t)) return { intent: "no", local: "no", commands: [] };
+  if (/ (just )?(finished|did|done with|after) (my |a |the )?(workout|exercise|run|treadmill|cycling|bike) / .test(t) || has(t, "post exercise")) return { intent: "post_exercise", local: "post_exercise", commands: [] };
+
   // mission operations: the digest, rest, the link, EVA readiness (Product Document sections 12, 13, 21)
   if (/ (send|queue|prepare|make) (a |the |my )?(digest|report|summary|update)( to| for)? (ground|the ground|the flight surgeon|the surgeon|mission control|houston|earth) / .test(t) || / (tell|update|message) (ground|the flight surgeon|mission control|houston) /.test(t)) {
     return { intent: "digest", action: "escalate", target: "ground", local: "digest", commands: [] };

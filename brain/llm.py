@@ -27,7 +27,7 @@ import httpx
 
 SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
            "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "symptom",
-           "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence", "profile", "audit"]
+           "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence", "profile", "audit", "pulse"]
 ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
 METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
            "reaction", "talk_time", "pitch", "o2", "co2"]
@@ -108,7 +108,7 @@ Allowed commands (at most 3):
        measures (weekly standard measures), symptom (log a symptom by pointing at the body: "where does it hurt"),
        ground (messages to ground), crew, hardware, settings, about (sources and credits),
        evidence (all 68 NASA JSC 28913 medical requirement documents in the team's dataset),
-       profile (my health profile: allergies, medicines, wellbeing plan, buddy), audit (the audit log)
+       profile (my health profile: allergies, medicines, wellbeing plan, buddy), audit (the audit log), pulse (the weekly crew pulse survey)
   {"cmd":"point_to","zone":Z}            Z in head, eyes, heart, lungs, gut, bones, whole_body
   {"cmd":"check_zone","zones":[Z,...]}   a focused check of one to three zones
   {"cmd":"show_chart","metric":M}        M in heart_rate, breathing_rate, spo2, bp, glucose, temp, sleep, mood, reaction, talk_time, pitch, o2, co2
