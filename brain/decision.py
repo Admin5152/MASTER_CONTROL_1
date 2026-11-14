@@ -74,7 +74,11 @@ def decide(state: dict, absolute: list[dict], drift: dict, kit: dict, flag_storm
     for s in (get_path(state, "manual.symptoms") or []):
         m = suggest(s, kit)
         if m["matched"]:
-            return _act("suggest_medicine", m["text"], m["zone"] or "whole_body", "info")
+            from brain.profile import kit_filter, profiles   # section 14.4: allergies block, regular medicines add a note
+            f = kit_filter(m["item"], profiles.get(state.get("crew_id", "")))
+            if f["blocked"]:
+                return _act("suggest_medicine", f"{s.capitalize()}: {f['reason']}", m["zone"] or "whole_body", "watch")
+            return _act("suggest_medicine", f"{m['text']} {f['note']}".strip(), m["zone"] or "whole_body", "info")
 
     items = drift.get("items", [])
     zone, sev = _worst_zone(items + [r for r in absolute if r["severity"] in ("watch", "alert")])

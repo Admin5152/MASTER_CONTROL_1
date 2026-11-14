@@ -44,6 +44,7 @@ export const SCREEN_WORDS = {
   vision: ["camera", "vision", "face scan"],
   vitals: ["vitals", "vital signs", "my vitals", "the vitals", "vital"],
   wellbeing: ["wellbeing", "well being", "wellness", "the games", "games"],
+  profile: ["health profile", "my profile", "wellbeing plan", "my plan", "action plan", "my allergies", "allergies"],
   settings: ["settings", "preferences"],
   evidence: ["nasa documents", "nasa evidence", "the evidence", "the dataset", "datasets", "mrids", "mrid", "medical requirements", "nasa requirements", "research documents"],
   about: ["credits", "sources", "about sentinel"],

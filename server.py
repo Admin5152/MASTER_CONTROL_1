@@ -30,6 +30,7 @@ from brain.ground import Ground  # noqa: E402
 from brain.suit import Suits, REGIONS as SUIT_REGIONS, region_from_text  # noqa: E402
 from brain.ops import Ops, MODES as OPS_MODES  # noqa: E402
 from brain import safety  # noqa: E402
+from brain.profile import profiles  # noqa: E402
 from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
@@ -223,6 +224,28 @@ def digest_send(cid: str, body: dict = Body(default={})):
     return {**d, "packet": p}
 
 
+@app.get("/api/profile/{cid}")
+def profile_get(cid: str):
+    """The personal health profile (section 14): viewable and exportable at any time."""
+    _need(cid)
+    return profiles.get(cid)
+
+
+@app.patch("/api/profile/{cid}")
+def profile_update(cid: str, body: dict = Body(...)):
+    _need(cid)
+    p = profiles.update(cid, body)
+    with store.lock:   # an allergy can change a kit card now
+        store._recompute(cid)
+    return p
+
+
+@app.delete("/api/profile/{cid}")
+def profile_delete(cid: str):
+    _need(cid)
+    return profiles.delete(cid)
+
+
 @app.post("/api/safety/{cid}")
 def safety_alert(cid: str, body: dict = Body(default={})):
     """W14 urgent wellbeing concern: alert the buddy and the commander (SIM) and queue an URGENT message for the
@@ -232,6 +255,9 @@ def safety_alert(cid: str, body: dict = Body(default={})):
     if cat not in safety.PATTERNS:
         raise HTTPException(400, "unknown category")
     who = safety.people(store.crew(), cid)
+    buddy = profiles.get(cid)["sharing"]["buddy"]   # the profile's chosen buddy wins over the default
+    if buddy:
+        who["buddy"] = buddy
     name = store.get(cid).get("display_name", cid)
     p = ground.send(cid, "crisis", "Urgent wellbeing concern", {
         "text": f"URGENT wellbeing concern | crew: {name} | category: {cat.replace('_', ' ')} | buddy alerted: {who['buddy']} | "

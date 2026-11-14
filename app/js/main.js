@@ -34,6 +34,7 @@ import { TILES } from "./interface/tiles.js";
 import { chipText, defaultSystem, mountBodyPanels, render as renderBodyPanels, selectSystem } from "./interface/bodypanel.js";
 import { mountVitals, renderVitals } from "./interface/vitals.js";
 import { registerMissionMed } from "./experience/missionmed.js";
+import { registerProfile } from "./experience/profile.js";
 import { registerSymptom } from "./systems/symptom.js";
 import { REGION_NAMES, REGION_ZONE, regionOf, zoneStatuses } from "./interface/body.js";
 
@@ -252,6 +253,7 @@ async function mountApp() {
   ctx.onDeviceChange = (k) => { if (k === "camera" && vision.state.on) { vision.stop(); vision.start(); } };
   registerScreen("cognitive", { title: "Reaction test", badge: "LIVE", render: renderCognitive });
   registerMissionMed(registerScreen);
+  registerProfile(registerScreen);
   registerSymptom(registerScreen);
   registerScreen("orb_calm", { title: "Stillpoint", full: true, render: renderOrbCalm });
   registerScreen("race", { title: "Slipstream", full: true, render: renderRace });
@@ -630,6 +632,7 @@ ctx.showNotice = showNotice;
 // ---------- commands ----------
 // ---------- W14 urgent wellbeing concern: fixed lines, people brought in, grounding open ----------
 let safetyOn = false;
+const earlyNoted = new Set();   // an early sign is answered once per session
 const SAFETY_FIRST = "I'm here. Please call a crewmate now. I'm letting them know.";
 async function safetyFlow(category) {
   safetyOn = true;
@@ -655,6 +658,19 @@ async function handleCommand(text, meta = {}) {
   answering = false;   // a new request outranks the last answer
   const concernCat = text ? wellbeingConcern(text) : null;
   if (concernCat) { if (meta.heard) logLine("You", meta.heard); await safetyFlow(concernCat); return; }
+  if (text && view.profile?.wellbeingPlan?.earlySigns?.length) {
+    const t = text.toLowerCase();
+    const sign = view.profile.wellbeingPlan.earlySigns.find((s) => s.length > 3 && t.includes(s.toLowerCase()));
+    const tool = (view.profile.wellbeingPlan.whatHelps || [])[0];
+    if (sign && !earlyNoted.has(sign)) {
+      earlyNoted.add(sign);
+      if (meta.heard) logLine("You", meta.heard);
+      say(`You listed "${sign}" as one of your early signs, so I'm taking it seriously.${tool ? ` What usually helps you is ${({ orb_calm: "Stillpoint", race: "Slipstream", greenhouse: "Red Harvest", grounding: "grounding" })[tool] || tool}. Want to start it?` : " Want to talk it through, or try a breathing break?"}`, { source: "local" });
+      if (tool) director.run([{ cmd: "open_screen", name: "wellbeing" }]);
+      if (meta.via === "voice" && settings.get("listen") !== "ptt") voiceMod.expectReply(9000);   // a yes needs no wake word
+      return;
+    }
+  }
   if (safetyOn && text) {   // during the safety flow: only fixed lines, never a generated reply
     if (meta.heard) logLine("You", meta.heard);
     say("I'm here with you. Is a crewmate with you now?", { source: "safety" });
@@ -720,7 +736,7 @@ async function handleCommand(text, meta = {}) {
         orb_calm: "Stillpoint", race: "Slipstream", greenhouse: "Red Harvest", grounding: "grounding", settings: "settings", about: "the credits",
         trends: "your trends", health_log: "the health log", cognitive: "the reaction test", symptom: "the symptom map", crew: "the crew",
         hardware: "the hardware", vision: "the camera", cabin: "the cabin", interventions: "what helps you", exam: "the health exam",
-        measures: "weekly measures", ground: "messages to ground", evidence: "the NASA evidence" };
+        measures: "weekly measures", ground: "messages to ground", evidence: "the NASA evidence", profile: "your health profile" };
       const n = m.commands[0].name;
       if (NAMES[n]) say(`${["race", "greenhouse", "orb_calm", "grounding", "cognitive", "exam"].includes(n) ? "Starting" : "Opening"} ${NAMES[n]}.`, { source: "local" });
     }
@@ -779,6 +795,7 @@ async function onUtterance(audio) {
 function switchCrew(id, source) {
   if (!id) return;
   setCrew(id, source);
+  api.profile(id).then((p) => { view.profile = p; }).catch(() => {});
   if (source === "manual") patch({ identity: { source: "manual", confidence: 0 } }).catch(() => {});
 }
 
