@@ -28,7 +28,7 @@ SHARED = ROOT / "shared"
 DATA = ROOT / "data"
 HISTORY_CAP = 2000
 ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
-HISTORY_BASELINE_FIELDS = ["manual.bp_systolic", "manual.glucose_mgdl", "manual.temp_c", "manual.sleep_hours", "manual.mood"]
+HISTORY_BASELINE_FIELDS = ["manual.bp_systolic", "manual.glucose_mgdl", "manual.temp_c", "manual.sleep_hours", "manual.sleep_quality", "manual.exercise_minutes", "manual.hydration_ml", "manual.mood"]
 LOG_FIELDS = {"session.calm_start_hr", "session.calm_end_hr", "session.calm_recovery_s",
               "session.aurora_mood_before", "session.aurora_mood_after", "session.aurora_mood_change",
               "session.aurora_start_hr", "session.aurora_end_hr", "session.reaction_false_starts",
@@ -44,6 +44,14 @@ LOG_FIELDS = {"session.calm_start_hr", "session.calm_end_hr", "session.calm_reco
 
 def now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _fill_defaults(state: dict) -> None:
+    """Fields added after a crew record was written (wearable logging, symptom log): filled with empty values."""
+    manual = state.setdefault("manual", {})
+    for key, default in (("sleep_quality", None), ("exercise_minutes", None), ("hydration_ml", None), ("meals", []), ("symptom_log", [])):
+        manual.setdefault(key, copy.deepcopy(default))
+    state.setdefault("engagement", {}).setdefault("missed_checkins", 0)
 
 
 class Store:
@@ -75,6 +83,7 @@ class Store:
             self.internal = {}
             self.clock = {"base_day": 120, "start_hour": 8.0, "skip_hours": 0.0, "started": time.time()}
             for c in self._mock():
+                _fill_defaults(c)
                 validate_full(c)
                 cid = c["crew_id"]
                 self.states[cid] = copy.deepcopy(c)
@@ -98,6 +107,9 @@ class Store:
             "manual.glucose_mgdl": (s["manual"]["glucose_mgdl"], 6.0),
             "manual.temp_c": (s["manual"]["temp_c"], 0.15),
             "manual.sleep_hours": (s["manual"]["sleep_hours"], 0.4),
+            "manual.sleep_quality": (s["manual"].get("sleep_quality") or 3.5, 0.5),
+            "manual.exercise_minutes": (s["manual"].get("exercise_minutes") or 60, 12),
+            "manual.hydration_ml": (s["manual"].get("hydration_ml") or 2200, 250),
             "manual.mood": (s["manual"]["mood"], 0.5),
             "cognitive.reaction_ms": (s["cognitive"]["baseline_ms"], 12.0),
             "voice.talk_time": (s["baseline"]["talk_time"], 0.4),
@@ -132,7 +144,7 @@ class Store:
                     self.states[cid]["display_name"] = names[cid]
                     self.states[cid]["body_model"] = models[cid]
                 self.states[cid].setdefault("body_model", models.get(cid, "male"))  # saved before body_model existed
-                self.states[cid].setdefault("manual", {}).setdefault("symptom_log", [])  # saved before symptom_log existed
+                _fill_defaults(self.states[cid])   # saved before these fields existed
                 validate_full(self.states[cid])
                 self._recompute(cid)
             return True

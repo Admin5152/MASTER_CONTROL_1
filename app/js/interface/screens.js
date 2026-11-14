@@ -152,11 +152,19 @@ const FIELDS = [
     hint: "Under the tongue or in the ear; the cabin is often warm, so rest five minutes first.", why: "Fever is an early sign that an infection may warrant a check." },
   { key: "sleep_hours", label: "Sleep last night", unit: "hours", min: 0, max: 16, step: 0.25,
     hint: "Count from lights-out in the sleep station, not from the schedule.", why: "Light cycles every 90 minutes in orbit; sleep loss slows reaction time." },
+  { key: "sleep_quality", label: "Sleep quality", unit: "1–5", min: 1, max: 5, step: 1,
+    hint: "Rate how restorative sleep felt, from 1 (poor) to 5 (restful).", why: "A short self-rating helps compare sleep with your own recent pattern." },
+  { key: "exercise_minutes", label: "Exercise today", unit: "minutes", min: 0, max: 600, step: 1,
+    hint: "Enter active exercise minutes from your planned session.", why: "Exercise is a scheduled countermeasure for cardiovascular and musculoskeletal changes." },
+  { key: "hydration_ml", label: "Fluids today", unit: "mL", min: 0, max: 10000, step: 50,
+    hint: "Enter the approximate total fluid intake; log meals in the field below if useful.", why: "Fluid intake supports a useful daily hydration record." },
 ];
 
 function renderHealthLog(el, ctx) {
   const m = ctx.view.state?.manual || {};
   let mood = null;
+  const crewId = ctx.view.crewId;
+  emit("checkin.started", { crewId });
   el.innerHTML = `
     <p class="note">These readings are LIVE: you enter them. Sentinel compares them with your own usual values and the clinical reference ranges shown in each body panel.</p>
     <form class="form-grid" novalidate>
@@ -178,6 +186,8 @@ function renderHealthLog(el, ctx) {
         <span class="hint">Separate with commas. Sentinel checks the onboard kit list (SIM) and never suggests anything not stocked.</span>
         <span class="why">Why it matters: early symptoms are easier to manage before they grow.</span>
       </div>
+      <div class="field" data-key="meals"><label for="f-meals">Meals (optional)</label>
+        <input id="f-meals" type="text" placeholder="e.g. breakfast, lunch, dinner"><span class="hint">Separate meal notes with commas.</span></div>
     </form>
     <p><button class="pill pill-dark pill-block" type="button" data-save>Save health log</button></p>
     <p class="note" data-result aria-live="polite"></p>`;
@@ -198,7 +208,7 @@ function renderHealthLog(el, ctx) {
       if (!Number.isFinite(v) || v < f.min || v > f.max) {
         ok = false;
         wrap.classList.add("has-err");
-        wrap.querySelector(".err").textContent = `Enter a value between ${f.min} and ${f.max} ${f.unit}.`;
+        wrap.querySelector(".err").textContent = `Enter a value between ${f.min} and ${f.max} ${f.unit}. Check the device and remeasure if the reading falls outside this range.`;
         continue;
       }
       out[f.key] = v;
@@ -213,13 +223,32 @@ function renderHealthLog(el, ctx) {
     if (mood != null) out.mood = mood;
     const sym = el.querySelector("#f-symptoms").value.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
     out.symptoms = sym;
+    out.meals = el.querySelector("#f-meals").value.split(",").map((x) => x.trim()).filter(Boolean);
     out.updated = new Date().toISOString();
     const result = el.querySelector("[data-result]");
     try {
       const s = await ctx.patch({ manual: out });
-      ctx.onCheckin?.("log");
+      for (const f of FIELDS) {
+        if (out[f.key] == null) continue;
+        emit("reading.added", { indicator: f.key, value: out[f.key], source: "manual", label: "MANUAL", confidence: 1 });
+      }
+      if (mood != null) emit("reading.added", { indicator: "mood", value: mood, source: "manual", label: "MANUAL", confidence: 1 });
+      ctx.onCheckin?.("log", out);
       const a = s.action;
-      result.textContent = a.type === "none" ? "Saved. Everything is within your usual range." : `Saved. ${a.detail}`;
+      const outsideFields = Object.entries(ctx.thresholds?.absolute || {}).filter(([field, def]) => {
+        const v = field.startsWith("manual.") ? out[field.slice(7)] : null;
+        return v != null && (def.levels || []).some((l) => l.below != null ? v < l.below : v > l.above);
+      }).map(([field]) => field.slice(7));
+      const outside = outsideFields.length > 0;
+      result.textContent = `${a.type === "none" ? "Saved. Everything is within your usual range." : `Saved. ${a.detail}`}${outside ? " Please remeasure this reading when ready; the entered value is saved for review." : ""}`;
+      if (outside) {
+        const remeasure = document.createElement("button");
+        remeasure.type = "button";
+        remeasure.className = "pill pill-ghost";
+        remeasure.textContent = "Re-measure reading";
+        remeasure.addEventListener("click", () => el.querySelector(`#f-${outsideFields[0]}`)?.focus());
+        result.append(" ", remeasure);
+      }
       ctx.say(a.type === "none" ? "Saved. Thank you." : `Saved. ${a.detail}`);
     } catch (e) {
       result.textContent = `Not saved: ${e.message}. Check the brain link at the top right.`;

@@ -22,8 +22,46 @@
 .rail-dot { position: absolute; right: 7px; top: 7px; width: 7px; height: 7px; border-radius: 50%; display: none; }
 .rail-dot.is-watch { display: block; background: var(--watch); box-shadow: var(--glow-watch); }
 .rail-dot.is-alert { display: block; background: var(--alert); box-shadow: var(--glow-alert); }
-.body-zoom { position: absolute; right: 8px; bottom: 64px; display: grid; gap: 6px; }
+.body-zoom { position: absolute; left: 8px; bottom: 64px; display: grid; gap: 6px; }
 .body-zoom .icon-btn { background: var(--surface); border: 1px solid var(--rule); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.body-tools { left: 0; right: auto; width: 62%; }
+.wearable-host { position: absolute; z-index: 3; top: 2%; right: 0; bottom: 58px; width: 38%; min-width: 190px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; padding: 14px 12px 10px; border: 1px solid color-mix(in srgb, var(--rule-2) 65%, transparent); border-radius: 18px; background: linear-gradient(155deg, color-mix(in srgb, var(--surface) 94%, #111827), color-mix(in srgb, var(--surface) 84%, #080c14)); box-shadow: 0 18px 48px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255,255,255,.055); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); pointer-events: none; }
+.wearable-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 0 4px; }
+.wearable-kicker { display: block; color: var(--assist); font-size: 10px; font-weight: var(--fw-semi); letter-spacing: .17em; }
+.wearable-subhead { display: block; margin-top: 3px; color: var(--ink-3); font-size: 7px; font-weight: var(--fw-semi); letter-spacing: .12em; }
+.wearable-host .badge { font-size: 8px; line-height: 15px; padding: 0 6px; }
+.wearable-viewer { position: relative; min-height: 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--rule) 80%, transparent); border-radius: 13px; background: linear-gradient(to bottom, transparent 36.6%, rgba(165,180,205,.13) 36.8%, transparent 37.1%, transparent 79.6%, rgba(165,180,205,.13) 79.8%, transparent 80.1%), radial-gradient(ellipse at 48% 17%, rgba(112,82,181,.16), transparent 55%), linear-gradient(160deg, rgba(12,20,32,.84), rgba(5,9,16,.76)); }
+.wearable-viewer canvas { position: absolute; inset: 0; z-index: 1; display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; pointer-events: auto; }
+.wearable-viewer canvas:active { cursor: grabbing; }
+.wearable-part-label { position: absolute; z-index: 2; left: 10px; display: grid; grid-template-columns: 20px 1fr; align-items: center; gap: 0 6px; width: min(190px, calc(100% - 20px)); padding: 5px 7px; border: 1px solid transparent; border-radius: 8px; background: rgba(7,13,24,.62); color: inherit; text-align: left; cursor: pointer; pointer-events: auto; text-shadow: 0 1px 8px rgba(0,0,0,.8); transition: background .2s ease, border-color .2s ease, transform .2s ease; }
+.wearable-part-label:hover, .wearable-part-label:focus-visible { border-color: rgba(190,157,255,.4); background: rgba(23,25,42,.88); transform: translateX(2px); outline: none; }
+.wearable-part-label[hidden], .wearable-detail-head[hidden] { display: none; }
+.wearable-part-label b { grid-row: 1 / 3; color: #bd9cff; font-size: 8px; letter-spacing: .12em; }
+.wearable-part-label span { color: #e8eef8; font-size: 8px; font-weight: var(--fw-semi); letter-spacing: .11em; }
+.wearable-part-label small { color: #8795a9; font-size: 8px; }
+.wearable-detail-head { position: absolute; z-index: 3; top: 8px; left: 9px; right: 9px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 9px; padding: 7px 8px; border: 1px solid rgba(185,167,225,.2); border-radius: 9px; background: rgba(8,13,23,.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.wearable-detail-head, .wearable-back { pointer-events: auto; }
+.wearable-detail-head strong { overflow: hidden; color: #edf1fa; font-size: 8px; letter-spacing: .08em; text-overflow: ellipsis; white-space: nowrap; }
+.wearable-detail-head small { grid-column: 2; color: #9da8b8; font-size: 7px; }
+.wearable-back { grid-row: 1 / 3; padding: 6px 7px; border: 1px solid rgba(188,167,235,.25); border-radius: 6px; background: rgba(132,99,194,.14); color: #d4c5f8; font-size: 8px; cursor: pointer; white-space: nowrap; }
+.wearable-back:hover, .wearable-back:focus-visible { background: rgba(132,99,194,.3); outline: none; }
+.chest-label { top: 8px; }
+.wrist-label { top: calc(34% + 7px); }
+.patch-label { top: calc(81% + 5px); }
+.wearable-hint { position: absolute; z-index: 2; right: 10px; bottom: 8px; color: #8e9aab; font-size: 8px; pointer-events: none; }
+.wearable-copy { display: grid; gap: 4px; padding: 8px 5px 0; border-top: 1px solid var(--rule-2); }
+.wearable-copy strong { font-size: var(--fs-xs); font-weight: var(--fw-semi); }
+.wearable-copy small { color: var(--ink-3); font-size: 10px; line-height: 1.45; }
+@media (max-width: 620px) {
+  .wearable-host { width: 40%; min-width: 155px; padding: 8px 6px 6px; gap: 6px; }
+  .wearable-kicker { font-size: 8px; }
+  .wearable-copy small { font-size: 9px; }
+  .wearable-part-label { left: 6px; grid-template-columns: 15px 1fr; gap: 0 4px; }
+  .wearable-part-label span, .wearable-part-label small { font-size: 6.5px; }
+  .wearable-hint { right: 6px; font-size: 7px; }
+  .body-tools { width: 64%; gap: 4px; }
+  .body-tools .pill { padding-inline: 8px; }
+}
 
 .sys-panel { display: flex; flex-direction: column; gap: var(--s-3); min-height: 0; overflow-y: auto; pointer-events: auto; padding: 2px 2px 8px; scrollbar-width: thin; }
 .sys-head { display: flex; align-items: center; gap: var(--s-3); }

@@ -11,6 +11,9 @@ export const METRIC_DEFS = {
   glucose: { field: "manual.glucose_mgdl", label: "Blood glucose", unit: "mg/dL", th: "manual.glucose_mgdl" },
   temp: { field: "manual.temp_c", label: "Body temperature", unit: "°C", th: "manual.temp_c" },
   sleep: { field: "manual.sleep_hours", label: "Sleep", unit: "hours", th: "manual.sleep_hours" },
+  sleep_quality: { field: "manual.sleep_quality", label: "Sleep quality", unit: "1-5", th: "manual.sleep_quality" },
+  exercise: { field: "manual.exercise_minutes", label: "Exercise", unit: "minutes", th: "manual.exercise_minutes" },
+  hydration: { field: "manual.hydration_ml", label: "Fluids", unit: "mL", th: "manual.hydration_ml" },
   mood: { field: "manual.mood", label: "Mood", unit: "1-5", th: "manual.mood" },
   reaction: { field: "cognitive.reaction_ms", label: "Reaction time", unit: "ms", base: (s) => s.cognitive.baseline_ms },
   talk_time: { field: "voice.talk_time", label: "Talk time", unit: "s", base: (s) => s.baseline.talk_time },
@@ -38,6 +41,15 @@ const bandsPlugin = {
       ctx.fillStyle = b.color;
       ctx.font = `12px ${css("--font")}`;
       ctx.fillText(b.label, a.left + 6, (b.max == null ? bot - 6 : top + 14));
+    }
+    if (opts.baselineBand) {
+      const top = Math.max(a.top, y.getPixelForValue(opts.baselineBand.max));
+      const bot = Math.min(a.bottom, y.getPixelForValue(opts.baselineBand.min));
+      if (bot > top) {
+        ctx.globalAlpha = 0.08;
+        ctx.fillStyle = css("--assist");
+        ctx.fillRect(a.left, top, a.right - a.left, bot - top);
+      }
     }
     if (opts.baseline != null) {
       const yy = y.getPixelForValue(opts.baseline);
@@ -69,12 +81,19 @@ export async function renderTrend(host, crewId, metric, state, thresholds) {
   host.innerHTML = `
     <div class="chart-head"><h3>${esc(def.label)} <span class="note">(${esc(def.unit)})</span></h3><p class="note chart-src"></p></div>
     <div class="chart-box"><canvas aria-label="${esc(def.label)} trend chart" role="img"></canvas></div>
-    <p class="note">Dashed line: your own baseline. Shaded bands: thresholds, labelled with their kind. Points from the simulator are hollow and marked SIM; points you entered or the camera measured are solid and marked LIVE.</p>
+    <p class="note">Dashed line: your usual value. The pale band shows your personal range over the last 7 days; other shaded bands are sourced thresholds. SIM points are hollow; entered or measured points are solid.</p>
     <ul class="note chart-sources"></ul>`;
   let pts = [];
   try { pts = (await api.history(crewId, def.field)).points; } catch { /* offline */ }
   if (!pts.length) { host.querySelector(".chart-box").innerHTML = `<p class="note">No history yet for this reading.</p>`; return () => {}; }
   const live = (p) => ["user", "camera", "voice", "sensor"].includes(p.source);
+  const baselineValues = pts.filter((p) => p.t >= Date.now() / 1000 - 7 * 86400).map((p) => p.v).sort((a, b) => a - b);
+  const ownBaseline = baselineValues.length ? baselineValues[Math.floor((baselineValues.length - 1) / 2)] : null;
+  const baseline = def.base ? def.base(state) : ownBaseline;
+  const baselineBand = baselineValues.length >= 4 ? {
+    min: baselineValues[Math.floor((baselineValues.length - 1) * 0.25)],
+    max: baselineValues[Math.ceil((baselineValues.length - 1) * 0.75)],
+  } : null;
   const nLive = pts.filter(live).length;
   host.querySelector(".chart-src").innerHTML = `${badgeHTML(nLive ? "LIVE" : "SIM")} ${nLive} of ${pts.length} points measured or entered; the rest simulated.`;
   host.querySelector(".chart-sources").innerHTML = levels.map((l) =>
@@ -100,7 +119,7 @@ export async function renderTrend(host, crewId, metric, state, thresholds) {
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: (c) => `${c.formattedValue} ${def.unit} · ${live(pts[c.dataIndex]) ? "LIVE" : "SIM"}` } },
-        sentinelBands: { bands: bandsFrom(levels), baseline: def.base ? def.base(state) : null },
+        sentinelBands: { bands: bandsFrom(levels), baseline, baselineBand },
       },
       scales: {
         x: { ticks: { color: css("--ink-3"), maxTicksLimit: 6, maxRotation: 0 }, grid: { color: css("--rule") } },

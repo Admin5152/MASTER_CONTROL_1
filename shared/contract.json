@@ -55,6 +55,10 @@
       "glucose_mgdl": null,
       "temp_c": null,
       "sleep_hours": null,
+      "sleep_quality": null,
+      "exercise_minutes": null,
+      "hydration_ml": null,
+      "meals": [],
       "mood": null,
       "symptoms": [],
       "symptom_log": [
@@ -96,6 +100,7 @@
     "engagement": {
       "streak_days": 0,
       "checkins_today": 0,
+      "missed_checkins": 0,
       "calm_levels_cleared": 0,
       "greenhouse_stage": 0
     },

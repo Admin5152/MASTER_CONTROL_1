@@ -250,6 +250,9 @@ async function mountApp() {
     world.add("body", b);
     body.setImpl(b);
     ctx.body3d = b;
+    import("./world/wearable3d.js").then(({ mountWearableFigure }) => {
+      ctx.wearableDispose = mountWearableFigure($("body-host"), b, world, ctx);
+    }).catch((e) => console.warn("wearable model failed", e));
     $("body-loading").hidden = true;
     if (view.aux) body.setZoneStates(zoneStatuses(view.aux.assessment?.zones));
     if (stages.current === "body") world.show("body");
@@ -785,8 +788,11 @@ function renderActionCard(s, aux) {
 // ---------- routine prompts and the greenhouse ----------
 const ROUTINE = [
   { id: "vitals", label: "morning vitals", from: 6, to: 11, screen: "health_log", button: "Log vitals" },
+  { id: "exercise", label: "exercise log", from: 10, to: 13, screen: "health_log", button: "Log exercise" },
   { id: "cognitive", label: "midday cognitive check", from: 11, to: 16, screen: "cognitive", button: "Start the check" },
+  { id: "hydration", label: "hydration and meals", from: 13, to: 18, screen: "health_log", button: "Log fluids" },
   { id: "log", label: "evening mood and sleep log", from: 18, to: 23, screen: "health_log", button: "Log mood and sleep" },
+  { id: "winddown", label: "sleep wind-down", from: 20, to: 23, screen: "health_log", button: "Log sleep" },
 ];
 const nudged = new Set();
 function routineKey(day) { return `sentinel:routine:${view.crewId}:${day}`; }
@@ -808,11 +814,14 @@ function nextRoutine() {
   const done = routineDone(c.mission_day);
   return ROUTINE.find((r) => r.from > c.hour && !done[r.id]) || null;
 }
-async function onCheckin(kind) {
+async function onCheckin(kind, entries = {}) {
   const c = view.aux?.clock;
   if (!c || !view.state) return;
   const id = kind === "log" ? (c.hour < 14 ? "vitals" : "log") : kind;
   setRoutineDone(c.mission_day, id);
+  if (entries.exercise_minutes != null) setRoutineDone(c.mission_day, "exercise");
+  if (entries.hydration_ml != null) setRoutineDone(c.mission_day, "hydration");
+  if (entries.sleep_hours != null) setRoutineDone(c.mission_day, "winddown");
   lastActionKey = "";
   try { await patch({ engagement: { checkins_today: (view.state.engagement.checkins_today || 0) + 1 } }); } catch {}
 }
@@ -823,19 +832,27 @@ async function routineTick() {
   if (lastDay != null && c.mission_day > lastDay) {
     let stage = view.state.engagement.greenhouse_stage;
     let streak = view.state.engagement.streak_days;
+    let missed = view.state.engagement.missed_checkins || 0;
     for (let d = lastDay; d < c.mission_day; d++) {
-      const ok = routineComplete(routineDone(d));
+      const done = routineDone(d);
+      const ok = routineComplete(done);
+      if (!done.vitals) missed++;
+      if (!done.log) missed++;
       stage = greenhouseDay(stage, ok);
       streak = ok ? streak + 1 : 0;
       view.wilt = ok ? 0 : 0.6;
     }
-    patch({ engagement: { greenhouse_stage: stage, streak_days: streak } }).catch(() => {});
+    patch({ engagement: { greenhouse_stage: stage, streak_days: streak, missed_checkins: missed } }).catch(() => {});
+    if (missed > (view.state.engagement.missed_checkins || 0)) {
+      cue.nudge();
+      note("A health check-in was missed. When you have a moment, log your vitals or mood and sleep.");
+    }
   }
   lastDay = c.mission_day;
   const due = dueRoutine();
   if (due) {
     const k = `${c.mission_day}:${due.id}`;
-    if (!nudged.has(k)) { nudged.add(k); cue.nudge(); note(`Due now: ${due.label}.`); lastActionKey = ""; }
+    if (!nudged.has(k)) { nudged.add(k); emit("reminder.due", { type: due.id === "vitals" || due.id === "log" ? "checkin" : "measurement", crewId: view.crewId, label: due.label }); cue.nudge(); note(`Due now: ${due.label}.`); lastActionKey = ""; }
   }
 }
 on("state", () => { if (lastDay == null && view.aux?.clock) lastDay = view.aux.clock.mission_day; });

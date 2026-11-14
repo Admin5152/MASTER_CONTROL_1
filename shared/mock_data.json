@@ -57,7 +57,11 @@
         "mood": 4,
         "symptoms": [],
         "symptom_log": [],
-        "updated": "2026-11-14T07:30:00Z"
+        "updated": "2026-11-14T07:30:00Z",
+        "sleep_quality": null,
+        "exercise_minutes": null,
+        "hydration_ml": null,
+        "meals": []
       },
       "voice": {
         "talk_time": 4.2,
@@ -72,7 +76,8 @@
         "streak_days": 3,
         "checkins_today": 0,
         "calm_levels_cleared": 0,
-        "greenhouse_stage": 2
+        "greenhouse_stage": 2,
+        "missed_checkins": 0
       },
       "radiation": {
         "mission_profile": "mars_transit",
@@ -148,7 +153,11 @@
         "mood": 4,
         "symptoms": [],
         "symptom_log": [],
-        "updated": "2026-11-14T07:30:00Z"
+        "updated": "2026-11-14T07:30:00Z",
+        "sleep_quality": null,
+        "exercise_minutes": null,
+        "hydration_ml": null,
+        "meals": []
       },
       "voice": {
         "talk_time": 5.5,
@@ -163,7 +172,8 @@
         "streak_days": 3,
         "checkins_today": 0,
         "calm_levels_cleared": 0,
-        "greenhouse_stage": 2
+        "greenhouse_stage": 2,
+        "missed_checkins": 0
       },
       "radiation": {
         "mission_profile": "mars_transit",
@@ -239,7 +249,11 @@
         "mood": 3,
         "symptoms": [],
         "symptom_log": [],
-        "updated": "2026-11-14T07:30:00Z"
+        "updated": "2026-11-14T07:30:00Z",
+        "sleep_quality": null,
+        "exercise_minutes": null,
+        "hydration_ml": null,
+        "meals": []
       },
       "voice": {
         "talk_time": 3.0,
@@ -254,7 +268,8 @@
         "streak_days": 3,
         "checkins_today": 0,
         "calm_levels_cleared": 0,
-        "greenhouse_stage": 2
+        "greenhouse_stage": 2,
+        "missed_checkins": 0
       },
       "radiation": {
         "mission_profile": "mars_transit",
@@ -330,7 +345,11 @@
         "mood": 5,
         "symptoms": [],
         "symptom_log": [],
-        "updated": "2026-11-14T07:30:00Z"
+        "updated": "2026-11-14T07:30:00Z",
+        "sleep_quality": null,
+        "exercise_minutes": null,
+        "hydration_ml": null,
+        "meals": []
       },
       "voice": {
         "talk_time": 4.8,
@@ -345,7 +364,8 @@
         "streak_days": 3,
         "checkins_today": 0,
         "calm_levels_cleared": 0,
-        "greenhouse_stage": 2
+        "greenhouse_stage": 2,
+        "missed_checkins": 0
       },
       "radiation": {
         "mission_profile": "mars_transit",
@@ -421,7 +441,11 @@
         "mood": 4,
         "symptoms": [],
         "symptom_log": [],
-        "updated": "2026-11-14T07:30:00Z"
+        "updated": "2026-11-14T07:30:00Z",
+        "sleep_quality": null,
+        "exercise_minutes": null,
+        "hydration_ml": null,
+        "meals": []
       },
       "voice": {
         "talk_time": 3.6,
@@ -436,7 +460,8 @@
         "streak_days": 3,
         "checkins_today": 0,
         "calm_levels_cleared": 0,
-        "greenhouse_stage": 2
+        "greenhouse_stage": 2,
+        "missed_checkins": 0
       },
       "radiation": {
         "mission_profile": "mars_transit",
@@ -512,7 +537,11 @@
         "mood": 4,
         "symptoms": [],
         "symptom_log": [],
-        "updated": "2026-11-14T07:30:00Z"
+        "updated": "2026-11-14T07:30:00Z",
+        "sleep_quality": null,
+        "exercise_minutes": null,
+        "hydration_ml": null,
+        "meals": []
       },
       "voice": {
         "talk_time": 5.1,
@@ -527,7 +556,8 @@
         "streak_days": 3,
         "checkins_today": 0,
         "calm_levels_cleared": 0,
-        "greenhouse_stage": 2
+        "greenhouse_stage": 2,
+        "missed_checkins": 0
       },
       "radiation": {
         "mission_profile": "mars_transit",
