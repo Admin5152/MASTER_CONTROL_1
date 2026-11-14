@@ -2,7 +2,9 @@
 // system on the model), the large 3D body with a few data chips pinned to it, a right column with the
 // selected system (status chip, 2-3 metric cards with gradient range bars, a care strategy card with
 // tabs), and an insights card bottom-left with Sentinel's latest findings.
-import { badgeHTML, esc, fmt, statusWord, zoneReadings, ZONE_NAMES, get, badgeFor } from "./readings.js";
+import { emit } from "../core/bus.js";
+import { body3d } from "./body.js";
+import { badgeHTML, esc, fmt, statusHTML, statusIcon, statusKey, statusWord, zoneReadings, ZONE_NAMES, get, badgeFor } from "./readings.js";
 import { gradientCss, rangeBar } from "./ranges.js";
 
 export const SYSTEMS = [
@@ -11,7 +13,7 @@ export const SYSTEMS = [
   { id: "eyes", label: "Eyes", title: "Eyes and vision", part: "eyes", icon: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>' },
   { id: "heart", label: "Heart", title: "Cardiovascular system", part: "heart", icon: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/>' },
   { id: "lungs", label: "Lungs", title: "Respiratory system", part: "lungs", icon: '<path d="M12 4v8M12 12c-1.5 1-3 1-3 1M12 12c1.5 1 3 1 3 1"/><path d="M8.5 8C6 8.5 4 13 4 17c0 1.5 1.2 2.5 2.6 2.2C8.5 18.8 9 17 9 15V9M15.5 8C18 8.5 20 13 20 17c0 1.5-1.2 2.5-2.6 2.2C15.5 18.8 15 17 15 15V9"/>' },
-  { id: "gut", label: "Gut", title: "Digestion and nutrition", part: "intestines", icon: '<path d="M8 4h8M9 4c0 3 6 2 6 5s-7 2-7 5 7 2 7 5"/>' },
+  { id: "gut", label: "Gut", title: "Digestion and nutrition", part: "gut", icon: '<path d="M8 4h8M9 4c0 3 6 2 6 5s-7 2-7 5 7 2 7 5"/>' },
   { id: "bones", label: "Bones", title: "Musculoskeletal system", part: "skeleton", icon: '<path d="M7 7l10 10M5.5 8.5a2 2 0 1 1 3-3M8.5 5.5M15.5 18.5a2 2 0 1 0 3-3M18.5 15.5"/><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/>' },
   { id: "vessels", label: "Vessels", title: "Blood vessels", part: "vessels", zone: "heart", icon: '<path d="M12 3v18M12 8l-5 4M12 8l5 4M12 14l-4 4M12 14l4 4"/>' },
 ];
@@ -38,7 +40,9 @@ export function mountBodyPanels({ rail, panel, insights, director, screens, getV
     <svg viewBox="0 0 24 24" aria-hidden="true">${s.icon}</svg><span class="rail-label">${esc(s.label)}</span><i class="rail-dot"></i></button>`).join("");
   rail.addEventListener("click", (e) => {
     const b = e.target.closest("[data-sys]");
-    if (b) selectSystem(b.dataset.sys, { show: true });
+    if (!b) return;
+    emit("body.zone.selected", { zone: zoneOf(b.dataset.sys), crewId: deps.getView().crewId });
+    selectSystem(b.dataset.sys, { show: true });
   });
   panel.addEventListener("click", (e) => {
     const tab = e.target.closest("[data-tab]");
@@ -50,6 +54,8 @@ export function mountBodyPanels({ rail, panel, insights, director, screens, getV
     const m = e.target.closest("[data-metric]");
     if (m) screens.chart(m.dataset.metric);
     if (e.target.closest("[data-organ]")) screens.open("organ", zoneOf(state.system));
+    if (e.target.closest("[data-how]")) screens.zone(zoneOf(state.system));
+    if (e.target.closest("[data-hurt]")) screens.open("symptom");
   });
   insights.addEventListener("click", (e) => {
     if (e.target.closest("[data-ins-toggle]")) { state.insightsOpen = !state.insightsOpen; render(); }
@@ -67,6 +73,12 @@ export function selectSystem(id, { show = false } = {}) {
   render();
   if (!show) return;
   const s = SYSTEMS.find((x) => x.id === id);
+  // an organ view is open: switch it to this system's organ, so the box and the 3D organ stay the same
+  const organ = { head: "head", eyes: "eyes", heart: "heart", lungs: "lungs", gut: "gut", bones: "bones" }[id];
+  if (deps.screens.current?.() === "organ") {
+    if (organ) { deps.screens.open("organ", organ); return; }
+    deps.screens.close();
+  }
   if (id === "whole_body") deps.director.run([{ cmd: "xray", on: false }, { cmd: "zoom_body", zone: "reset" }]);
   else deps.director.run([{ cmd: "isolate", part: s.part }]);
 }
@@ -90,7 +102,9 @@ export function render() {
     const z = zoneOf(b.dataset.sys);
     b.classList.toggle("is-on", b.dataset.sys === state.system);
     const sev = b.dataset.sys === "whole_body" ? null : zones[z];
-    b.querySelector(".rail-dot").className = `rail-dot ${sev && sev !== "ok" ? `is-${sev === "info" ? "watch" : sev}` : ""}`;
+    const dot = b.querySelector(".rail-dot"), key = sev && sev !== "ok" ? statusKey(sev) : "";
+    if (dot.dataset.k !== key) { dot.dataset.k = key; dot.className = `rail-dot ${key ? `is-${key}` : ""}`; dot.innerHTML = key ? statusIcon(key) : ""; }
+    b.setAttribute("aria-label", `${b.title}${sev ? `: ${statusWord(sev)}` : ""}`);
   });
   renderPanel(v, zones);
   renderInsights(v, zones);
@@ -115,7 +129,7 @@ function renderPanel(v, zones) {
       <span class="mcard-val"><strong class="num">${esc(fmt(r.value, r.field))}</strong><small>${esc(r.unit || "")}</small><em class="st-${r.severity}">${esc(statusWord(r.severity))}</em></span>
       ${bar(r)}
       <span class="mcard-change">${esc(r.change || "No baseline comparison yet")}</span></button>`).join("")
-    : `<p class="note mcard-none">No sensor on this system yet. The Sentinel Skin wearable (DESIGNED) would add one. Log a symptom in the health log.</p>`;
+    : `<p class="note mcard-none">No sensor on this system yet. The Sentinel Skin wearable (DESIGNED) would add one. Use "Where does it hurt?" to log a symptom.</p>`;
   const a = v.state.action || {};
   const plan = [
     a.zone === zone && a.detail ? `<li class="is-now"><strong>Now</strong><span>${esc(a.detail)}</span>${badgeHTML("SIM")}</li>` : "",
@@ -130,7 +144,7 @@ function renderPanel(v, zones) {
     <header class="sys-head">
       <span class="sys-icon"><svg viewBox="0 0 24 24" aria-hidden="true">${sys.icon}</svg></span>
       <h2>${esc(sys.title)}</h2>
-      <span class="sev-chip is-${sev === "info" ? "watch" : sev}">${esc(statusWord(sev))}</span>
+      <span class="sev-chip is-${statusKey(sev)}">${statusHTML(sev)}</span>
     </header>
     <p class="sys-sub">${esc(z.what || "")} ${z.hazard ? `<span class="fine">NASA hazard: ${esc(z.hazard)}</span>` : ""}</p>
     <div class="mcards">${cards}</div>
@@ -142,7 +156,8 @@ function renderPanel(v, zones) {
     </div>
     <div class="sys-actions">
       <button class="pill pill-light" type="button" data-check>${zone === "whole_body" ? "Full scan" : "Check with Sentinel"}</button>
-      ${organImg ? `<button class="organ-mini" type="button" data-organ aria-label="Open the ${esc(sys.label)} view"><img src="assets/organs/${organImg}.png" alt=""><span>Organ view</span></button>` : ""}
+      <button class="pill pill-ghost" type="button" data-how>How to measure</button>
+      ${organImg ? `<button class="organ-mini" type="button" data-organ aria-label="Open the ${esc(sys.label)} view"><img src="${body3d()?.snapshot?.(zone) || `assets/organs/${organImg}.png`}" alt=""><span>Organ view</span></button>` : ""}
     </div>`;
 }
 

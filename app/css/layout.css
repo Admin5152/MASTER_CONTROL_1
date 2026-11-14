@@ -226,6 +226,53 @@ body[data-organ="eyes"] #zone-eyes, body[data-organ="gut"] #zone-gut, body[data-
 .callout { scrollbar-width: none; } .callout::-webkit-scrollbar { display: none; }
 .notice { position: fixed; z-index: calc(var(--z-sheet) + 2); top: calc(var(--top-h) + env(safe-area-inset-top) + 8px); right: var(--gutter); margin: 0; padding: 8px 14px; border-radius: var(--radius-pill); background: var(--watch-soft); color: var(--watch-ink); border: 1px solid var(--watch); font-size: var(--fs-xs); font-weight: var(--fw-medium); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 
+/* ---------- body model and zones (Product Document section 7) ---------- */
+/* BODY-7: status is colour + icon + word. The marker's glyph changes shape with the status (tick,
+   triangle, octagon) and the word sits beside it; a zone that is not Normal always shows its word. */
+.zone .zdot { width: 16px; height: 16px; display: grid; place-items: center; }
+.zone .zdot svg { width: 12px; height: 12px; fill: none; stroke: var(--bg, #06101f); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.zone.is-watch .zdot { width: 20px; height: 20px; }
+.zone.is-alert .zdot { width: 22px; height: 22px; }
+.zone.is-watch .zdot svg, .zone.is-alert .zdot svg { width: 14px; height: 14px; stroke-width: 2.4; }
+.zone .zstat { position: absolute; left: 50%; bottom: calc(50% + 14px); transform: translateX(-50%); white-space: nowrap; font-size: 9px; font-weight: var(--fw-semi); letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 6px; border-radius: var(--radius-pill); background: var(--surface-strong); color: var(--ink-2); opacity: 0; pointer-events: none; transition: opacity var(--t-fast); }
+.zone.is-watch .zstat { opacity: 1; color: var(--watch-ink); background: var(--watch-soft); }
+.zone.is-alert .zstat { opacity: 1; color: var(--alert); background: var(--alert-soft); }
+.zone:hover .zstat, .zone:focus-visible .zstat { opacity: 1; }
+body.is-pointing .zone .zstat, .zone.is-hidden .zstat { opacity: 0; }
+.st-icon { width: 1.15em; height: 1.15em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.2em; }
+.sev-chip, .st-cell, .zp-status { display: inline-flex; align-items: center; gap: 5px; }
+.zp-status .note { margin-left: 4px; }
+.rail-dot.is-watch, .rail-dot.is-alert { width: 15px; height: 15px; right: 3px; top: 3px; display: grid; place-items: center; }
+.rail-dot .st-icon { width: 11px; height: 11px; stroke: var(--bg, #06101f); stroke-width: 2.6; }
+.zone-pop .row { flex-wrap: wrap; }
+.mrids .mrid { color: var(--ink-2); }
+
+/* BODY-6: pointing mode ("Where does it hurt?") */
+#body-host.is-pointing-mode { cursor: crosshair; }
+#body-host.is-pointing-mode::before { content: "Tap where it hurts"; position: absolute; left: 50%; top: var(--s-3); transform: translateX(-50%); z-index: 3; padding: 6px 14px; border-radius: var(--radius-pill); background: var(--assist-soft); color: var(--assist); font-size: var(--fs-sm); font-weight: var(--fw-medium); pointer-events: none; }
+#body-host.is-pointing-mode ~ #hotspots .zone, body:has(#body-host.is-pointing-mode) .zone { pointer-events: none; opacity: 0.35; }
+.sym-row { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-3); }
+.sym-chip { min-height: var(--touch); }
+.sym-chip[aria-pressed="true"] { color: var(--nav-on-ink); background: var(--nav-on); border-color: transparent; }
+.sym-done { display: grid; gap: var(--s-2); padding: var(--s-4); }
+.sym-done h3 { margin: 0; }
+.zone-acts { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+/* BODY-8: glove mode. Every control on the body screen is at least 56 px (48 px is the floor in SB7). */
+:root[data-glove="on"] { --touch: 56px; --glove: 56px; }
+:root[data-glove="on"] .zone { width: var(--glove); height: var(--glove); margin: calc(var(--glove) / -2) 0 0 calc(var(--glove) / -2); }
+:root[data-glove="on"] .zone .zdot { transform: scale(1.35); }
+:root[data-glove="on"] .rail-btn { width: var(--glove); height: var(--glove); }
+:root[data-glove="on"] .sys-rail { gap: var(--s-2); }
+:root[data-glove="on"] .body-tools .pill, :root[data-glove="on"] .zone-pop .pill, :root[data-glove="on"] .sys-actions .pill,
+:root[data-glove="on"] .sys-panel .pill, :root[data-glove="on"] .sheet .pill { min-height: var(--glove); font-size: 12px; padding: 0 var(--s-5); }
+:root[data-glove="on"] .body-zoom .icon-btn, :root[data-glove="on"] #stage-body .icon-btn, :root[data-glove="on"] .sheet .icon-btn { width: var(--glove); height: var(--glove); }
+:root[data-glove="on"] .seg button { min-height: var(--glove); padding: 0 var(--s-4); font-size: 13px; }
+:root[data-glove="on"] .care-head { flex-wrap: wrap; gap: var(--s-2); }
+:root[data-glove="on"] .mcard, :root[data-glove="on"] .organ-mini, :root[data-glove="on"] .ins-head, :root[data-glove="on"] .ins-list button,
+:root[data-glove="on"] .chip, :root[data-glove="on"] .link-btn, :root[data-glove="on"] .mood-row button { min-height: var(--glove); }
+:root[data-glove="on"] .chip { min-width: var(--glove); }
+
 /* alignment pass: the two chest readings no longer meet in the middle; insights never ride up into the top edge */
 #zone-lungs .zchip { transform: translateY(-115%); }
 #zone-heart .zchip { transform: translateY(15%); }

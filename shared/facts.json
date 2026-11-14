@@ -133,7 +133,26 @@
       "source": {
         "title": "NASA HRP: Hazard - Isolation and Confinement",
         "url": "https://www.nasa.gov/hrp/hazard-isolation-and-confinement/"
-      }
+      },
+      "how_to_measure": "Here: the reaction test, and the mood and sleep log. On the station the neurological part of the physical exam is a standard functional exam and a gait exam, hearing is tested on orbit on or before flight day 21 and again about mid-mission, and each crew member has a 15-minute private psychological conference every two weeks.",
+      "why_it_matters": "NASA lists the private conferences as one of the key elements of in-flight monitoring and countermeasures for behavioural health and performance. A slower reaction time or a lower mood is easier to act on when it is seen early.",
+      "mrids": [
+        {
+          "id": "MEDB 1.1",
+          "title": "Pre- and Postflight Physical Exam for Long Duration Crews (includes MEDB 1.4 Neurological Assessment)",
+          "file": "dataset/cl5yvqhsu2slb01o685y93vkb.pdf"
+        },
+        {
+          "id": "MEDB 1.8",
+          "title": "Hearing Assessment",
+          "file": "dataset/cl5yvqhsu2smn01o6ad8lewzs.pdf"
+        },
+        {
+          "id": "MEDB 7.2",
+          "title": "Private Psychological Conferences",
+          "file": "dataset/cl5yvqhsv2sn401o6cfkvah14.pdf"
+        }
+      ]
     },
     "eyes": {
       "title": "Eyes and vision",
@@ -144,7 +163,16 @@
       "source": {
         "title": "NASA NTRS 20220000516: SANS Clinical Update",
         "url": "https://ntrs.nasa.gov/citations/20220000516"
-      }
+      },
+      "how_to_measure": "Here: two questions in the guided exam (near vision, headache on waking). On the station the in-flight eye exam is vision testing (near and far acuity and an Amsler grid, about 20 minutes) with a questionnaire, plus fundoscopy, eye ultrasound, OCT and tonometry with a remote guider; six-month crews do it around flight days 30 and 90, 30 days before return, and when clinically indicated.",
+      "why_it_matters": "The requirement exists to assess ocular health and function before, during and after flight, so a change in the eye is caught against the crew member's own preflight record.",
+      "mrids": [
+        {
+          "id": "MEDB 1.10",
+          "title": "Eye Examinations",
+          "file": "dataset/cl5yvqhsu2sm101o6fou61gqq.pdf"
+        }
+      ]
     },
     "heart": {
       "title": "Heart and circulation",
@@ -155,7 +183,26 @@
       "source": {
         "title": "NASA Human Research Program: five hazards",
         "url": "https://www.nasa.gov/hrp/hazards/"
-      }
+      },
+      "how_to_measure": "Here: heart rate from the camera, blood pressure from the cuff in the health log. On the station the crew medical officer runs a Periodic Health Status evaluation (vitals and a physical exam, about 15 minutes per crew member) with the blood pressure device from the medical diagnostic pack. A 12-lead resting ECG is recorded before and after flight, lying still for 15 minutes with 10 electrode sites. Veins are checked by ultrasound in flight (the internal jugular veins, the subclavian-axillary axis and the deep leg veins) around flight days 30 and 60 and six weeks before return.",
+      "why_it_matters": "The Periodic Health Status evaluation is how the crew's medical status is assessed in flight and reported to the crew surgeon; six-month crews do it at about two to three weeks, at 90 days and two to three weeks before return.",
+      "mrids": [
+        {
+          "id": "MEDB 1.2",
+          "title": "Crew Medical Officer Health Status Evaluations",
+          "file": "dataset/cl5yvqhsu2sm901o68cdoern1.pdf"
+        },
+        {
+          "id": "MEDB 1.6",
+          "title": "Resting ECG",
+          "file": "dataset/cl5yvqhsu2smd01o61igocemc.pdf"
+        },
+        {
+          "id": "MEDB 1.12",
+          "title": "Ultrasound Imaging (Sonography)",
+          "file": "dataset/cl5yvqhsu2slc01o676lm0fsz.pdf"
+        }
+      ]
     },
     "lungs": {
       "title": "Lungs and breathing",
@@ -166,7 +213,21 @@
       "source": {
         "title": "NASA OCHMO-TB-004 Carbon Dioxide",
         "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf"
-      }
+      },
+      "how_to_measure": "Here: breathing rate and blood oxygen, with the cabin air beside them. In NASA's physical exam the vital signs include the respiratory rate, and the chest and lungs are examined with the cardiovascular system; the in-flight Periodic Health Status evaluation repeats vitals and a physical exam.",
+      "why_it_matters": "The exam before flight sets the record that in-flight checks are compared with, which is the same idea as Sentinel's change from your own baseline.",
+      "mrids": [
+        {
+          "id": "MEDB 1.1",
+          "title": "Pre- and Postflight Physical Exam for Long Duration Crews (includes MEDB 1.4 Neurological Assessment)",
+          "file": "dataset/cl5yvqhsu2slb01o685y93vkb.pdf"
+        },
+        {
+          "id": "MEDB 1.2",
+          "title": "Crew Medical Officer Health Status Evaluations",
+          "file": "dataset/cl5yvqhsu2sm901o68cdoern1.pdf"
+        }
+      ]
     },
     "gut": {
       "title": "Digestion and nutrition",
@@ -177,7 +238,26 @@
       "source": {
         "title": "NASA Human Research Program: five hazards",
         "url": "https://www.nasa.gov/hrp/hazards/"
-      }
+      },
+      "how_to_measure": "Here: blood glucose in the health log, and nausea or appetite changes as symptoms. NASA's physical exam covers the abdomen by listening and by palpating the major organs, and the mouth and throat; abdominal ultrasound is one of the listed ultrasound examinations, and a dental check before flight asks about pain in the mouth and bleeding when brushing.",
+      "why_it_matters": "A dental or abdominal problem is far easier to correct before launch than on a mission, which is why these checks are scheduled well ahead of flight.",
+      "mrids": [
+        {
+          "id": "MEDB 1.1",
+          "title": "Pre- and Postflight Physical Exam for Long Duration Crews (includes MEDB 1.4 Neurological Assessment)",
+          "file": "dataset/cl5yvqhsu2slb01o685y93vkb.pdf"
+        },
+        {
+          "id": "MEDB 1.12",
+          "title": "Ultrasound Imaging (Sonography)",
+          "file": "dataset/cl5yvqhsu2slc01o676lm0fsz.pdf"
+        },
+        {
+          "id": "MEDB 1.9",
+          "title": "Dental Examination",
+          "file": "dataset/cl5yvqhsu2sl801o6a7fn6v7t.pdf"
+        }
+      ]
     },
     "bones": {
       "title": "Bones and muscles",
@@ -188,7 +268,21 @@
       "source": {
         "title": "NASA Human Research Program: five hazards",
         "url": "https://www.nasa.gov/hrp/hazards/"
-      }
+      },
+      "how_to_measure": "Here: log back, joint or muscle pain by pointing at the body. NASA's physical exam checks the extremities for range of motion and general strength on a 1 to 5 scale, and the spine for general appearance and mobility.",
+      "why_it_matters": "Sore muscles change the findings: NASA asks that no strenuous exercise that leaves sore muscles is done in the 24 hours before a Periodic Health Status evaluation.",
+      "mrids": [
+        {
+          "id": "MEDB 1.1",
+          "title": "Pre- and Postflight Physical Exam for Long Duration Crews (includes MEDB 1.4 Neurological Assessment)",
+          "file": "dataset/cl5yvqhsu2slb01o685y93vkb.pdf"
+        },
+        {
+          "id": "MEDB 1.2",
+          "title": "Crew Medical Officer Health Status Evaluations",
+          "file": "dataset/cl5yvqhsu2sm901o68cdoern1.pdf"
+        }
+      ]
     },
     "whole_body": {
       "title": "Whole body: radiation",
@@ -199,7 +293,16 @@
       "source": {
         "title": "NASA HRP: five hazards (space radiation)",
         "url": "https://www.nasa.gov/hrp/hazards/"
-      }
+      },
+      "how_to_measure": "Radiation is modelled here, not measured on you. For the skin: photograph a cut, rash or allergic reaction when you notice it and again at intervals, so the healing can be followed.",
+      "why_it_matters": "NASA uses the photographs so flight surgeons can judge the extent and nature of a skin injury and monitor follow-up treatment, and to track how fast cuts and rashes heal in flight.",
+      "mrids": [
+        {
+          "id": "MEDB 1.14",
+          "title": "Photodocumentation of Skin",
+          "file": "dataset/cl5yvqhsu2sm501o67yu9azg9.pdf"
+        }
+      ]
     }
   },
   "sentinel_skin": [
@@ -241,5 +344,9 @@
       "fact": "Spaceflight Standard Measures include sit-to-stand and tandem-walk tests",
       "url": "https://ntrs.nasa.gov/api/citations/20180002943/downloads/20180002943.pdf"
     }
-  ]
+  ],
+  "mrid_source": {
+    "title": "NASA JSC 28913 Medical Requirements Integration Documents",
+    "note": "MRID numbers are cited from the team's dataset/ folder (Person 2: Body Model and Zones). Sentinel is designed around these requirements; it does not claim to implement them."
+  }
 }

@@ -25,6 +25,20 @@ const lit = focus ? ZONE[focus] || [focus] : null;
 const bodyFile = sex === 'male' ? 'human.glb' : 'human_female.glb';
 const [body, anat] = await Promise.all([L.loadAsync('../assets/body3d/' + bodyFile), L.loadAsync((q.get('adir') || '../assets/body3d/') + `anatomy_${sex}.glb`)]);
 body.scene.traverse(o => { if (o.isMesh) { o.material = fres(mode === 'radiograph' ? '#9fb9d6' : '#4f9dff', 2.0, 0.02, 0.35, true); o.renderOrder = 10; } });
+// the same load-time fit the app applies (app/js/world/fit.js); add &fit=0 to see the raw GLB
+let fitReport = null;
+if (q.get('fit') !== '0') {
+  const { conformAnatomy } = await import('../js/world/fit.js');
+  let bg = null; body.scene.traverse(o => { if (o.isMesh && !bg) bg = o.geometry; });
+  const fp = {}, gs = {};
+  anat.scene.traverse(o => { if (o.isMesh) { gs[o.name] = o.geometry; fp[o.name] = { pos: o.geometry.attributes.position.array, index: o.geometry.index ? o.geometry.index.array : null }; } });
+  fitReport = conformAnatomy({ pos: bg.attributes.position.array, index: bg.index ? bg.index.array : null }, fp).report;
+  for (const [n, r] of Object.entries(fitReport)) {
+    if (r.cut) gs[n].setIndex(new THREE.BufferAttribute(fp[n].index, 1));
+    if (r.moved || r.fitted) { gs[n].attributes.position.needsUpdate = true; gs[n].computeVertexNormals(); }
+  }
+}
+window.fitReport = fitReport;
 const names = [];
 anat.scene.traverse(o => { if (!o.isMesh) return; const g = o.name; names.push(g);
   const bone = BONES.includes(g);
@@ -39,8 +53,10 @@ anat.scene.traverse(o => { if (!o.isMesh) return; const g = o.name; names.push(g
   } });
 s.add(body.scene, anat.scene);
 const box = new THREE.Box3().setFromObject(body.scene), c = box.getCenter(new THREE.Vector3()), h = box.max.y - box.min.y;
-const zoom = q.get('zoom'); const d = zoom ? h * 0.9 : h * 2.75;
-const ty = zoom === 'chest' ? box.min.y + h * 0.72 : zoom === 'head' ? box.min.y + h * 0.92 : c.y;
+const zoom = q.get('zoom'); const d = q.get('d') ? h * parseFloat(q.get('d')) : zoom ? h * 0.9 : h * 2.75;   // d, cy, cx: distance, height and side offset as fractions of stature
+const ty = q.get('cy') ? box.min.y + h * parseFloat(q.get('cy')) : zoom === 'chest' ? box.min.y + h * 0.72 : zoom === 'head' ? box.min.y + h * 0.92 : c.y;
+if (q.get('cx')) c.x += h * parseFloat(q.get('cx'));
+if (q.get('cz')) c.z += h * parseFloat(q.get('cz'));
 const dir = view === 'side' ? new THREE.Vector3(1, 0, 0) : view === 'three' ? new THREE.Vector3(0.7, 0, 0.7) : new THREE.Vector3(0, 0, 1);
 cam.position.set(c.x + dir.x * d, ty, c.z + dir.z * d); cam.lookAt(c.x, ty, c.z);
 r.render(s, cam);

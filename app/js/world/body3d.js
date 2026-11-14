@@ -12,6 +12,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { conformAnatomy } from "./fit.js";
 
 export const BONES = ["skull", "spine", "ribcage", "shoulders", "pelvis", "limbs"];
 export const ORGANS = ["brain", "eyes", "heart", "lungs", "airway", "liver", "stomach", "intestines", "pancreas_spleen", "kidneys", "arteries", "veins"];
@@ -110,6 +111,24 @@ function stats(geom, keep) {
   return { box, c: n ? sum.divideScalar(n) : box.getCenter(new THREE.Vector3()), n };
 }
 
+/** Press the anatomy inside this body (./fit.js) and return the per-node report. Never fatal. */
+function fitAnatomy(geom, parts) {
+  const plain = (a) => a && a.array instanceof Float32Array && a.itemSize === 3 && !a.isInterleavedBufferAttribute;
+  try {
+    if (!plain(geom.attributes.position)) return null;
+    const fp = {};
+    for (const [n, g] of Object.entries(parts)) if (plain(g.attributes.position)) fp[n] = { pos: g.attributes.position.array, index: g.index ? g.index.array : null };
+    const { report } = conformAnatomy({ pos: geom.attributes.position.array, index: geom.index ? geom.index.array : null }, fp);
+    for (const [n, r] of Object.entries(report)) {
+      const g = parts[n];
+      if (r.cut) g.setIndex(new THREE.BufferAttribute(fp[n].index, 1));
+      if (r.moved || r.fitted) { g.attributes.position.needsUpdate = true; g.computeVertexNormals(); }
+      if (r.moved || r.fitted || r.cut) { g.computeBoundingBox(); g.computeBoundingSphere(); }
+    }
+    return report;
+  } catch (e) { console.warn("anatomy fit skipped", e); return null; }
+}
+
 const draco = new DRACOLoader().setDecoderPath("vendor/three/jsm/libs/draco/gltf/");
 const loader = new GLTFLoader().setDRACOLoader(draco);
 const cache = {};
@@ -125,13 +144,20 @@ function loadModel(sex) {
       if (!geom.attributes.normal) geom.computeVertexNormals();
       const parts = {};
       a.scene.traverse((o) => { if (o.isMesh && NODES.includes(o.name)) { if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals(); parts[o.name] = o.geometry; } });
-      return { sex, geom, parts, wire: new THREE.WireframeGeometry(geom) };
+      return { sex, geom, parts, fit: fitAnatomy(geom, parts), wire: new THREE.WireframeGeometry(geom) };
     })
     .catch((e) => { delete cache[sex]; throw e; });
   return cache[sex];
 }
 
-export async function createBody(world, host, { tablet = false, onZoneClick, model = "male" } = {}) {
+const ST_WORD = { ok: "Normal", watch: "Watch", alert: "Alert" };
+const ST_ICON = {
+  ok: '<path d="M7.5 12.5l3 3 6-6.5"/>',
+  watch: '<path d="M12 4l9 16H3z"/><path d="M12 10.5v4M12 17v.3"/>',
+  alert: '<path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z"/><path d="M12 7.5v6M12 16.3v.4"/>',
+};
+
+export async function createBody(world, host, { tablet = false, onZoneClick, onBodyClick, regionOf, model = "male" } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 60);
 
@@ -169,6 +195,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
 
   const root = new THREE.Group();
   scene.add(root);
+  clayMat.transparent = true;   // always: it cross-fades with the X-ray (update) and between models
   const clay = new THREE.Mesh(new THREE.BufferGeometry(), clayMat);
   root.add(clay);
   const skinMat = xrayMat("#4f9dff", 2.0, 0.02, 0.35, true);
@@ -215,6 +242,96 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     nodes[n].rm = rm;
   }
 
+  // ---- the realistic eye: used whenever the eyes are the focus (organ view, Eyes, an eye check) ----
+  // BodyParts3D gives the eyeball's shape only. The surface is painted per pixel from the direction out of
+  // each eye's centre (the body faces +z): a black pupil, an iris with radial fibres, crypts, a collarette
+  // and a dark limbal ring, then a white sclera that warms toward the back, with fine red vessels that run
+  // forward and fade out before the iris. A clear coat gives the wet cornea its highlight. Illustration of
+  // a reference eye, not the crew member's own.
+  const eyeU = { uEyeA: { value: new THREE.Vector3(0.03, 1.7, 0.1) }, uEyeB: { value: new THREE.Vector3(-0.03, 1.7, 0.1) } };
+  const eyeMat = new THREE.MeshPhysicalMaterial({ roughness: 0.3, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05 });
+  eyeMat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, eyeU);
+    sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vEyeP;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvEyeP = position;");
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", `#include <common>
+varying vec3 vEyeP; uniform vec3 uEyeA; uniform vec3 uEyeB;
+float eh(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float en(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(eh(i), eh(i + vec2(1.0, 0.0)), f.x), mix(eh(i + vec2(0.0, 1.0)), eh(i + vec2(1.0, 1.0)), f.x), f.y); }
+vec3 eyeColor(vec3 p) {
+  vec3 c = p.x >= 0.0 ? uEyeA : uEyeB;
+  vec3 d = normalize(p - c);
+  float th = acos(clamp(d.z, -1.0, 1.0));          // 0 at the centre of the pupil
+  float ph = atan(d.y, d.x) + (p.x >= 0.0 ? 0.0 : 1.7);
+  const float IR = 0.42, PR = 0.15;
+  // sclera, warmer toward the back and the corners
+  vec3 col = vec3(0.93, 0.90, 0.86);
+  col = mix(col, vec3(0.94, 0.77, 0.72), smoothstep(0.9, 2.3, th) * 0.6);
+  // vessels: wandering lines that run forward and fade out before the iris
+  float w = en(vec2(ph * 3.0, th * 4.0)) * 2.0;
+  float v1 = abs(sin(ph * 11.0 + w * 2.2 + th * 1.6));
+  float v2 = abs(sin(ph * 23.0 - w * 3.1 + th * 4.2));
+  float veins = smoothstep(0.10, 0.0, v1) * 0.9 + smoothstep(0.06, 0.0, v2) * 0.55;
+  veins *= smoothstep(IR + 0.1, IR + 0.8, th) * smoothstep(0.25, 0.65, en(vec2(ph * 5.0, th * 9.0)));
+  col = mix(col, vec3(0.70, 0.10, 0.12), clamp(veins, 0.0, 0.85));
+  // iris
+  float r = th / IR, rp = PR / IR;
+  vec3 inner = vec3(0.68, 0.47, 0.18), outer = vec3(0.30, 0.19, 0.09);
+  vec3 iris = mix(inner, outer, smoothstep(0.35, 0.95, r));
+  float fib = en(vec2(ph * 38.0, r * 2.0)) * 0.6 + en(vec2(ph * 90.0, r * 6.0)) * 0.4;
+  iris *= 0.6 + 0.8 * fib;
+  iris *= 1.0 - 0.35 * smoothstep(0.45, 0.62, en(vec2(ph * 14.0, r * 7.0)));                  // crypts
+  iris = mix(iris, inner * 1.3, 0.55 * smoothstep(rp, rp + 0.08, r) * smoothstep(rp + 0.3, rp + 0.12, r));   // collarette
+  iris = mix(iris, vec3(0.05, 0.035, 0.03), smoothstep(0.8, 1.0, r));                          // limbal ring
+  col = mix(iris, col, smoothstep(0.98, 1.06, r));
+  // pupil
+  col = mix(vec3(0.008), col, smoothstep(rp - 0.03, rp + 0.03, r));
+  return col;
+}`).replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb = pow(eyeColor(vEyeP), vec3(2.2));");
+  };
+  /** The eye material is used for the eyes when they are the focus. */
+  const eyeFocus = () => style === "real" || (style === "anatomy" && lit && lit.length === 1 && lit[0] === "eyes");
+
+  // ---- organ pictures: the details box shows the same 3D organ as the organ view, rendered once ----
+  let snapR = null;
+  const snapCache = {};
+  /** A PNG data URL of a zone's organ (the same parts and materials the organ view shows), or null. */
+  function snapshot(zone, size = 256) {
+    const names = ZONE_NODES[zone];
+    if (!names || !current) return null;
+    const ck = `${current.sex}:${zone}`;
+    if (ck in snapCache) return snapCache[ck];
+    try {
+      if (!snapR) {
+        snapR = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+        snapR.setPixelRatio(1); snapR.setSize(size, size, false); snapR.setClearColor(0x000000, 0);
+        snapR.outputColorSpace = THREE.SRGBColorSpace; snapR.toneMapping = THREE.ACESFilmicToneMapping;
+      }
+      const sc = new THREE.Scene();
+      // the organ-view lighting (retarget, style "real")
+      sc.add(new THREE.HemisphereLight(0x9aa9c6, 0x0d1424, 0.95));
+      for (const [col, i, p] of [[0xffffff, 1.05, key.position], [0x8fb4ff, 1.6, rimL.position], [0x9fc0ff, 1.6, rimR.position], [0x6f86b8, 0.95, fill.position]]) {
+        const l = new THREE.DirectionalLight(col, i); l.position.copy(p); sc.add(l);
+      }
+      const box = new THREE.Box3();
+      for (const n of names) {
+        const g = current.parts[n];
+        if (!g) continue;
+        sc.add(new THREE.Mesh(g, n === "eyes" ? eyeMat : nodes[n].rm));
+        g.computeBoundingBox(); box.union(g.boundingBox);
+      }
+      const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+      const cam2 = new THREE.PerspectiveCamera(30, 1, 0.01, 30);
+      const r = Math.max(s.x, s.y) / 2;
+      cam2.position.set(c.x, c.y, c.z + (r / Math.tan(THREE.MathUtils.degToRad(15))) * 1.15 + s.z / 2);
+      cam2.lookAt(c);
+      snapR.render(sc, cam2);
+      snapCache[ck] = snapR.domElement.toDataURL("image/png");
+    } catch (e) { console.warn("organ picture failed", e); snapCache[ck] = null; }
+    return snapCache[ck];
+  }
+
   // ---- measurement rings (ref 04), placed from slices of the loaded body ----
   const ringGroup = new THREE.Group();
   root.add(ringGroup);
@@ -255,6 +372,11 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     const bb = m.geom.boundingBox, h = bb.max.y - bb.min.y;
     const P = (n, keep) => (m.parts[n] ? stats(m.parts[n], keep) : { box: new THREE.Box3(new THREE.Vector3(0, h * 0.5, 0), new THREE.Vector3(0, h * 0.5, 0)), c: new THREE.Vector3(0, h * 0.5, 0.05), n: 0 });
     const brain = P("brain"), eyes = P("eyes"), heart = P("heart"), lungR = P("lungs", (x) => x < 0), lungs = P("lungs"), skull = P("skull");
+    // each eyeball's centre, for the realistic eye (the iris faces +z from it)
+    if (m.parts.eyes) for (const [u, keep] of [[eyeU.uEyeA, (x) => x >= 0], [eyeU.uEyeB, (x) => x < 0]]) {
+      const e = stats(m.parts.eyes, keep);
+      if (e.n) e.box.getCenter(u.value);
+    }
     const gutY0 = P("intestines").box.min.y, liver = P("liver"), ribs = P("ribcage"), pelvis = P("pelvis");
     const intest = P("intestines", (x, y) => y < pelvis.box.max.y + h * 0.06);
     const knee = P("limbs", (x, y) => x > 0.02 && y > h * 0.25 && y < h * 0.3);
@@ -275,6 +397,12 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
       gut: [liver.box.max.y + pad, gutY0 - pad], bones: [bb.max.y + pad, bb.min.y - 0.02], whole_body: [bb.max.y + pad, bb.min.y - 0.02],
     });
     M = { sex: m.sex, height: h, top: bb.max.y + 0.03, inner };
+    // landmarks for pointing ("where does it hurt?"), from this model's own anatomy
+    M.landmarks = {
+      height: h, chinY: skull.box.min.y, eyeY: eyes.c.y, eyeHalf: Math.max(0.018, (eyes.box.max.y - eyes.box.min.y) * 0.9),
+      shoulderY: ribs.box.max.y, waistY: ribs.box.min.y, hipY: Math.min(pelvis.box.min.y, h * 0.5), ankleY: h * 0.05,
+      trunkHalf: ribs.box.max.x + 0.045, handX: bb.max.x - h * 0.07,
+    };
     // rings: head at the eyes, chest across the lungs, waist above the pelvis, both thighs
     ringGroup.clear();
     rings = {};
@@ -297,6 +425,17 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
 
   // ---- camera, controls ----
   const controls = new OrbitControls(camera, host);
+  // The body tools, zoom buttons and the zone card sit inside the host. OrbitControls captures the pointer
+  // on every press there, so the release (and the click) went to the host and those buttons never fired.
+  // A press that starts on a control does not start an orbit; it is handed back on release.
+  const UI = "button, a, input, select, textarea, label, .card, .zone-pop, .body-tools, .body-zoom";
+  let heldOff = false;
+  host.addEventListener("pointerdown", (e) => {
+    if (controls.enabled && e.target !== host && e.target.closest?.(UI)) { controls.enabled = false; heldOff = true; }
+  }, true);
+  const release = () => { if (heldOff) { heldOff = false; if (!camTween) controls.enabled = true; } };
+  window.addEventListener("pointerup", release);
+  window.addEventListener("pointercancel", release);
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false;
   controls.minDistance = 0.45; controls.maxDistance = 6.5;
   controls.minPolarAngle = Math.PI * 0.3; controls.maxPolarAngle = Math.PI * 0.6;
@@ -371,7 +510,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     const b = document.createElement("button");
     b.type = "button"; b.className = "zone is-ok"; b.id = `zone-${z}`; b.dataset.zone = z;
     b.setAttribute("aria-label", ZLABEL[z]);
-    b.innerHTML = `<span class="zdot"></span><span class="zname">${ZLABEL[z]}</span><span class="zchip" hidden></span>`;
+    b.innerHTML = `<span class="zdot"><svg viewBox="0 0 24 24" aria-hidden="true">${ST_ICON.ok}</svg></span><span class="zstat">${ST_WORD.ok}</span><span class="zname">${ZLABEL[z]}</span><span class="zchip" hidden></span>`;
     b.addEventListener("click", (e) => { e.stopPropagation(); onZoneClick?.(z, b); });
     hotLayer.appendChild(b);
     hot[z] = b;
@@ -409,6 +548,29 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     }
   }
 
+  // ---- pointing: a tap on the body itself names the region under the finger (BODY-1, BODY-6) ----
+  const tapRay = new THREE.Raycaster(), ndc = new THREE.Vector2(), nrm = new THREE.Vector3();
+  function regionAt(clientX, clientY) {
+    if (!M || !regionOf) return null;
+    ndc.set((clientX / W) * 2 - 1, -((clientY / H) * 2 - 1));
+    tapRay.setFromCamera(ndc, camera);
+    const hit = tapRay.intersectObject(clay, false)[0];
+    if (!hit) return null;
+    const back = hit.face ? nrm.copy(hit.face.normal).z < -0.25 : false;
+    const p = { x: hit.point.x, y: hit.point.y, z: hit.point.z, back };
+    return { region: regionOf(p, M.landmarks), point: [p.x, p.y, p.z], back };
+  }
+  let pointing = false, down = null;
+  host.addEventListener("pointerdown", (e) => { down = e.isPrimary !== false ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+  host.addEventListener("pointerup", (e) => {
+    const d = down; down = null;
+    // a tap, not a drag to turn the body, and not on a control laid over the 3D area
+    if (!d || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 8 || performance.now() - d.t > 600) return;
+    if (e.target.closest?.("button, a, input, select, .card, .zone-pop")) return;
+    const r = regionAt(e.clientX, e.clientY);
+    if (r) onBodyClick?.({ ...r, x: e.clientX, y: e.clientY, pointing });
+  });
+
   // ---- looks ----
   let style = "radiograph";       // radiograph | anatomy | real
   let lit = null;                 // array of node names in full colour, or null for all
@@ -417,18 +579,23 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     const real = style === "real";
     for (const n of NODES) {
       const t = nodes[n].t, bone = BONES.includes(n), node = nodes[n];
-      const want = real ? node.rm : node.xm;
+      const want = n === "eyes" && eyeFocus() ? eyeMat : real ? node.rm : node.xm;
       if (node.mesh.material !== want) node.mesh.material = want;
-      node.mesh.renderOrder = real ? 0 : bone ? 5 : 1;
+      const on = !lit || lit.includes(n);
+      // a focused organ draws after the bones, so the ribs or the skull glow behind it, not over it
+      node.mesh.renderOrder = real ? 0 : bone ? 5 : lit && on ? 8 : 1;
       node.mesh.visible = !real || !lit || lit.includes(n);
       if (real) continue;
+      // blending never changes: bones add light (X-ray glow), organs blend normally. Switching mode while
+      // an organ fades in or out made it pop for a frame.
       if (style === "radiograph") {
         if (bone) Object.assign(t, { p: 1.2, b: 0.3, k: 0.55, vis: 1, add: true }), t.c.set("#eef5ff");
-        else Object.assign(t, { p: 2.0, b: 0.015, k: 0.1, vis: n === "arteries" || n === "veins" ? 0 : 1, add: true }), t.c.set("#7f95ad");
+        else Object.assign(t, { p: 2.0, b: 0.015, k: 0.1, vis: n === "arteries" || n === "veins" ? 0 : 1, add: false }), t.c.set("#7f95ad");
       } else {
-        const on = !lit || lit.includes(n);
-        if (bone) Object.assign(t, { p: 1.3, b: on ? (lit ? 0.16 : 0.1) : 0.04, k: on ? (lit ? 0.6 : 0.45) : 0.2, vis: 1, add: true }), t.c.set("#dfe9ff");
-        else Object.assign(t, { p: 1.6, b: on ? 0.55 : 0.03, k: on ? 0.45 : 0.1, vis: 1, add: !on }), t.c.set(COL[n]);
+        // with an organ in focus the bones step right back, or the ribcage washes over the heart
+        const organFocus = lit && lit.some((x) => !BONES.includes(x));
+        if (bone) Object.assign(t, { p: 1.3, b: on ? (lit ? 0.16 : 0.1) : organFocus ? 0.012 : 0.04, k: on ? (lit ? 0.6 : 0.45) : organFocus ? 0.07 : 0.2, vis: 1, add: true }), t.c.set("#dfe9ff");
+        else Object.assign(t, { p: 1.6, b: on ? (lit ? 0.7 : 0.55) : 0.03, k: on ? 0.45 : 0.1, vis: 1, add: false }), t.c.set(COL[n]);
       }
     }
     const radio = style === "radiograph";
@@ -449,8 +616,15 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     if (controls.enabled) controls.update();
     pulseT += dt;
     const xa = U.uAmt.value;
-    clay.visible = xa < 0.98 && U.uFade.value > 0.01;
-    clayMat.opacity = U.uFade.value;
+    // The solid body cross-fades with the X-ray. It used to stay opaque, hiding everything inside it,
+    // until the X-ray was 98% in and then vanish in one frame: a flash on every check, tap and toggle.
+    // While the X-ray shows through it draws after the anatomy (which writes no depth), so it is a veil
+    // over it; during a mesh scan it stays first so the scan band draws over it.
+    const scanning = wireU.uOn.value > 0.01;
+    const clayA = (1 - xa * xa * (3 - 2 * xa)) * U.uFade.value;
+    clay.visible = clayA > 0.01;
+    clayMat.opacity = clayA;
+    clay.renderOrder = xa > 0.004 && !scanning ? 20 : 0;
     const k = Math.min(1, dt * 3.2);
     const pulse = targetZone && (zoneSev[targetZone] === "alert" || zoneSev[targetZone] === "watch") ? 0.18 * (0.5 + 0.5 * Math.sin(pulseT * 4.2)) : 0;
     const anyX = xa > 0.004 || wireU.uOn.value > 0.01;
@@ -466,7 +640,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
       u.k.value += (tg.k + (litNow ? pulse : 0) - u.k.value) * k;
       u.vis.value += (tg.vis - u.vis.value) * k;
       const blend = tg.add ? THREE.AdditiveBlending : THREE.NormalBlending;
-      if (mesh.material.blending !== blend && (u.b.value < 0.12 || Math.abs(u.b.value - tg.b) < 0.02)) mesh.material.blending = blend;
+      if (mesh.material.blending !== blend) mesh.material.blending = blend;   // fixed per node (retarget)
     }
     ringGroup.visible = style !== "real";
     for (const name in rings) for (const l of rings[name]) {
@@ -498,14 +672,28 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     get height() { return M.height; },
     get top() { return M.top; },
     zoneSpan: (z) => spans[z] || spans.whole_body,
+    snapshot,
+    regionAt,
+    get landmarks() { return { ...M.landmarks }; },
+    /** Pointing mode: the next tap on the body is an answer to "where does it hurt?". */
+    setPointing(on) { pointing = !!on; host.classList.toggle("is-pointing-mode", pointing); },
+    get pointing() { return pointing; },
     screenPoint(z) { const p = project(z); return { x: p.x, y: p.y }; },
     setZoneStates(zones) {
       for (const z of Object.keys(ZLABEL)) {
         const st = zones?.[z] || "ok";
         zoneSev[z] = st;
-        const cls = `is-${st === "info" ? "watch" : st}`;
+        const key = st === "alert" ? "alert" : st === "watch" || st === "info" ? "watch" : "ok";
+        const cls = `is-${key}`;
         const el = hot[z];
-        if (!el.classList.contains(cls)) { el.classList.remove("is-ok", "is-watch", "is-alert"); el.classList.add(cls); }
+        if (!el.classList.contains(cls) || !el.dataset.st) {
+          el.classList.remove("is-ok", "is-watch", "is-alert"); el.classList.add(cls);
+          // colour, icon and word together (BODY-7): the shape and the word change with the status
+          el.dataset.st = key;
+          el.querySelector(".zdot svg").innerHTML = ST_ICON[key];
+          el.querySelector(".zstat").textContent = ST_WORD[key];
+          el.setAttribute("aria-label", `${ZLABEL[z]}: ${ST_WORD[key]}`);
+        }
       }
     },
     setTarget(z) {
@@ -570,7 +758,11 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
         dist = distFor(2 * r * 1.3, 2 * r * 1.3) + r * 0.5;
         tx = c.x; tz = c.z;
         controls.minDistance = Math.min(0.45, dist * 0.5);
-      } else dist = Math.max(distFor(Math.max(s.y * 1.25, M.height * 0.12), Math.max(s.x * 1.3, 0.2)), controls.minDistance);
+      } else {
+        // a small organ (the heart, the eyes) is framed with some of its surroundings, so it reads as a
+        // part of the body; framed tight, the camera sat inside the ribcage and the ribs filled the view
+        dist = Math.max(distFor(Math.max(s.y * 1.4, M.height * 0.17), Math.max(s.x * 1.5, 0.26)), controls.minDistance);
+      }
       await Promise.all([api.setXray(true, reduced() ? 0 : 0.8), moveCam({ az: 0, dist: Math.min(dist, homeDist), y: c.y, x: tx, z: tz, el: 0.04 }, reduced() ? 0 : seconds)]);
     },
     /** Start a mesh scan from `top` (metres). The band then moves with sweepTo(). */
@@ -625,14 +817,11 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
         const next = await loadModel(sex);
         const g = window.gsap;
         const fade = (v, s) => (g && !reduced() ? new Promise((r) => g.to(U.uFade, { value: v, duration: s, ease: "power2.inOut", onComplete: r, onInterrupt: r })) : (U.uFade.value = v, Promise.resolve()));
-        clayMat.transparent = true;
         await fade(0, 0.45);
         current = next;
         applyModel(next);
         if (!moved) { cam.dist = homeDist; cam.ty = homeY(); applyCam(); }
         await fade(1, 0.6);
-        clayMat.transparent = false;
-        clayMat.needsUpdate = true;
       })();
       switching = job;
       try { await job; } finally { if (switching === job) switching = null; }
@@ -640,7 +829,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     preload(sex) { loadModel(sex).catch(() => {}); },
     controls,
     nodes: Object.fromEntries(NODES.map((n) => [n, nodes[n].mesh])),
-    debug: () => ({ anchors: { ...anchors }, spans: { ...spans }, height: M.height, model: current.sex, style, lit, amt: U.uAmt.value }),
+    debug: () => ({ anchors: { ...anchors }, spans: { ...spans }, height: M.height, model: current.sex, style, lit, amt: U.uAmt.value, fit: current.fit }),
   };
   return api;
 }

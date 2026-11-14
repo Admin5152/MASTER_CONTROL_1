@@ -144,7 +144,7 @@ Screenshots: `tests/screenshots/v2/dark/`, `tests/screenshots/v2/light/`, `tests
 
 ## Contract additions
 
-The frozen block is unchanged. Additions used: `display_name`, `identity.source`, `vitals.sources.*`, `manual.*`, `voice.*`, `cognitive.*`, `drift.items[]`, `action.{zone, severity, intervention}`, `engagement.*`, `radiation.*`, `wellbeing.*` (all from v1) and, new in v2, **`body_model`** (`"male" | "female"`). Anything else in a patch returns 422. Session numbers that are not state (race, reaction-test lapses, timed measures) go to the history through `POST /api/log/{id}` with a whitelisted field name.
+The frozen block is unchanged. Additions used: `display_name`, `identity.source`, `vitals.sources.*`, `manual.*`, `voice.*`, `cognitive.*`, `drift.items[]`, `action.{zone, severity, intervention}`, `engagement.*`, `radiation.*`, `wellbeing.*` (all from v1) and, new in v2, **`body_model`** (`"male" | "female"`) and **`manual.symptom_log`** (symptoms entered by pointing at the body: `{zone, region, type, severity 1-3, onset, at}`, newest first, at most 20; zone and onset are enums). Anything else in a patch returns 422. Session numbers that are not state (race, reaction-test lapses, timed measures) go to the history through `POST /api/log/{id}` with a whitelisted field name.
 
 ## Thresholds and sources
 

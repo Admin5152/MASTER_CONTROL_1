@@ -186,3 +186,42 @@ def test_heart_rate_drop_past_threshold_is_not_within_range(client):
     assert "below" in s["drift"]["note"] and "baseline" in s["drift"]["note"]
     zones = client.get("/api/assessment/james").json()["zones"]
     assert zones["heart"] != "ok"
+
+
+
+# ---------- body model: symptom entry (Product Document section 7, BODY-6 / SB4) ----------
+def _sym(**kw):
+    e = {"zone": "head", "region": "head", "type": "headache", "severity": 2, "onset": "today", "at": "2026-11-14T10:00:00Z"}
+    e.update(kw)
+    return e
+
+
+def test_symptom_log_patch_is_accepted_and_kept(client):
+    cid = client.get("/api/crew").json()[0]["crew_id"]
+    r = client.post(f"/api/state/{cid}/patch", json={"manual": {"symptoms": ["headache"], "symptom_log": [_sym()]}})
+    assert r.status_code == 200, r.text
+    s = r.json()
+    assert s["manual"]["symptom_log"][0]["type"] == "headache"
+    assert s["action"]["type"] == "suggest_medicine"   # the kit match still comes from the rules engine
+
+
+def test_symptom_log_rejects_bad_entries(client):
+    cid = client.get("/api/crew").json()[0]["crew_id"]
+    for bad in (_sym(zone="tail"), _sym(severity=7), _sym(onset="later"), _sym(type="  "), {"zone": "head"}, _sym(extra=1)):
+        r = client.post(f"/api/state/{cid}/patch", json={"manual": {"symptom_log": [bad]}})
+        assert r.status_code == 422, bad
+    r = client.post(f"/api/state/{cid}/patch", json={"manual": {"symptom_log": [_sym()] * 21}})
+    assert r.status_code == 422
+
+
+def test_zone_facts_cite_mrids():
+    import json
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    facts = json.loads((root / "shared" / "facts.json").read_text(encoding="utf-8"))
+    for z in ("head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"):
+        f = facts["zones"][z]
+        assert f["how_to_measure"] and f["why_it_matters"], z
+        assert f["mrids"], z
+        for m in f["mrids"]:
+            assert m["id"].startswith("MEDB") and (root / m["file"]).exists(), m

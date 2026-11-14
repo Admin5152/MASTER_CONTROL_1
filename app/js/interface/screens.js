@@ -4,7 +4,7 @@ import { api } from "../core/api.js";
 import { emit } from "../core/bus.js";
 import { STAGES } from "../core/stages.js";
 import { renderTrend, METRIC_DEFS } from "./charts.js";
-import { ZONE_NAMES, badgeFor, badgeHTML, esc, fmt, statusWord, zoneReadings } from "./readings.js";
+import { ZONE_NAMES, badgeFor, badgeHTML, esc, fmt, statusHTML, statusKey, statusWord, zoneReadings } from "./readings.js";
 
 const sheet = () => document.getElementById("sheet");
 const registry = new Map(); // name -> { title, badge, wide, full, orb, render(el, ctx, arg) -> cleanup }
@@ -33,7 +33,9 @@ export function initScreens(ctx) {
 function show(name, arg) {
   const def = registry.get(name);
   if (!def) return;
+  ctxRef.nextScreen = name;   // a screen's cleanup can tell it is being replaced by the same kind (organ to organ)
   closeScreen(true);
+  ctxRef.nextScreen = null;
   const el = sheet();
   currentName = name;
   el.hidden = false;
@@ -107,7 +109,7 @@ function renderZone(el, ctx, zone) {
         <td>${esc(r.label)}</td>
         <td class="num"><strong>${esc(fmt(r.value, r.field))}</strong> ${esc(r.unit || "")}</td>
         <td>${badgeHTML(r.badge)}</td>
-        <td class="st-${r.severity === "info" ? "watch" : r.severity}">${statusWord(r.severity)}</td>
+        <td class="st-cell st-${statusKey(r.severity)}">${statusHTML(r.severity)}</td>
         <td class="note">${esc(r.change || "")}</td></tr>`).join("");
     const ths = readings.flatMap((r) => (r.levels || []).map((l) => `<li>${esc(r.label)}: ${esc(l.severity)} ${l.below != null ? "below " + l.below : "above " + l.above} ${esc(r.unit || "")}.
         <span class="kind kind-${l.kind}">${esc(l.kind)}</span> ${l.source.url ? `<a class="src-link" href="${esc(l.source.url)}" target="_blank" rel="noopener">${esc(l.source.title)}</a>` : esc(l.source.title)}</li>`)).join("");
@@ -115,9 +117,12 @@ function renderZone(el, ctx, zone) {
     const rad = zone === "whole_body" ? `<p class="note">Effects NASA tracks: cancer risk, central nervous system and cognitive effects, cardiovascular effects, and cataracts. Because radiation cannot be felt, Sentinel asks for the cognitive check so a trend is noticed early. This is not a diagnosis.</p>
       <button class="pill pill-ghost" type="button" data-open="radiation">Open Radiation Watch</button>` : "";
     el.innerHTML = `
-      <h3>Your readings <span class="co-sev st-${sev}">${statusWord(sev)}</span></h3>
+      <h3>Your readings <span class="co-sev st-cell st-${statusKey(sev)}">${statusHTML(sev)}</span></h3>
       ${rows ? `<table class="readings"><thead><tr><th>Reading</th><th>Value</th><th>Source</th><th>Status</th><th>Change</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="note">No readings for this area yet.</p>`}
-      <p style="margin-top:var(--s-4)"><button class="pill pill-dark" type="button" data-check>Check this area</button></p>
+      <p style="margin-top:var(--s-4)" class="zone-acts"><button class="pill pill-dark" type="button" data-check>Check this area</button> <button class="pill pill-ghost" type="button" data-hurt>Log a symptom</button></p>
+      ${f.how_to_measure ? `<h3>How to measure</h3><p data-how>${esc(f.how_to_measure)}</p>` : ""}
+      ${f.why_it_matters ? `<h3>Why it matters</h3><p data-why>${esc(f.why_it_matters)}</p>` : ""}
+      ${f.mrids?.length ? `<p class="fine mrids" data-mrids>Source: ${esc(ctx.facts.mrid_source?.title || "NASA MRIDs")}: ${f.mrids.map((m) => `<span class="mrid" title="${esc(m.file)}">${esc(m.id)} ${esc(m.title)}</span>`).join("; ")}. Designed around these requirements, not an implementation of them.</p>` : ""}
       <h3>What to do next</h3><p>${esc(f.next || "")}</p>
       <details class="more"><summary>What it does and how spaceflight affects it</summary>
         <p>${esc(f.what || "")}</p><p>${esc(f.spaceflight || "")}</p>
@@ -128,6 +133,7 @@ function renderZone(el, ctx, zone) {
       <p class="fine">Sentinel describes change from your own baseline. It does not diagnose; anything that worries you is a question for the flight surgeon.</p>`;
     el.querySelector("[data-open]")?.addEventListener("click", () => api_.open("radiation"));
     el.querySelector("[data-check]")?.addEventListener("click", () => { closeScreen(); ctx.director.run([{ cmd: "check_zone", zones: [zone] }]); });
+    el.querySelector("[data-hurt]")?.addEventListener("click", () => api_.open("symptom"));
   };
   draw();
   const t = setInterval(() => { if (!el.contains(document.activeElement) && !el.querySelector("details[open]")) draw(); }, 3000);
@@ -287,6 +293,9 @@ function renderSettings(el, ctx) {
   el.innerHTML = `
     <h3>Theme</h3>
     <div class="mood-row"><button type="button" data-theme-set="dark" aria-pressed="${document.documentElement.dataset.theme !== "light"}">Space (dark)</button><button type="button" data-theme-set="light" aria-pressed="${document.documentElement.dataset.theme === "light"}">Clinical light</button></div>
+    <h3>Glove mode</h3>
+    <div class="mood-row"><button type="button" data-glove="off" aria-pressed="${document.documentElement.dataset.glove !== "on"}">Off</button><button type="button" data-glove="on" aria-pressed="${document.documentElement.dataset.glove === "on"}">On: larger targets</button></div>
+    <p class="hint fine">For gloved hands: every control on the body screen becomes at least 56 px.</p>
     <h3>Camera</h3><div class="field"><select data-cam><option value="">Default (built-in)</option></select><span class="hint">Used for the face scan and the camera pulse. Remembered in this browser.</span></div>
     <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
     <h3>Sentinel's voice</h3><div class="field"><select data-voice></select><span class="hint" data-voice-note></span></div>
@@ -297,6 +306,10 @@ function renderSettings(el, ctx) {
   el.querySelectorAll("[data-theme-set]").forEach((b) => b.addEventListener("click", () => {
     ctx.setTheme?.(b.dataset.themeSet);
     el.querySelectorAll("[data-theme-set]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
+  el.querySelectorAll("[data-glove]").forEach((b) => b.addEventListener("click", () => {
+    ctx.setGlove?.(b.dataset.glove === "on");
+    el.querySelectorAll("[data-glove]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
   }));
   el.querySelectorAll("[data-listen]").forEach((b) => b.addEventListener("click", () => {
     st.set("listen", b.dataset.listen); ctx.applyListening?.();

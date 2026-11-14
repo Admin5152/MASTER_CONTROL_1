@@ -308,6 +308,8 @@ export function createDirector(deps) {
     clearTimeout(director.scanClear);
     director.scanClear = setTimeout(() => { scanList.innerHTML = ""; }, 30000);
     const worst = results.reduce((w, r) => (rank[r.sev] > rank[w.sev] ? r : w), { sev: "ok" });
+    director.lastScanFlagged = results.filter((r) => r.sev !== "ok").map((r) => r.zone);
+    emit("body.scan.complete", { zones_flagged: director.lastScanFlagged, crewId: getView().crewId });
     cue.done();
     if (worst.sev === "ok") {
       await say("Scan complete. Everything is within your usual range.", { kind: "scan" });
@@ -354,7 +356,7 @@ export function createDirector(deps) {
       let html, spoken, next, color;
       if (!rs.length) {
         result.verdict = "no_sensor";
-        next = { label: "Log a symptom", cmd: { cmd: "open_screen", name: "health_log" } };
+        next = { label: "Log a symptom", cmd: { cmd: "open_screen", name: "symptom" } };
         spoken = `I have no sensor on your ${shortName(zone)} yet. Would you like to log a symptom?`;
         color = SEV_COLOR.watch;
         html = `<h3>${INFO_ICON}${esc(name)}<span class="co-sev">No data</span></h3><p class="co-time">${esc(nowStr())}</p>

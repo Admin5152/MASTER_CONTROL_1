@@ -368,3 +368,124 @@ test("PVT: waits of 2-10 s, lapses over 500 ms, false starts, change from baseli
   assert.match(pvt.sleepNote(5.5), /under 6 hours/);
   assert.equal(pvt.summarize([{ early: true }]).median, null);
 });
+
+// ---------- body model and zones (Product Document section 7) ----------
+import { worstSeverity, zoneStatuses, regionOf, REGIONS, REGION_ZONE, ZONES as BODY_ZONES } from "../../app/js/interface/body.js";
+import { buildSymptom, symptomPatch, symptomsFor, zoneFor, describeSymptom, LOG_MAX } from "../../app/js/systems/symptomlog.js";
+import { depthMap, columnAt, conformPoints, conformAnatomy, filterTriangles } from "../../app/js/world/fit.js";
+import { statusHTML, statusKey } from "../../app/js/interface/readings.js";
+
+test("SB1/SB2: a zone shows the worst of its indicators", () => {
+  const all = zoneStatuses({}, Object.fromEntries(BODY_ZONES.map((z) => [z, [{ severity: "ok" }]])));
+  assert.ok(BODY_ZONES.every((z) => all[z] === "ok"), "all green");
+  const one = zoneStatuses({ head: "ok" }, { head: [{ severity: "ok" }, { severity: "watch" }] });
+  assert.equal(one.head, "watch");
+  assert.equal(one.heart, "ok");
+  assert.equal(worstSeverity(["ok", "info"]), "watch");
+  assert.equal(worstSeverity(["watch", "alert", "ok"]), "alert");
+  assert.equal(zoneStatuses({ lungs: "alert" }, { lungs: [{ severity: "ok" }] }).lungs, "alert", "never better than the brain's verdict");
+});
+
+test("BODY-7: status is an icon and a word, not colour alone", () => {
+  for (const [sev, word] of [["ok", "Normal"], ["watch", "Watch"], ["info", "Watch"], ["alert", "Alert"]]) {
+    const h = statusHTML(sev);
+    assert.match(h, /<svg/);
+    assert.ok(h.includes(word), sev);
+  }
+  assert.notEqual(statusHTML("watch").split("</svg>")[0], statusHTML("alert").split("</svg>")[0], "different shapes");
+  assert.equal(statusKey("info"), "watch");
+});
+
+test("pointing: a place on the body names its region and zone", () => {
+  const lm = { height: 1.8, chinY: 1.6, eyeY: 1.7, eyeHalf: 0.02, shoulderY: 1.5, waistY: 1.2, hipY: 0.9, ankleY: 0.09, trunkHalf: 0.2, handX: 0.55 };
+  const at = (x, y, back = false) => regionOf({ x, y, z: 0, back }, lm);
+  assert.equal(at(0.03, 1.7), "eyes");
+  assert.equal(at(0.03, 1.7, true), "head");
+  assert.equal(at(0, 1.78), "head");
+  assert.equal(at(0, 1.55), "neck");
+  assert.equal(at(0.05, 1.35), "chest");
+  assert.equal(at(0.05, 1.35, true), "back");
+  assert.equal(at(0.05, 1.0), "abdomen");
+  assert.equal(at(0.35, 1.2), "arms");
+  assert.equal(at(0.6, 0.85), "hands");
+  assert.equal(at(0.1, 0.5), "legs");
+  assert.equal(at(0.1, 0.03), "feet");
+  for (const r of REGIONS) assert.ok(BODY_ZONES.includes(REGION_ZONE[r]), r);
+});
+
+test("SB4: a symptom entered on the body is validated and becomes a state patch", () => {
+  const e = buildSymptom({ region: "head", type: "Headache", severity: 2, onset: "today", at: "2026-11-14T10:00:00Z" });
+  assert.deepEqual(e, { zone: "head", region: "head", type: "headache", severity: 2, onset: "today", at: "2026-11-14T10:00:00Z" });
+  assert.equal(zoneFor("chest", "cough"), "lungs");
+  assert.equal(zoneFor("chest", "racing heart"), "heart");
+  assert.equal(zoneFor("legs", "rash"), "whole_body");
+  assert.ok(symptomsFor("eyes").includes("dry eyes") && symptomsFor("eyes").includes("rash"));
+  assert.throws(() => buildSymptom({ region: "tail", type: "x", severity: 1 }), /Point at the body/);
+  assert.throws(() => buildSymptom({ region: "head", type: " ", severity: 1 }), /what you feel/);
+  assert.throws(() => buildSymptom({ region: "head", type: "headache", severity: 5 }), /how strong/);
+  const p = symptomPatch({ symptoms: ["headache"], symptom_log: [] }, e);
+  assert.deepEqual(p.manual.symptoms, ["headache"], "no duplicate");
+  assert.equal(p.manual.symptom_log[0], e);
+  let m = { symptoms: [], symptom_log: [] };
+  for (let i = 0; i < LOG_MAX + 5; i++) m = symptomPatch(m, { ...e, at: String(i) }).manual;
+  assert.equal(m.symptom_log.length, LOG_MAX);
+  assert.equal(m.symptom_log[0].at, String(LOG_MAX + 4), "newest first");
+  assert.equal(describeSymptom(e), "Moderate headache (head), earlier today");
+});
+
+test("intent matcher opens symptom entry", () => {
+  for (const p of ["log a symptom", "where does it hurt", "something hurts", "I have a pain"]) {
+    assert.deepEqual(matchIntent(p)?.commands, [{ cmd: "open_screen", name: "symptom" }], p);
+  }
+  assert.deepEqual(matchIntent("my stomach hurts").commands, [{ cmd: "check_zone", zones: ["gut"] }], "a named place is still checked");
+  assert.deepEqual(validateCommands([{ cmd: "open_screen", name: "symptom" }]), [{ cmd: "open_screen", name: "symptom" }]);
+});
+
+// a box "body" w wide, h tall, d deep (centred on x and z), as 12 triangles
+function box(w, h, d) {
+  const x = w / 2, z = d / 2;
+  const v = [[-x, 0, -z], [x, 0, -z], [x, h, -z], [-x, h, -z], [-x, 0, z], [x, 0, z], [x, h, z], [-x, h, z]];
+  const f = [[4, 5, 6], [4, 6, 7], [1, 0, 3], [1, 3, 2], [0, 4, 7], [0, 7, 3], [5, 1, 2], [5, 2, 6], [3, 7, 6], [3, 6, 2], [0, 1, 5], [0, 5, 4]];
+  return { pos: Float32Array.from(v.flat()), index: Uint32Array.from(f.flat()) };
+}
+
+test("anatomy fit: the depth map knows the body's front and back", () => {
+  const b = box(0.4, 2, 0.2);
+  const map = depthMap(b.pos, b.index, 0.01);
+  const c = columnAt(map, 0, 1);
+  assert.ok(Math.abs(c[0] + 0.1) < 1e-6 && Math.abs(c[1] - 0.1) < 1e-6);
+  assert.equal(columnAt(map, 0.5, 1), null);
+});
+
+test("anatomy fit: what pokes through the skin is pressed back inside; strays are flagged", () => {
+  const b = box(0.4, 2, 0.2);
+  const map = depthMap(b.pos, b.index, 0.01);
+  const pts = Float32Array.from([0, 1, 0.12, 0, 1, -0.12, 0, 1, 0, 0.203, 1, 0, 0.6, 1, 0]);
+  const r = conformPoints(pts, map, { margin: 0.004, reach: 0.015 });
+  assert.ok(pts[2] <= 0.1 - 0.004 + 1e-6 && pts[5] >= -0.1 + 0.004 - 1e-6, "pressed under the skin");
+  assert.equal(pts[8], 0, "inside: untouched");
+  assert.ok(Math.abs(pts[9]) < 0.2, "just outside the outline: pulled in");
+  assert.equal(r.flags[4], 1, "far outside: lost");
+  assert.equal(r.lost, 1);
+  assert.equal(filterTriangles(Uint32Array.from([0, 1, 2, 2, 3, 4]), 5, (a, b2, c) => r.flags[a] || r.flags[b2] || r.flags[c]).length, 3);
+});
+
+test("anatomy fit: a trunk wider than the body is scaled into it; organs stay inside the ribs", () => {
+  const body = box(0.3, 2, 0.2);
+  // ribs 0.36 wide and 0.26 deep around a heart, from y 1.2 to 1.5; the spine sets the trunk height
+  const ring = [];
+  for (let y = 1.2; y <= 1.5; y += 0.02) for (let a = 0; a < 6.28; a += 0.3) ring.push(Math.cos(a) * 0.18, y, Math.sin(a) * 0.13 + 0.01);
+  const parts = {
+    ribcage: { pos: Float32Array.from(ring), index: null },
+    spine: { pos: Float32Array.from([0, 1.0, -0.05, 0, 1.6, -0.05, 0.01, 1.3, -0.05]), index: null },
+    heart: { pos: Float32Array.from([0.03, 1.35, 0.05, -0.03, 1.33, 0.04, 0, 1.3, 0.06]), index: null },
+  };
+  const { report } = conformAnatomy(body, parts, { cell: 0.01 });
+  const p = parts.ribcage.pos;
+  let maxX = 0, maxZ = -1, minZ = 1;
+  for (let i = 0; i < p.length; i += 3) { maxX = Math.max(maxX, Math.abs(p[i])); maxZ = Math.max(maxZ, p[i + 2]); minZ = Math.min(minZ, p[i + 2]); }
+  assert.ok(maxX < 0.15 && maxZ < 0.1 && minZ > -0.1, `ribs inside the body: ${maxX} ${minZ}..${maxZ}`);
+  assert.ok(report.ribcage.fitted > 0 && report.heart.fitted > 0, "the heart moves with the ribs");
+  const h = parts.heart.pos;
+  for (let i = 0; i < h.length; i += 3) assert.ok(Math.abs(h[i]) < maxX && h[i + 2] < maxZ, "heart still inside the ribs");
+});

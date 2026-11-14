@@ -1,7 +1,7 @@
 // Director command whitelist and validator. Pure (no DOM): tested with node --test.
 // The backend (brain/llm.py) keeps the same whitelist for LLM replies.
 export const SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin",
-  "cognitive", "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "organ"];
+  "cognitive", "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "organ", "symptom"];
 export const ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"];
 export const METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
   "reaction", "talk_time", "pitch", "o2", "co2"];
@@ -10,7 +10,7 @@ export const MAX_COMMANDS = 3;
 export const XRAY_STYLES = ["radiograph", "anatomy"];
 /** Anatomy parts a person or the LLM can isolate: the 18 model nodes plus named groups. */
 export const PARTS = ["skull", "spine", "ribcage", "shoulders", "pelvis", "limbs", "brain", "eyes", "heart", "lungs", "airway",
-  "liver", "stomach", "intestines", "pancreas_spleen", "kidneys", "arteries", "veins", "vessels", "bones", "skeleton", "organs"];
+  "liver", "stomach", "intestines", "pancreas_spleen", "kidneys", "arteries", "veins", "vessels", "bones", "skeleton", "organs", "gut"];
 
 /** Drop unknown commands, zones, screens, metrics and views; keep at most `max`. */
 export function validateCommands(cmds, max = MAX_COMMANDS) {

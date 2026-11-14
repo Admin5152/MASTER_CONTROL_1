@@ -25,14 +25,14 @@ from typing import Any, Callable, Iterator
 import httpx
 
 SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
-           "orb_calm", "aurora_run", "race", "greenhouse", "hardware", "crew", "wellbeing", "exam", "ground", "measures"]
+           "orb_calm", "aurora_run", "race", "greenhouse", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "symptom"]
 ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
 METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
            "reaction", "talk_time", "pitch", "o2", "co2"]
 VIEWS = ["front", "back", "left", "right"]
 XRAY_STYLES = ["radiograph", "anatomy"]
 PARTS = ["skull", "spine", "ribcage", "shoulders", "pelvis", "limbs", "brain", "eyes", "heart", "lungs", "airway", "liver",
-         "stomach", "intestines", "pancreas_spleen", "kidneys", "arteries", "veins", "vessels", "bones", "skeleton", "organs"]
+         "stomach", "intestines", "pancreas_spleen", "kidneys", "arteries", "veins", "vessels", "bones", "skeleton", "organs", "gut"]
 MAX_COMMANDS = 3
 MEMORY_TURNS = 8
 DEFAULT_MODEL = "openai/gpt-oss-120b"
@@ -63,7 +63,7 @@ COMMANDS: [ ...json array... ]
 Allowed commands (at most 3):
   {"cmd":"point_to","zone":Z}            Z in head, eyes, heart, lungs, gut, bones, whole_body
   {"cmd":"check_zone","zones":[Z,...]}   a focused check of one to three zones
-  {"cmd":"open_screen","name":N}         N in home, body, vitals, mission, vision, health_log, trends, radiation, cabin, cognitive (3-minute reaction test), orb_calm, race, greenhouse, hardware, crew, wellbeing, exam (guided health exam), ground (messages to ground), measures (weekly standard measures)
+  {"cmd":"open_screen","name":N}         N in home, body, vitals, mission, vision, health_log, trends, radiation, cabin, cognitive (3-minute reaction test), orb_calm, race, greenhouse, hardware, crew, wellbeing, exam (guided health exam), ground (messages to ground), measures (weekly standard measures), symptom (log a symptom by pointing at the body: "where does it hurt")
   {"cmd":"show_chart","metric":M}        M in heart_rate, breathing_rate, spo2, bp, glucose, temp, sleep, mood, reaction, talk_time, pitch, o2, co2
   {"cmd":"start_scan"}
   {"cmd":"rotate_body","view":V}         V in front, back, left, right

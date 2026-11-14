@@ -11,7 +11,7 @@ import { createBanner } from "./interface/banner.js";
 import { createDemoPanel } from "./interface/demopanel.js";
 import { createOrb } from "./interface/orb.js";
 import { mountMission, renderFindings, renderMission } from "./interface/dashboard.js";
-import { ZONE_NAMES, badgeHTML, esc, zoneReadings } from "./interface/readings.js";
+import { ZONE_NAMES, badgeHTML, esc, statusHTML, statusKey, zoneReadings } from "./interface/readings.js";
 import { closeScreen, initScreens, registerScreen } from "./interface/screens.js";
 import { invalidateSparks, mountTiles, refreshSparks, renderTiles } from "./interface/tiles.js";
 import { renderRace } from "./experience/race/race.js";
@@ -33,6 +33,8 @@ import { TILES } from "./interface/tiles.js";
 import { chipText, defaultSystem, mountBodyPanels, render as renderBodyPanels, selectSystem } from "./interface/bodypanel.js";
 import { mountVitals, renderVitals } from "./interface/vitals.js";
 import { registerMissionMed } from "./experience/missionmed.js";
+import { registerSymptom } from "./systems/symptom.js";
+import { REGION_NAMES, REGION_ZONE, regionOf, zoneStatuses } from "./interface/body.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -124,6 +126,7 @@ async function start() {
   $("app").hidden = false;
   await mountApp();
   if (settings.get("theme") === "light") ctx.setTheme("light");
+  ctx.setGlove(settings.get("glove") === "on");
   await stages.go("assistant");
   world.remove("intro");
   if (navigator.mediaDevices?.getUserMedia) {
@@ -176,6 +179,12 @@ async function mountApp() {
   ctx.setVoice = (v) => voiceMod.setVoice(v);
   ctx.testVoice = () => voiceMod.testVoice();
   ctx.voiceState = () => ({ ...voiceMod.voice, ctx: audioContext()?.state });
+  // Glove mode (BODY-8): every control on the body screen grows to a glove-sized target
+  ctx.setGlove = (on) => {
+    if (on) document.documentElement.dataset.glove = "on"; else delete document.documentElement.dataset.glove;
+    settings.set("glove", on ? "on" : "off");
+  };
+  ctx.on = on;   // the browser checks listen for body.zone.selected, body.scan.complete, symptom.logged
   ctx.setTheme = (t) => {
     const light = t === "light";
     if (light) document.documentElement.dataset.theme = "light"; else delete document.documentElement.dataset.theme;
@@ -192,6 +201,7 @@ async function mountApp() {
   ctx.onDeviceChange = (k) => { if (k === "camera" && vision.state.on) { vision.stop(); vision.start(); } };
   registerScreen("cognitive", { title: "Reaction test", badge: "LIVE", render: renderCognitive });
   registerMissionMed(registerScreen);
+  registerSymptom(registerScreen);
   registerScreen("orb_calm", { title: "Stillpoint", full: true, render: renderOrbCalm });
   registerScreen("race", { title: "Slipstream", full: true, render: renderRace });
   registerScreen("greenhouse", { title: "Red Harvest", full: true, render: renderGreenhouse });
@@ -205,13 +215,13 @@ async function mountApp() {
 
   // the body (async; the Director waits for it when needed)
   import("./world/body3d.js").then(async ({ createBody }) => {
-    const b = await createBody(world, $("body-host"), { tablet: isTablet, onZoneClick: zonePopover, model: view.state?.body_model || "male" });
+    const b = await createBody(world, $("body-host"), { tablet: isTablet, onZoneClick: zonePopover, onBodyClick: bodyTap, regionOf, model: view.state?.body_model || "male" });
     b.preload(b.model === "male" ? "female" : "male");
     world.add("body", b);
     body.setImpl(b);
     ctx.body3d = b;
     $("body-loading").hidden = true;
-    if (view.aux) body.setZoneStates(view.aux.assessment?.zones);
+    if (view.aux) body.setZoneStates(zoneStatuses(view.aux.assessment?.zones));
     if (stages.current === "body") world.show("body");
   }).catch((e) => { console.warn("body model failed", e); $("body-loading").textContent = "The 3D body could not load on this device."; });
 
@@ -273,21 +283,41 @@ async function refreshSpaceweather() {
   } catch { /* keep last */ }
 }
 
-// A tap on a body dot: a small card with Check and Details (team lead item 6)
-function zonePopover(zone, btn) {
+// A tap on the body itself (BODY-1, BODY-6): in pointing mode it answers "where does it hurt?";
+// otherwise it selects the zone that place reports to and offers Check, Details and Log a symptom.
+function bodyTap({ region, x, y, pointing }) {
+  // the person's tap wins over an automatic pointing or check that is still running
+  if (director.busy) director.cancel();
+  const zone = REGION_ZONE[region] || "bones";
+  emit("body.zone.selected", { zone, crewId: view.crewId, region });
+  if (pointing) { screens.open("symptom", region); return; }
+  selectSystem(zone);
+  zonePopover(zone, { x, y }, region);
+}
+
+// A tap on a body dot or a place on the body: a small card with Check, Details and Log a symptom
+function zonePopover(zone, at, region) {
   document.querySelector(".zone-pop")?.remove();
   const host = $("body-host");
-  const r = btn.getBoundingClientRect(), h = host.getBoundingClientRect();
+  const dot = typeof at.getBoundingClientRect === "function";
+  const r = dot ? at.getBoundingClientRect() : { left: at.x, top: at.y }, h = host.getBoundingClientRect();
+  if (dot) emit("body.zone.selected", { zone, crewId: view.crewId });
   const pop = document.createElement("div");
   pop.className = "zone-pop card";
-  const sev = view.aux?.assessment?.zones?.[zone] || "ok";
-  pop.innerHTML = `<strong>${esc(ZONE_NAMES[zone])}</strong><span class="note st-${sev}">${sev === "ok" ? "Within your usual range" : sev === "alert" ? "Past the alert line" : "Worth watching"}</span>
-    <div class="row"><button class="pill pill-dark" type="button" data-check>Check</button><button class="pill pill-ghost" type="button" data-details>Details</button></div>`;
+  const sev = statusKey(view.aux?.assessment?.zones?.[zone] || "ok");
+  pop.innerHTML = `<strong>${esc(region ? `${REGION_NAMES[region]} · ${ZONE_NAMES[zone]}` : ZONE_NAMES[zone])}</strong>
+    <span class="zp-status st-${sev}">${statusHTML(sev)}<span class="note">${sev === "ok" ? "Within your usual range" : sev === "alert" ? "Past the alert line" : "Worth watching"}</span></span>
+    <div class="row"><button class="pill pill-dark" type="button" data-check>Check</button><button class="pill pill-ghost" type="button" data-details>Details</button>${region ? `<button class="pill pill-ghost" type="button" data-hurt>Log a symptom</button>` : ""}</div>`;
   pop.style.left = `${r.left - h.left + 10}px`; pop.style.top = `${r.top - h.top + 22}px`;
   host.appendChild(pop);
-  if (r.left - h.left > h.width - 240) pop.style.transform = "translate(calc(-100% - 20px), -50%)";
+  if (r.left - h.left > h.width - (region ? 340 : 240)) pop.style.transform = "translate(calc(-100% - 20px), -50%)";
+  // keep the card inside the 3D area: a dot near the head would otherwise put it under the top bar
+  const pr = pop.getBoundingClientRect(), pad = 8;
+  const dy = pr.top < h.top + pad ? h.top + pad - pr.top : pr.bottom > h.bottom - pad ? h.bottom - pad - pr.bottom : 0;
+  if (dy) pop.style.top = `${parseFloat(pop.style.top) + dy}px`;
   pop.querySelector("[data-check]").addEventListener("click", () => { pop.remove(); director.run([{ cmd: "check_zone", zones: [zone] }]); });
   pop.querySelector("[data-details]").addEventListener("click", () => { pop.remove(); screens.zone(zone); });
+  pop.querySelector("[data-hurt]")?.addEventListener("click", () => { pop.remove(); screens.open("symptom", region); });
   setTimeout(() => document.addEventListener("pointerdown", function off(e) { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener("pointerdown", off); } }), 0);
 }
 
@@ -318,6 +348,7 @@ function wireControls() {
   $("btn-convo").addEventListener("click", () => toggleMenu("convo", "btn-convo"));
   $("btn-all").addEventListener("click", () => screens.open("readings"));
   $("btn-scan").addEventListener("click", () => director.run([{ cmd: "start_scan" }]));
+  $("btn-hurt").addEventListener("click", () => screens.open("symptom"));
   $("btn-xray").addEventListener("click", (e) => director.run([{ cmd: "xray", on: e.currentTarget.getAttribute("aria-pressed") !== "true" }]));
   $("btn-turn").addEventListener("click", () => ctx.body3d?.turnBy(90));
   $("btn-radlayer").addEventListener("click", (e) => director.run([{ cmd: "show_radiation", on: e.currentTarget.getAttribute("aria-pressed") !== "true" }]));
@@ -605,7 +636,8 @@ function onState(v) {
   if ($("sb-rad-badge").dataset.k !== rb) { $("sb-rad-badge").innerHTML = badgeHTML(rb); $("sb-rad-badge").dataset.k = rb; }
   document.querySelector(".sb-cabin").classList.toggle("is-alert", !!s.cabin.alert);
   if (view.online) $("sb-link").textContent = "Brain online";
-  body.setZoneStates(aux?.assessment?.zones);
+  // a zone shows the worst of its indicators (BODY-2): the brain's verdict, never better than the readings
+  body.setZoneStates(zoneStatuses(aux?.assessment?.zones, Object.fromEntries(body.ZONES.map((z) => [z, zoneReadings(z, s, aux)]))));
   if (s.radiation.storm_level >= 1 && !body.radiationShown()) body.showRadiation(true);
   $("btn-radinfo").hidden = !body.radiationShown();
   renderTiles(document.getElementById("app"), v, v.spaceweather);

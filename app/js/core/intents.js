@@ -30,6 +30,7 @@ export const METRIC_WORDS = {
 };
 
 export const SCREEN_WORDS = {
+  symptom: ["symptom log", "symptoms", "symptom"],
   radiation: ["radiation", "space weather", "solar storm", "dose passport", "dose"],
   health_log: ["health log", "manual log", "log my health", "log health", "health form"],
   trends: ["trends", "charts", "trend"],
@@ -119,6 +120,12 @@ export function matchIntent(text) {
   // full scan
   if (/ (full|body|whole body) scan /.test(t) || / (run|do|start) (a |the )?(full )?scan /.test(t) || has(t, "scan me") || has(t, "scan my body")) {
     return { intent: "scan", commands: [{ cmd: "start_scan" }] };
+  }
+
+  // symptom entry by pointing at the body: "log a symptom", "where does it hurt", "something hurts"
+  if (/ (log|report|record|add|enter) (a |an |my |new |another )?symptoms? /.test(t) || has(t, "where does it hurt") || has(t, "show where it hurts") ||
+    (/ (something|it) hurts /.test(t) || / i (have|ve got|am in|m in) (a |some )?pain /.test(t)) && !findZones(t).length) {
+    return { intent: "symptom", commands: [{ cmd: "open_screen", name: "symptom" }] };
   }
 
   // focused zone check: "check my chest", "check my eyes and my head", "something feels off in my stomach"

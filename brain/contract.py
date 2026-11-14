@@ -41,6 +41,9 @@ def _load() -> tuple[dict, dict]:
 TEMPLATE, ENUMS = _load()
 # drift.items is a list of objects; describe the item shape separately.
 DRIFT_ITEM = TEMPLATE["drift"]["items"][0]
+# manual.symptom_log: symptoms entered on the body model (zone, region, type, severity 1-3, onset, time).
+SYMPTOM_ITEM = TEMPLATE["manual"]["symptom_log"][0]
+SYMPTOM_LOG_MAX = 20
 
 
 def _is_number(v: Any) -> bool:
@@ -71,6 +74,20 @@ def _check_value(path: str, tmpl: Any, value: Any) -> None:
         elif path == "manual.symptoms":
             if not all(isinstance(s, str) for s in value):
                 raise ContractError(path, "symptoms must be strings")
+        elif path == "manual.symptom_log":
+            if len(value) > SYMPTOM_LOG_MAX:
+                raise ContractError(path, f"at most {SYMPTOM_LOG_MAX} entries")
+            for i, item in enumerate(value):
+                if not isinstance(item, dict):
+                    raise ContractError(f"{path}[{i}]", "expected an object")
+                _check_obj("manual.symptom_log", SYMPTOM_ITEM, item, display=f"{path}[{i}]")
+                for k in SYMPTOM_ITEM:
+                    if k not in item:
+                        raise ContractError(f"{path}[{i}].{k}", "missing field")
+                if not item["type"].strip():
+                    raise ContractError(f"{path}[{i}].type", "a symptom needs a type")
+                if item["severity"] not in (1, 2, 3):
+                    raise ContractError(f"{path}[{i}].severity", "must be 1 (mild), 2 (moderate) or 3 (severe)")
         return
     if tmpl is None:
         if value is not None and not _is_number(value) and not isinstance(value, str):

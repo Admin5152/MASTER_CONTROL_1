@@ -52,7 +52,8 @@ design/                  reference images, voice samples, NASA research notes
 |---|---|---|
 | Talking to Sentinel | `js/main.js` (handleCommand, say, captions), `js/voice/voice.js` | `brain/llm.py`, `brain/speech.py`, routes `/api/chat/stream`, `/api/stt`, `/api/tts` |
 | Screen changes and pointing | `js/core/director.js` (every command), `js/core/intents.js` (local phrases) | `brain/llm.py` `validate_commands` (same whitelist as `js/core/commands.js`) |
-| Body, X-ray, scan, organ view | `js/world/body3d.js`, `js/interface/bodypanel.js`, `js/experience/missionmed.js` (organ) | readings via `/api/state`, `/api/aux` |
+| Body, X-ray, scan, organ view | `js/world/body3d.js`, `js/world/fit.js` (anatomy fitted inside each body at load), `js/interface/bodypanel.js`, `js/interface/body.js` (zone status, pointing regions), `js/experience/missionmed.js` (organ) | readings via `/api/state`, `/api/aux`; how to measure / why it matters with MRIDs in `shared/facts.json` |
+| Symptom entry ("Where does it hurt?") | `js/systems/symptom.js`, `js/systems/symptomlog.js` | `manual.symptom_log` in the contract, kit match in `brain/decision.py` |
 | Readings, badges, range bars | `js/interface/readings.js`, `js/interface/ranges.js`, `js/interface/tiles.js` | `brain/thresholds.py`, `brain/drift.py` |
 | Reaction test | `js/systems/cognitive.js`, `js/systems/pvt.js` | baseline in `brain/store.py` |
 | Exam, ground, measures | `js/experience/missionmed.js` | `brain/ground.py`, `/api/ground`, `/api/log` |
@@ -74,6 +75,7 @@ node --test tests/js                                 # pure front-end logic
 # with a server running (pip install -r requirements-dev.txt):
 .venv\Scripts\python tests\layout_shots.py http://127.0.0.1:8000 both     # every main screen, dark and light
 .venv\Scripts\python tests\body_shots.py http://127.0.0.1:8000            # X-ray, zone check, pointing, female body
+.venv\Scripts\python tests\body_zones_check.py http://127.0.0.1:8000      # Product Document SB1-SB7 (server started with SENTINEL_FRESH=1)
 .venv\Scripts\python tests\race_check.py http://127.0.0.1:8000            # the race from menu to saved mood
 ```
 
