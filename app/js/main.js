@@ -654,7 +654,7 @@ async function handleCommand(text, meta = {}) {
         orb_calm: "Stillpoint", race: "Slipstream", greenhouse: "Red Harvest", grounding: "grounding", settings: "settings", about: "the credits",
         trends: "your trends", health_log: "the health log", cognitive: "the reaction test", symptom: "the symptom map", crew: "the crew",
         hardware: "the hardware", vision: "the camera", cabin: "the cabin", interventions: "what helps you", exam: "the health exam",
-        measures: "weekly measures", ground: "messages to ground" };
+        measures: "weekly measures", ground: "messages to ground", evidence: "the NASA evidence" };
       const n = m.commands[0].name;
       if (NAMES[n]) say(`${["race", "greenhouse", "orb_calm", "grounding", "cognitive", "exam"].includes(n) ? "Starting" : "Opening"} ${NAMES[n]}.`, { source: "local" });
     }

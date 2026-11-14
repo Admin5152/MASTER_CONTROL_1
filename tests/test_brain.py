@@ -215,7 +215,7 @@ def test_symptom_log_rejects_bad_entries(client):
 
 
 def test_zone_facts_cite_mrids():
-    import json
+    import json, re
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent
     facts = json.loads((root / "shared" / "facts.json").read_text(encoding="utf-8"))
@@ -224,4 +224,4 @@ def test_zone_facts_cite_mrids():
         assert f["how_to_measure"] and f["why_it_matters"], z
         assert f["mrids"], z
         for m in f["mrids"]:
-            assert m["id"].startswith("MEDB") and (root / m["file"]).exists(), m
+            assert re.match(r"(MEDB|MR\d)", m["id"]) and (root / m["file"]).exists(), m   # current MEDB and the older MR series, both from dataset/

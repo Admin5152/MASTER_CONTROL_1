@@ -27,6 +27,7 @@ export function initScreens(ctx) {
   registerScreen("cabin", { title: "Cabin air", badge: "SIM", render: renderCabin });
   registerScreen("settings", { title: "Settings", render: renderSettings });
   registerScreen("about", { title: "About and credits", render: renderAbout });
+  registerScreen("evidence", { title: "NASA evidence", badge: "68 MRIDs", render: renderEvidence });
   return api_;
 }
 
@@ -122,7 +123,7 @@ function renderZone(el, ctx, zone) {
       <p style="margin-top:var(--s-4)" class="zone-acts"><button class="pill pill-dark" type="button" data-check>Check this area</button> <button class="pill pill-ghost" type="button" data-hurt>Log a symptom</button></p>
       ${f.how_to_measure ? `<h3>How to measure</h3><p data-how>${esc(f.how_to_measure)}</p>` : ""}
       ${f.why_it_matters ? `<h3>Why it matters</h3><p data-why>${esc(f.why_it_matters)}</p>` : ""}
-      ${f.mrids?.length ? `<p class="fine mrids" data-mrids>Source: ${esc(ctx.facts.mrid_source?.title || "NASA MRIDs")}: ${f.mrids.map((m) => `<span class="mrid" title="${esc(m.file)}">${esc(m.id)} ${esc(m.title)}</span>`).join("; ")}. Designed around these requirements, not an implementation of them.</p>` : ""}
+      ${f.mrids?.length ? `<details class="mrids-box"><summary class="fine">NASA evidence: ${f.mrids.length} MRID${f.mrids.length > 1 ? "s" : ""} cover this system</summary><p class="fine mrids" data-mrids>${f.mrids.map((m) => `<span class="mrid" title="${esc(m.file)}">${esc(m.id)} ${esc(m.title)}</span>`).join("; ")}. Designed around these requirements, not an implementation of them. <a href="#" data-ev="${esc(zone)}">Open the evidence</a></p></details>` : ""}
       <h3>What to do next</h3><p>${esc(f.next || "")}</p>
       <details class="more"><summary>What it does and how spaceflight affects it</summary>
         <p>${esc(f.what || "")}</p><p>${esc(f.spaceflight || "")}</p>
@@ -138,6 +139,7 @@ function renderZone(el, ctx, zone) {
   draw();
   const t = setInterval(() => { if (!el.contains(document.activeElement) && !el.querySelector("details[open]")) draw(); }, 3000);
   return () => clearInterval(t);
+  el.querySelector("[data-ev]")?.addEventListener("click", (e) => { e.preventDefault(); show("evidence", { q: "" , zone: e.currentTarget.dataset.ev }); });
 }
 
 // ---------- manual health log ----------
@@ -388,7 +390,39 @@ function renderSettings(el, ctx) {
   });
 }
 
+const FEATURES = { radiation: "Radiation", vitals: "Vitals", body: "Body", face_voice: "Face and voice", wellbeing: "Wellbeing", integration: "Cabin and integration" };
+/** Every NASA JSC 28913 MRID in the dataset: searchable, grouped by the Sentinel feature it informs. */
+async function renderEvidence(el, ctx, arg) {
+  el.innerHTML = `<p class="note">The team's dataset: NASA JSC 28913 Medical Requirements Integration Documents. Each entry is the document's own wording, parsed from the PDF. Sentinel is designed around these requirements; it does not claim to implement them.</p>
+    <div class="ev-tools"><input type="search" data-q placeholder="Search: ECG, radiation, noise, bone, water…" aria-label="Search the NASA documents" value="${esc(arg?.q || "")}">
+    <div class="ev-chips" role="tablist"><button type="button" data-f="" aria-pressed="true">All</button>${Object.entries(FEATURES).map(([k, v]) => `<button type="button" data-f="${k}" aria-pressed="false">${v}</button>`).join("")}</div></div>
+    <p class="fine" data-count></p><div class="ev-list" data-list><p class="note">Loading the documents…</p></div>`;
+  let data = ctx.mrid;
+  if (!data) { try { data = ctx.mrid = await (await fetch("../shared/nasa_mrid.json")).json(); } catch { el.querySelector("[data-list]").innerHTML = `<p class="note">Could not load shared/nasa_mrid.json.</p>`; return; } }
+  let feat = arg?.feature || "";
+  const list = el.querySelector("[data-list]"), q = el.querySelector("[data-q]");
+  const block = (h, v) => (v ? `<h4>${h}</h4><p>${esc(v)}</p>` : "");
+  const draw = () => {
+    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    const docs = data.documents.filter((d) => (!feat || d.features.includes(feat)) &&
+      words.every((w) => `${d.id} ${d.title} ${d.purpose} ${d.parameters} ${d.zones.join(" ")} ${d.indicators.join(" ")}`.toLowerCase().includes(w)));
+    el.querySelector("[data-count]").textContent = `${docs.length} of ${data.count} documents`;
+    list.innerHTML = docs.map((d) => `<details class="ev-doc"><summary><b>${esc(d.id)}</b><span>${esc(d.title)}</span><small>${d.features.map((x) => FEATURES[x] || x).join(" · ")}</small></summary>
+      ${block("Why NASA does it", d.purpose)}${block("What is measured", d.parameters)}${block("Deliverables", d.deliverables)}
+      ${block("Preflight", d.preflight)}${block("In flight", d.inflight)}${block("Postflight", d.postflight)}
+      ${d.limits.length ? `<h4>Numbers it states</h4><ul class="ev-lim">${d.limits.slice(0, 8).map((l) => `<li><b>${esc(l.value)}</b> ${esc(l.context)}</li>`).join("")}</ul>` : ""}
+      <p class="fine">Informs: ${d.zones.length ? `body zones ${esc(d.zones.join(", "))}; ` : ""}${d.indicators.length ? `readings ${esc(d.indicators.join(", "))}. ` : ""}Owner ${esc(d.owner || "")}. ${d.pages} pages, <code>dataset/${esc(d.file)}</code></p></details>`).join("") || `<p class="note">No document matches.</p>`;
+  };
+  q.addEventListener("input", draw);
+  el.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => {
+    feat = b.dataset.f; el.querySelectorAll("[data-f]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); draw();
+  }));
+  if (feat) el.querySelectorAll("[data-f]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.f === feat)));
+  draw();
+}
+
 function renderAbout(el) {
+  setTimeout(() => el.querySelector("[data-open-evidence]")?.addEventListener("click", (e) => { e.preventDefault(); ctxRef.screens?.open?.("evidence") ?? show("evidence"); }), 0);
   el.innerHTML = `<p>Sentinel is an onboard crew-health companion built for the NASA Space Apps Challenge 2026. It describes change from each person's own baseline and never diagnoses.</p>
     <h3>Why: Earth-Independent Medical Operations</h3>
     <p class="note">NASA describes EIMO as "the gradual transfer of medical care and decision-making from Earth-based support to space-based systems". On a Mars transit there is no evacuation and a message to ground takes minutes each way, so care must be crew- and vehicle-reliant. Sentinel is designed around that problem: it monitors, explains change from baseline, guides the next step (a guided exam, the reaction test, a breathing break) and packages findings for delayed ground review. Source: <a href="https://ntrs.nasa.gov/citations/20240001402" target="_blank" rel="noopener">NASA EIMO Concept of Operations, NTRS 20240001402</a> (a concept, not a flown system).</p>
@@ -403,6 +437,8 @@ function renderAbout(el) {
       <li>Speech recognition: Whisper (whisper-large-v3-turbo on Groq; faster-whisper base.en on this laptop offline). Brain: openai/gpt-oss-120b on Groq.</li>
       <li>Space weather: NOAA Space Weather Prediction Center (GOES proton flux, NOAA scales); storm replay from NASA DONKI.</li>
       <li>Health thresholds and facts: NASA-STD-3001, NASA Human Research Program and OCHMO briefs, CDC, AHA, ADA, MedlinePlus (see shared/SOURCES.md).</li>
+      <li>NASA JSC 28913 Medical Requirements Integration Documents: all 68 in the team dataset, parsed and listed on the <a href="#" data-open-evidence>Evidence screen</a>.</li>
+      <li>COSMOcare logo: the COSMOcare team.</li>
       <li>Sentinel Skin design draws on CSA Astroskin, MIT's bioadhesive ultrasound patch and NASA ocular health research (sources on the hardware screen).</li>
       <li>Libraries: three.js (MIT), GSAP, Chart.js (MIT), MediaPipe Tasks Vision (Apache 2.0). Fonts: Inter and Michroma (SIL OFL).</li>
     </ul>

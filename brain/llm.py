@@ -27,7 +27,7 @@ import httpx
 
 SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
            "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "symptom",
-           "interventions", "earth_window", "music", "connection", "readings", "settings", "about"]
+           "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence"]
 ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
 METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
            "reaction", "talk_time", "pitch", "o2", "co2"]
@@ -59,8 +59,14 @@ There are two kinds of question.
    - Any medicine mention must include "consult mission medical protocol before use".
    - If action.type is not "none", say what Sentinel is doing about it (action.detail).
    - At most two short sentences.
-2. General questions (facts, science, space, places, a joke, how something works): answer naturally and
-   correctly in two to four short spoken sentences. If you are not sure, say so.
+2. General questions and conversation (facts, science, places, a joke, how something works, how their day is going):
+   answer naturally and correctly in two to four short spoken sentences, like a well-read friend. Keep the
+   conversation going when they want to chat; ask a short question back now and then. If you are not sure, say so.
+   SPACE is your speciality: human spaceflight and its history (Mercury to Artemis, Mir, the ISS, Tiangong), how
+   rockets and orbits work (delta-v, Hohmann transfers, launch windows, aerobraking), Mars and lunar missions and
+   their hazards, the body in space (bone and muscle loss, fluid shift and SANS, radiation, sleep, isolation),
+   life support, EVAs, astronomy and planetary science. Answer these with the precision of a NASA flight surgeon
+   and a mission planner: real numbers, real missions, plain words.
    TIME-DEPENDENT FACTS: you have no live data, no ephemeris and no clock or calendar. For anything that changes
    with time (the current distance or position of a planet, today's date, upcoming events, news, current light
    delay) give the average and the range, and say plainly that you don't have live data, unless the value is in
@@ -84,7 +90,8 @@ Allowed commands (at most 3):
        earth_window, music (ambient sound), connection (message a crewmate);
        health_log, trends, readings, cabin, cognitive (3-minute reaction test), exam (guided health exam),
        measures (weekly standard measures), symptom (log a symptom by pointing at the body: "where does it hurt"),
-       ground (messages to ground), crew, hardware, settings, about (sources and credits)
+       ground (messages to ground), crew, hardware, settings, about (sources and credits),
+       evidence (all 68 NASA JSC 28913 medical requirement documents in the team's dataset)
   {"cmd":"point_to","zone":Z}            Z in head, eyes, heart, lungs, gut, bones, whole_body
   {"cmd":"check_zone","zones":[Z,...]}   a focused check of one to three zones
   {"cmd":"show_chart","metric":M}        M in heart_rate, breathing_rate, spo2, bp, glucose, temp, sleep, mood, reaction, talk_time, pitch, o2, co2
@@ -192,6 +199,7 @@ def validate_commands(cmds: Any) -> list[dict]:
 # (the smaller fallback models do), the command is worked out from what was asked and what was said.
 PROMISE = re.compile(r"\b(opening|open up|starting|start(ed)? (a|the|your)|showing|here(?:'s| is| are)|switching|switched|taking you|pulling up|bringing up|launching|loading|closing|going (back|to))\b", re.I)
 SCREEN_WORDS = [
+    (r"nasa (documents?|evidence|requirements)|datasets?|mrids?|medical requirements", "evidence"),
     (r"settings?", "settings"), (r"about|credits|sources", "about"), (r"vitals?", "vitals"), (r"mission", "mission"),
     (r"radiation|space weather|solar storm", "radiation"), (r"cabin|oxygen|co2|carbon dioxide", "cabin"),
     (r"ground(ing)? exercise|grounding|5.?4.?3.?2.?1", "grounding"), (r"breath\w*|stillpoint|calm", "orb_calm"),

@@ -330,3 +330,23 @@ body.is-pointing .zone .zstat, .zone.is-hidden .zstat { opacity: 0; }
 .wear-alert-row .al-radiation[aria-pressed="true"] { background: #d23a1e; border-color: #ff4b2e; }
 .wear-alert-row .al-sos[aria-pressed="true"] { background: #d0142f; border-color: #ff2244; animation: sos-pulse 1s ease-in-out infinite; }
 @keyframes sos-pulse { 50% { box-shadow: 0 0 0 6px rgba(255, 34, 68, .25); } }
+
+/* ---------- NASA evidence: the 68 MRIDs ---------- */
+.ev-tools { display: grid; gap: 10px; margin: 10px 0 6px; }
+.ev-tools input { width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line-dim); background: var(--surface); color: var(--ink); font: inherit; }
+.ev-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ev-chips button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-dim); background: transparent; color: var(--ink-2); font: inherit; font-size: 12px; cursor: pointer; }
+.ev-chips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.ev-list { display: grid; gap: 6px; }
+.ev-doc { border: 1px solid var(--line-dim); border-radius: 12px; padding: 0 14px; background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.ev-doc summary { display: grid; grid-template-columns: 96px 1fr; gap: 2px 10px; padding: 12px 0; cursor: pointer; list-style: none; }
+.ev-doc summary::-webkit-details-marker { display: none; }
+.ev-doc summary b { font-variant-numeric: tabular-nums; color: var(--accent); font-size: 12.5px; }
+.ev-doc summary span { font-size: 13.5px; color: var(--ink); }
+.ev-doc summary small { grid-column: 2; font-size: 11px; color: var(--ink-3); }
+.ev-doc h4 { margin: 10px 0 2px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.ev-doc p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--ink-2); }
+.ev-doc .fine { margin: 10px 0 12px; }
+.ev-lim { margin: 4px 0 0; padding-left: 16px; font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+.ev-lim b { color: var(--ink); }
+.mrids-box summary { cursor: pointer; margin-top: 8px; }

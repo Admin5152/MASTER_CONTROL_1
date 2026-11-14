@@ -193,7 +193,10 @@
           "above": 179,
           "kind": "demo_placeholder",
           "note": "Sentinel recheck alert used for SV1 demonstration; not a NASA medical limit.",
-          "source": { "title": "Sentinel demo setting (SV1 acceptance scenario)", "url": "" }
+          "source": {
+            "title": "Sentinel demo setting (SV1 acceptance scenario)",
+            "url": ""
+          }
         },
         {
           "severity": "watch",
@@ -227,7 +230,10 @@
           "above": 109,
           "kind": "demo_placeholder",
           "note": "Sentinel recheck alert used for SV1 demonstration; not a NASA medical limit.",
-          "source": { "title": "Sentinel demo setting (SV1 acceptance scenario)", "url": "" }
+          "source": {
+            "title": "Sentinel demo setting (SV1 acceptance scenario)",
+            "url": ""
+          }
         },
         {
           "severity": "watch",
@@ -352,6 +358,24 @@
           "source": {
             "title": "Sentinel demo setting",
             "url": ""
+          }
+        }
+      ]
+    },
+    "cabin.noise_dba": {
+      "label": "Cabin noise",
+      "unit": "dBA",
+      "zone": "head",
+      "levels": [
+        {
+          "severity": "alert",
+          "above": 85,
+          "kind": "nasa",
+          "note": "MR084L: a measured event that exceeds the hazardous noise limit (85 dBA) is reported; hearing tests require no exposure above 85 dBA for 16 hours before (MEDB 1.8).",
+          "source": {
+            "title": "NASA JSC 28913 MRID MR084L: Acoustic Monitoring and Countermeasures for Long Duration Flights",
+            "file": "dataset/cl5yvqkq12spc01o65mpk0zwd.pdf",
+            "url": null
           }
         }
       ]
@@ -611,6 +635,16 @@
         "url": ""
       },
       "note": "Predicted effective dose exceeding 10 rem (100 mSv) is a biodosimetry applicability trigger, NOT a dose safety limit or shelter threshold."
+    },
+    "biodosimetry_trigger_msv": {
+      "value": 100,
+      "kind": "nasa",
+      "note": "MEDB 3.2: biodosimetry testing applies to a flight of 2 months or more, or if predicted effective dose exceeds 10 rem (100 mSv).",
+      "source": {
+        "title": "NASA JSC 28913 MRID MEDB 3.2: Biodosimetry Testing (Occupational Monitoring)",
+        "file": "dataset/cl5yvqhsu2smu01o67lseef9a.pdf",
+        "url": null
+      }
     }
   },
   "speaker_id": {
@@ -634,5 +668,41 @@
         "url": ""
       }
     }
-  }
+  },
+  "exercise": {
+    "_doc": "Exercise-test procedure values stated in the MRIDs.",
+    "gxt_predicted_hrmax_pct": {
+      "value": 90,
+      "kind": "nasa",
+      "note": "MR006L: tests stopped for non-cardiopulmonary reasons before 90% of predicted maximum heart rate are repeated.",
+      "source": {
+        "title": "NASA JSC 28913 MRID MR006L: Exercise Treadmill Test",
+        "file": "dataset/cl5yvqhsv2sno01o650ot7ri1 (1).pdf",
+        "url": null
+      }
+    }
+  },
+  "air": {
+    "_doc": "Air-quality procedure values stated in the MRIDs.",
+    "co_confirm_ppm": {
+      "value": 50,
+      "kind": "nasa",
+      "note": "MR008L: for CO above 50 ppm an additional measurement is made with a CO Draeger tube.",
+      "source": {
+        "title": "NASA JSC 28913 MRID MR008L: Toxicological Assessment Using Compound Specific Analyzer-Combustion Products (CSA-CP)",
+        "file": "dataset/cl5yvqhsv2snr01o6bdgm7mew (1).pdf",
+        "url": null
+      }
+    },
+    "smac_rule": {
+      "kind": "nasa",
+      "note": "MR039L: CO2 readings are compared with the Spacecraft Maximum Allowable Concentration (SMAC); readings that exceed the 7-day SMAC are reported.",
+      "source": {
+        "title": "NASA JSC 28913 MRID MR039L: Toxicological Assessment Using the Carbon Dioxide Monitor Kit (CDMK)",
+        "file": "dataset/cl5yvqkq02soo01o65jzy9pdr (1).pdf",
+        "url": null
+      }
+    }
+  },
+  "_mrid": "Every MRID in dataset/ is parsed into shared/nasa_mrid.json. Levels whose source names an MRID quote that document; the rest cite NASA-STD-3001, OCHMO, HRP or clinical references."
 }
