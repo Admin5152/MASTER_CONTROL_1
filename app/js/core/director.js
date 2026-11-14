@@ -223,6 +223,7 @@ export function createDirector(deps) {
     await b.zoomTo(zone, fast ? 0 : 1.3);
     if (token.cancelled) return;
     b.focus(zone === "whole_body" ? null : zone);
+    emit("body:zone", zone);
     await b.setXray(true, fast ? 0 : 0.7);
     body.setTarget(zone);
     emit("vision:point", zone);
@@ -343,6 +344,7 @@ export function createDirector(deps) {
       if (token.cancelled) return;
       await sleep(fast ? 0 : 700, token);
       if (token.cancelled) return;
+      emit("body:zone", zone);
       b.focus(zone === "whole_body" ? null : zone);
       body.setTarget(zone);
       const sev = zoneSeverity(zone);

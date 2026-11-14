@@ -222,6 +222,7 @@ async function mountApp() {
   on("offline", () => { document.body.classList.add("offline"); $("sb-link").textContent = "Brain offline: last known values"; $("sb-link").title = "Brain offline: showing last known values"; });
   on("online", () => { document.body.classList.remove("offline"); $("sb-link").textContent = "Brain online"; $("sb-link").title = "Brain online"; });
   on("zone:open", (z) => screens.zone(z));
+  on("body:zone", (z) => selectSystem(z));   // the right panel follows what Sentinel is checking or pointing at
   on("vision:open", () => vision.start());
   on("intervention:open", openIntervention);
   on("crew:changed", () => { invalidateSparks(); lastZone = null; });
