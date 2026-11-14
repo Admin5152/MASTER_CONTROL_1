@@ -282,7 +282,11 @@ function wireControls() {
     const b = e.target.closest("[data-nav]");
     if (!b) return;
     closeMenus();
-    if (b.dataset.nav === "wellbeing") { screens.open("wellbeing"); return; }
+    if (b.dataset.nav === "wellbeing") {
+      screens.open("wellbeing");
+      document.querySelectorAll("#topnav [data-nav]").forEach((x) => x.setAttribute("aria-current", String(x === b)));
+      return;
+    }
     closeScreen();
     director.run([{ cmd: "open_screen", name: b.dataset.nav }]);
   });
@@ -401,8 +405,12 @@ function caption(text, source) {
     b.hidden = false;
     b.classList.add("is-subtitle");
     const host = stages.current === "body" ? $("body-host").getBoundingClientRect() : null;
-    const cx = host && host.width > 50 ? host.left + host.width / 2 : window.innerWidth / 2;
-    const w = host && host.width > 50 ? Math.min(560, host.width - 16) : Math.min(560, window.innerWidth * 0.46);
+    let left = host && host.width > 50 ? host.left : 0, right = host && host.width > 50 ? host.right : window.innerWidth;
+    const sh = $("sheet");
+    if (!sh.hidden && !sh.classList.contains("is-full") && !sh.classList.contains("is-orb")) right = Math.min(right, sh.getBoundingClientRect().left - 8);
+    if (right - left < 260) { left = 0; }
+    const cx = (left + right) / 2;
+    const w = Math.min(560, right - left - 16);
     b.style.left = `${cx}px`; b.style.maxWidth = `${w}px`;
     b.style.right = "auto"; b.style.bottom = "auto"; b.style.top = "";
   }
@@ -557,7 +565,7 @@ function onState(v) {
   renderFindings($("findings"), $("findings-status"), v, (z) => director.run([{ cmd: "check_zone", zones: [z] }]));
   renderBodyPanels();
   if (stages.current === "vitals") renderVitals(v);
-  if (!ctx.skinChips) ctx.body3d?.setChips(Object.fromEntries(["heart", "lungs", "head"].map((z) => [z, chipText(z, v)]).filter(([, c]) => c)));
+  if (!ctx.skinChips) ctx.body3d?.setChips(ctx.body3d.style === "real" ? {} : Object.fromEntries(["heart", "lungs", "head"].map((z) => [z, chipText(z, v)]).filter(([, c]) => c)));
   space.setProfile(s.radiation.mission_profile);
   const sev = s.action?.severity || "none";
   orb.setSeverity(["flag_cabin", "flag_radiation", "flag_ground"].includes(s.action?.type) ? "alert" : sev === "watch" ? "watch" : "none");
