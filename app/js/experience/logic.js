@@ -46,6 +46,45 @@ export function pacer(tSec, inSec = 4, outSec = 6) {
   return x < inSec ? { phase: "in", frac: x / inSec } : { phase: "out", frac: (x - inSec) / outSec };
 }
 
+/** Breathing patterns. steps: [phase, seconds, lung volume at the end of the step 0..1]. */
+export const PATTERNS = {
+  resonance: { name: "Resonance", bpm: 5.5, blurb: "Even, slow breaths at about 5.5 a minute: the rate that makes the heart rhythm swing the most.", steps: [["in", 5.45, 1], ["out", 5.45, 0]] },
+  sigh: { name: "Cyclic sigh", bpm: 6.7, blurb: "Two in-breaths through the nose, then a long, slow out-breath. Lifted mood most in a 2023 Stanford trial.", steps: [["in", 2, 0.75], ["top", 1, 1], ["out", 6, 0]] },
+  exhale: { name: "Long exhale", bpm: 6, blurb: "In for 4, out for 6. The longer out-breath is the calming half.", steps: [["in", 4, 1], ["out", 6, 0]] },
+  box: { name: "Box", bpm: 3.75, blurb: "In, hold, out, hold, 4 seconds each. Steady and simple under pressure.", steps: [["in", 4, 1], ["hold", 4, 1], ["out", 4, 0], ["rest", 4, 0]] },
+};
+export const PHASE_WORD = { in: "Breathe in", top: "Sip in again", out: "Breathe out", hold: "Hold", rest: "Hold" };
+
+/** Where in the pattern we are at time t: {phase, frac, left, volume 0..1, index, cycle}. */
+export function breathAt(pattern, t) {
+  const steps = pattern.steps;
+  const cyc = steps.reduce((a, s) => a + s[1], 0);
+  const x = ((t % cyc) + cyc) % cyc;
+  let acc = 0, prevVol = steps[steps.length - 1][2];
+  for (let i = 0; i < steps.length; i++) {
+    const [phase, dur, vol] = steps[i];
+    if (x < acc + dur || i === steps.length - 1) {
+      const frac = Math.min(1, (x - acc) / dur);
+      const e = 0.5 - 0.5 * Math.cos(Math.PI * frac);     // eased like a real breath
+      return { phase, frac, left: dur - (x - acc), volume: prevVol + (vol - prevVol) * e, index: i, cycle: Math.floor(t / cyc) };
+    }
+    acc += dur; prevVol = vol;
+  }
+  return null;
+}
+
+/** Summary of a calm session's heart-rate samples [{t, hr}]. */
+export function calmSummary(samples, target) {
+  const v = samples.filter((s) => Number.isFinite(s.hr));
+  if (!v.length) return { start: null, end: null, min: null, drop: null, inTargetS: 0 };
+  const head = v.slice(0, Math.min(3, v.length)).map((s) => s.hr), tail = v.slice(-3).map((s) => s.hr);
+  const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  let inT = 0;
+  for (let i = 1; i < v.length; i++) if (v[i].hr <= target) inT += v[i].t - v[i - 1].t;
+  const start = avg(head), end = avg(tail);
+  return { start, end, min: Math.min(...v.map((s) => s.hr)), drop: start - end, inTargetS: Math.round(inT) };
+}
+
 // ---------------- Mood (shared by the breaks) ----------------
 export function moodChange(before, after) {
   if (before == null || after == null) return null;

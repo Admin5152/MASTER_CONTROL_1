@@ -23,11 +23,11 @@ export function createStages({ world, space, orb }) {
       const free = H - top - dock;
       return { x: W / 2, y: top + free * 0.43, size: Math.min(free * 0.4, W * 0.32, 280) };
     }
-    if (mode === "calm") return { x: W / 2, y: top + (H - top - dock) * 0.4, size: Math.min((H - top - dock) * 0.52, W * 0.4, 360) };
+    if (mode === "calm") return { x: W / 2, y: H * 0.36, size: Math.min(H * 0.34, W * 0.36, 300) };   // Stillpoint: room below for the cue
     if (mode === "off") return { x: W / 2, y: H / 2, size: 0, opacity: 0 };
     const s = big ? 92 : 62;
     if (W < 1000 && H > W) return { x: W - g - 40, y: top + 46, size: s };
-    return { x: g + 44, y: H - dock / 2 - 2, size: s };
+    return { x: g + 44, y: Math.min(H - dock / 2 - 2, H - s * 0.75 - 12), size: s };   // fully on screen
   }
 
   function placeOrb(seconds = 1.0) {

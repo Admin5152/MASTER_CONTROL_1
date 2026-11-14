@@ -34,6 +34,7 @@ from brain.contract import ContractError  # noqa: E402
 from brain.radiation import SpaceWeather, storm_dose_step  # noqa: E402
 from brain.store import Store  # noqa: E402
 from systems import speaker  # noqa: E402
+from brain.race_rooms import RaceRooms  # noqa: E402
 from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
@@ -363,6 +364,58 @@ def advance_clock(body: dict = Body(...)):
     if not isinstance(hours, (int, float)) or not 0 <= hours <= 24 * 30:
         raise HTTPException(422, "advance_hours must be 0-720")
     return store.advance_clock(hours)
+
+
+race_rooms = RaceRooms()
+
+
+def _room_call(fn, *args):
+    try:
+        return fn(*args)
+    except KeyError as e:
+        raise HTTPException(404, str(e).strip("'"))
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+
+
+@app.post("/api/race/room")
+def race_create(body: dict = Body(...)):
+    """Slipstream multiplayer: create a room; the creator is the host."""
+    return _room_call(race_rooms.create, str(body.get("id", ""))[:40], str(body.get("name", "")))
+
+
+@app.post("/api/race/room/{code}/join")
+def race_join(code: str, body: dict = Body(...)):
+    return _room_call(race_rooms.join, code, str(body.get("id", ""))[:40], str(body.get("name", "")))
+
+
+@app.post("/api/race/room/{code}/start")
+def race_start(code: str, body: dict = Body(...)):
+    return _room_call(race_rooms.start, code.upper(), str(body.get("id", ""))[:40])
+
+
+@app.post("/api/race/room/{code}/state")
+def race_state(code: str, body: dict = Body(...)):
+    """Post my position, get everyone's (about ten times a second)."""
+    return _room_call(race_rooms.update, code.upper(), str(body.get("id", ""))[:40], body)
+
+
+@app.post("/api/race/room/{code}/leave")
+def race_leave(code: str, body: dict = Body(...)):
+    race_rooms.leave(code.upper(), str(body.get("id", ""))[:40])
+    return {"ok": True}
+
+
+@app.middleware("http")
+async def revalidate_static(request, call_next):
+    """Code and styles change often during the build: browsers must re-check them (cheap 304s), never run stale ones."""
+    resp = await call_next(request)
+    path = request.url.path
+    if (path.startswith("/app") or path.startswith("/shared")) and path.rsplit(".", 1)[-1] in ("html", "js", "css", "json") or path.endswith("/"):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
 
 
 app.mount("/app", StaticFiles(directory=ROOT / "app", html=True), name="app")

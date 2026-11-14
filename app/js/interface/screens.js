@@ -250,14 +250,14 @@ function renderCrew(el, ctx) {
 function renderHub(el, ctx) {
   const groups = [
     ["Check-ins", [["health_log", "Health log", "Blood pressure, glucose, temperature, sleep, mood"], ["cognitive", "Cognitive check", "25-second reaction test"], ["trends", "Trends", "Every reading over time"]]],
-    ["Wellbeing", [["orb_calm", "Orb Calm", "Breathing with the orb, tracked by heart rate"], ["race", "Space race", "A short racing break past the planets"], ["greenhouse", "Greenhouse", "Your plant grows with your routine"], ["interventions", "Suggestions", "What Sentinel recommends now"]]],
+    ["Wellbeing", [["orb_calm", "Stillpoint", "A breathing game, tracked by heart rate"], ["race", "Slipstream", "Race past the planets; boost and draft"], ["greenhouse", "Red Harvest", "Farm on Mars: grow crops, fill crew orders"], ["wellbeing", "Wellbeing hub", "Stillpoint, Slipstream, Red Harvest and the science"], ["interventions", "Suggestions", "What Sentinel recommends now"]]],
     ["Crew and ship", [["crew", "Crew", "Who is using Sentinel"], ["cabin", "Cabin air", "Oxygen and carbon dioxide (SIM)"], ["hardware", "Sentinel Skin", "The wearable design (DESIGNED)"], ["settings", "Settings", "Theme, camera, microphone, voice"], ["about", "About and credits", "Sources and licences"]]],
   ];
   el.innerHTML = groups.map(([g, items]) => `<section class="hub-group"><h3>${esc(g)}</h3><div class="hub">${items.map(([k, t, d]) =>
     `<button type="button" data-open="${k}"><strong>${esc(t)}</strong><span>${esc(d)}</span></button>`).join("")}</div></section>`).join("");
   el.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
     const k = b.dataset.open;
-    if (k === "race" || k === "orb_calm" || k === "health_log" || k === "trends" || k === "cognitive" || k === "hardware" || k === "greenhouse" || k === "crew") ctx.director.run([{ cmd: "open_screen", name: k }]);
+    if (k === "race" || k === "orb_calm" || k === "health_log" || k === "trends" || k === "cognitive" || k === "hardware" || k === "greenhouse" || k === "crew" || k === "wellbeing") ctx.director.run([{ cmd: "open_screen", name: k }]);
     else api_.open(k);
   }));
 }

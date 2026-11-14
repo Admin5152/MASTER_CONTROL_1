@@ -115,10 +115,10 @@ export function createDirector(deps) {
 
   function nextStepFor(zone) {
     const a = getView().state?.action || {};
-    if (a.type === "offer_orb_calm") return { label: "Start Orb Calm", cmd: { cmd: "open_screen", name: "orb_calm" } };
+    if (a.type === "offer_orb_calm") return { label: "Start Stillpoint", cmd: { cmd: "open_screen", name: "orb_calm" } };
     if (a.type === "offer_intervention" && a.intervention) {
       const map = { breathing: "orb_calm", aurora_run: "race" };
-      if (map[a.intervention]) return { label: a.intervention === "aurora_run" ? "Take a space race break" : "Start Orb Calm", cmd: { cmd: "open_screen", name: map[a.intervention] } };
+      if (map[a.intervention]) return { label: a.intervention === "aurora_run" ? "Take a Slipstream break" : "Start Stillpoint", cmd: { cmd: "open_screen", name: map[a.intervention] } };
       const names = { earth_window: "Open the Earth window", music: "Play ambient sound", connection: "Message a crewmate" };
       return { label: names[a.intervention] || "Open the suggestion", intervention: a.intervention };
     }

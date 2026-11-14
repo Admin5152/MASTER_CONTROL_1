@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/wellbeing.css">
   <script type="importmap">
   { "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/jsm/" } }
   </script>
@@ -26,13 +27,11 @@
   <section id="start-screen" class="intro" aria-label="Sentinel">
     <div class="intro-copy">
       <h1 id="intro-hello" class="intro-hello">Hello. I'm Sentinel.</h1>
-      <p class="intro-sub">An onboard health assistant for when Earth is minutes away. I compare every reading with your own baseline, tell you what to do next, and package it for the flight surgeon. I never diagnose.</p>
+      <p class="intro-sub">Your onboard health companion for when Earth is minutes away. I learn your baseline, tell you what to do next and brief the flight surgeon. I never diagnose.</p>
       <button id="start-btn" class="pill pill-light pill-xl" type="button">Begin</button>
-      <p class="intro-note">Begin asks for the camera and microphone. Both are optional.</p>
-      <div class="legend" aria-label="Badge key">
-        <span class="badge badge-live">LIVE</span><span>measured now</span>
-        <span class="badge badge-sim">SIM</span><span>simulated on purpose</span>
-        <span class="badge badge-designed">DESIGNED</span><span>a design, not running</span>
+      <div class="intro-foot">
+        <p class="intro-note">Camera and microphone are optional.</p>
+        <p class="intro-key" aria-label="Badge key"><span><span class="badge badge-live">LIVE</span>measured</span><span><span class="badge badge-sim">SIM</span>simulated</span><span><span class="badge badge-designed">DESIGNED</span>design only</span></p>
       </div>
     </div>
     <p id="intro-skip" class="intro-skip">Tap to skip</p>

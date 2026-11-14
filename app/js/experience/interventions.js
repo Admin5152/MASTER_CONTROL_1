@@ -3,8 +3,8 @@ import { audioContext, isMuted } from "../core/sound.js";
 import { esc } from "../interface/readings.js";
 
 export const INTERVENTIONS = [
-  { id: "breathing", label: "Breathing (Orb Calm)", why: "Slow breathing guided by the orb, tracked against your heart rate." },
-  { id: "aurora_run", label: "Space race", why: "A three-lap race past five worlds: a short break from boredom or stress, with your mood logged before and after." },
+  { id: "breathing", label: "Stillpoint (breathing)", why: "Slow breathing guided by the orb, tracked against your heart rate." },
+  { id: "aurora_run", label: "Slipstream (racing)", why: "A three-lap race past five worlds: a short break from boredom or stress, with your mood logged before and after." },
   { id: "earth_window", label: "Earth window", why: "A slow view of home. A short break for tired eyes and mind." },
   { id: "music", label: "Ambient sound", why: "A generated ambient pad to wind down." },
   { id: "connection", label: "Message a crewmate", why: "Isolation is one of NASA's five hazards; a short message helps." },

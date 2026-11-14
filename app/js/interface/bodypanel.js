@@ -20,10 +20,10 @@ const BAR_COL = { ok: "#7fe0a6", info: "#ffc35c", watch: "#ffc35c", alert: "#ff5
 
 // Lifestyle notes per system: general guidance only, never treatment.
 const LIFESTYLE = {
-  head: ["Protect the sleep period: under 6 hours is linked with slower reactions in flight (PMC8919197).", "Short breaks between tasks; the space race or Orb Calm count.", "Talk with the crew or home today."],
+  head: ["Protect the sleep period: under 6 hours is linked with slower reactions in flight (PMC8919197).", "Short breaks between tasks; a round of Slipstream or Stillpoint counts.", "Talk with the crew or home today."],
   eyes: ["Rest your eyes between screen blocks.", "Report any blurred near vision: crews are screened for SANS."],
   heart: ["Keep the daily exercise schedule (cycle, treadmill, resistance).", "Slow breathing for two minutes when the heart rate is up.", "Drink to plan: fluid shifts upward in weightlessness."],
-  lungs: ["Check the cabin air reading if breathing feels harder.", "Slow, full breaths with the Orb Calm pacer."],
+  lungs: ["Check the cabin air reading if breathing feels harder.", "Slow, full breaths with Stillpoint."],
   gut: ["Eat the planned menu; log appetite changes.", "Space-motion sickness usually settles in the first days."],
   bones: ["Resistance exercise is the main countermeasure for bone and muscle loss.", "Log any back pain: spines lengthen in weightlessness."],
   whole_body: ["Use the shelter area during a solar storm.", "Keep the weekly standard measures."],

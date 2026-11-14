@@ -34,7 +34,11 @@ LOG_FIELDS = {"session.calm_start_hr", "session.calm_end_hr", "session.calm_reco
               "session.aurora_start_hr", "session.aurora_end_hr", "session.reaction_false_starts",
               "session.race_mood_before", "session.race_mood_after", "session.race_mood_change",
               "session.race_time_s", "session.race_position", "session.race_minutes",
-              "session.pvt_lapses", "session.pvt_mean_ms", "session.sit_to_stand_s", "session.tandem_walk_s"}
+              "session.pvt_lapses", "session.pvt_mean_ms", "session.sit_to_stand_s", "session.tandem_walk_s",
+              "session.calm_minutes", "session.calm_mood_before", "session.calm_mood_after", "session.calm_mood_change",
+              "session.race_boosts", "session.race_pb_s",
+              "session.greenhouse_harvest_kg", "session.greenhouse_minutes",
+              "session.greenhouse_mood_before", "session.greenhouse_mood_after", "session.greenhouse_mood_change"}
 
 
 def now_iso() -> str:

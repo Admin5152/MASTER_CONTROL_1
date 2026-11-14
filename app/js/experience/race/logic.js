@@ -126,3 +126,38 @@ export function fmtTime(s) {
   const m = Math.floor(s / 60), r = s - m * 60;
   return `${m}:${r < 10 ? "0" : ""}${r.toFixed(1)}`;
 }
+
+// ---------------- Boost, slipstream, near misses ----------------
+/** Boost charges from clean flying: each gate, time in a rival's slipstream, and near misses. */
+export const BOOST = { max: 1, start: 0.35, gate: 0.18, draftPerS: 0.3, nearMiss: 0.15, burnPerS: 0.5, speedMul: 1.45, draftMul: 1.08 };
+
+export function createBoost() { return { charge: BOOST.start, active: false, used: 0, nearMisses: 0, draftS: 0 }; }
+
+export function chargeBoost(b, amount) { b.charge = Math.min(BOOST.max, b.charge + amount); return b.charge; }
+
+/** Burn boost while held. Returns the speed multiplier for this frame. A burst needs a little charge to start. */
+export function tickBoost(b, dt, held) {
+  if (held && b.charge > (b.active ? 0 : 0.08)) {
+    if (!b.active) b.used++;
+    b.active = true;
+    b.charge = Math.max(0, b.charge - BOOST.burnPerS * dt);
+  } else b.active = false;
+  if (b.charge <= 0) b.active = false;
+  return b.active ? BOOST.speedMul : 1;
+}
+
+/** In a rival's slipstream: close behind it (by track distance) and lined up with it. */
+export function inSlipstream(me, rival) {
+  const gap = rival.dist - me.dist;
+  return gap > 1.5 && gap < 14 && Math.hypot(me.x - rival.x, me.y - rival.y) < 2.6;
+}
+
+/** A near miss: passing an asteroid just outside the hit radius. */
+export function isNearMiss(lateral) { return lateral >= OBSTACLE_RADIUS && lateral < OBSTACLE_RADIUS + 1.3; }
+
+/** Compare cumulative lap times with a personal best: seconds ahead (negative) or behind (positive). */
+export function pbDelta(lapTimes, pbLaps) {
+  if (!pbLaps?.length || !lapTimes.length || lapTimes.length > pbLaps.length) return null;
+  const sum = (a, n) => a.slice(0, n).reduce((x, y) => x + y, 0);
+  return Math.round((sum(lapTimes, lapTimes.length) - sum(pbLaps, lapTimes.length)) * 10) / 10;
+}

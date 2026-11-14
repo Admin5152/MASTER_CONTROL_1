@@ -15,7 +15,8 @@ import { ZONE_NAMES, badgeHTML, esc, zoneReadings } from "./interface/readings.j
 import { closeScreen, initScreens, registerScreen } from "./interface/screens.js";
 import { invalidateSparks, mountTiles, refreshSparks, renderTiles } from "./interface/tiles.js";
 import { renderRace } from "./experience/race/race.js";
-import { renderGreenhouse } from "./experience/greenhouse.js";
+import { renderGreenhouse } from "./experience/mars/greenhouse.js";
+import { renderWellbeing } from "./experience/wellbeing.js";
 import { renderHardware } from "./experience/hardware.js";
 import { INTERVENTIONS, renderConnection, renderEarth, renderMenu, renderMusic } from "./experience/interventions.js";
 import { greenhouseDay, routineComplete } from "./experience/logic.js";
@@ -177,9 +178,10 @@ async function mountApp() {
   ctx.onDeviceChange = (k) => { if (k === "camera" && vision.state.on) { vision.stop(); vision.start(); } };
   registerScreen("cognitive", { title: "Reaction test", badge: "LIVE", render: renderCognitive });
   registerMissionMed(registerScreen);
-  registerScreen("orb_calm", { title: "Orb Calm", orb: true, render: renderOrbCalm });
-  registerScreen("race", { title: "Space race", full: true, render: renderRace });
-  registerScreen("greenhouse", { title: "Greenhouse", render: renderGreenhouse });
+  registerScreen("orb_calm", { title: "Stillpoint", full: true, render: renderOrbCalm });
+  registerScreen("race", { title: "Slipstream", full: true, render: renderRace });
+  registerScreen("greenhouse", { title: "Red Harvest", full: true, render: renderGreenhouse });
+  registerScreen("wellbeing", { title: "Wellbeing", full: true, render: renderWellbeing });
   registerScreen("hardware", { title: "Sentinel Skin", badge: "DESIGNED", render: renderHardware });
   registerScreen("interventions", { title: "Suggestions", render: (el, c, arg) => renderMenu(el, c, arg) });
   registerScreen("earth_window", { title: "Earth window", badge: "SIM", render: renderEarth });
@@ -644,7 +646,7 @@ function renderActionCard(s, aux) {
     sev = a.severity === "alert" ? "alert" : a.severity === "watch" ? "watch" : "info";
     text = a.detail || "";
     btn = {
-      offer_orb_calm: ["Start Orb Calm", () => director.run([{ cmd: "open_screen", name: "orb_calm" }])],
+      offer_orb_calm: ["Start Stillpoint", () => director.run([{ cmd: "open_screen", name: "orb_calm" }])],
       offer_intervention: [INTERVENTIONS.find((i) => i.id === a.intervention)?.label || "Suggestions", () => openIntervention(a.intervention)],
       suggest_medicine: ["Health log", () => director.run([{ cmd: "open_screen", name: "health_log" }])],
       gentle_checkin: ["Log how I feel", () => director.run([{ cmd: "open_screen", name: "health_log" }])],

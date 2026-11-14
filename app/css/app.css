@@ -71,10 +71,14 @@ body.offline .stages { filter: grayscale(0.85) opacity(0.8); }
 
 /* ---------- intro ---------- */
 .intro { position: fixed; inset: 0; z-index: var(--z-start); display: grid; place-items: end center; padding: 0 var(--gutter) max(var(--s-6), env(safe-area-inset-bottom)); cursor: pointer; }
-.intro-copy { display: grid; justify-items: center; gap: var(--s-4); text-align: center; max-width: 560px; padding-bottom: 4vh; opacity: 0; visibility: hidden; cursor: auto; }
+.intro-copy { display: grid; justify-items: center; gap: var(--s-4); text-align: center; max-width: 520px; padding-bottom: 3vh; opacity: 0; visibility: hidden; cursor: auto; }
+.intro-copy .pill-xl { margin-top: var(--s-2); }
+.intro-foot { display: grid; justify-items: center; gap: var(--s-2); margin-top: var(--s-2); }
+.intro-key { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2) var(--s-5); font-size: var(--fs-xs); color: var(--ink-3); }
+.intro-key > span { display: inline-flex; align-items: center; gap: 8px; }
 .intro.is-ready .intro-copy { visibility: visible; }
 .intro-hello { font-size: var(--fs-prompt); font-weight: var(--fw-light); letter-spacing: -0.01em; }
-.intro-sub { color: var(--ink-2); font-size: var(--fs-sm); max-width: 44ch; }
+.intro-sub { color: var(--ink-2); font-size: var(--fs-sm); line-height: 1.55; max-width: 46ch; text-wrap: balance; }
 .intro-note { color: var(--ink-3); font-size: var(--fs-xs); }
 .intro-skip { position: fixed; right: var(--gutter); bottom: var(--s-5); color: var(--ink-3); font-size: var(--fs-xs); }
 .intro.is-ready .intro-skip { display: none; }

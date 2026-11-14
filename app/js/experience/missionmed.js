@@ -24,7 +24,6 @@ export function registerMissionMed(registerScreen) {
   registerScreen("exam", { title: "Guided health exam", badge: "LIVE", render: renderExam });
   registerScreen("ground", { title: "Messages to ground", badge: "SIM", render: renderGround });
   registerScreen("measures", { title: "Weekly standard measures", render: renderMeasures });
-  registerScreen("wellbeing", { title: "Wellbeing", wide: true, render: renderWellbeing });
   registerScreen("organ", { title: (z) => `${ZONE_NAMES[z] || "Organ"}`, badge: "DESIGNED", render: renderOrgan });
 }
 
@@ -190,27 +189,6 @@ function renderMeasures(el, ctx) {
   draw();
   return () => { timing = null; };
 }
-
-// ---------------- wellbeing hub ----------------
-function renderWellbeing(el, ctx) {
-  const s = ctx.view.state || {};
-  const w = s.wellbeing || {};
-  el.innerHTML = `<div class="well-grid">
-      <article class="card well-hero"><span class="label">Isolation and confinement</span><h3>How you are doing, not only how you are measuring.</h3>
-        <p class="note">Last break: ${esc(w.last_game ? w.last_game.replace(/_/g, " ") : "none yet")}${w.mood_before != null ? `, mood ${w.mood_before} before and ${w.mood_after ?? "?"} after ${badgeHTML("LIVE")}` : ""}.</p></article>
-      ${tile("race", "Space race", "Three laps past five worlds. A boredom or stress break.", '<path d="M4 15l8-9 8 9-8-3z"/>')}
-      ${tile("orb_calm", "Orb Calm", "Slow your breathing; the orb settles as your heart rate falls.", '<circle cx="12" cy="12" r="6"/><path d="M3 12h2M19 12h2"/>')}
-      ${tile("cognitive", "Reaction test", "3 minutes, like the ISS Reaction Self Test.", '<circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.5 1.5M10 3h4"/>')}
-      ${tile("measures", "Weekly measures", "Reaction, mood, sit-to-stand, tandem walk.", '<path d="M5 12l4 4 10-10"/>')}
-      ${tile("exam", "Guided exam", "A periodic health check, then a packet for ground.", '<path d="M9 4h6v3H9zM6 6h3M15 6h3v14H6V6M9 12h6M12 9v6"/>')}
-      ${tile("ground", "Messages to ground", "Store and forward, with the delay shown.", '<path d="M4 12l16-7-7 16-2-7z"/>')}
-      ${tile("greenhouse", "Greenhouse", "Grows with your routine (NASA Veggie research).", '<path d="M12 20v-8M12 12c0-4 3-6 7-6 0 4-3 6-7 6zM12 14c0-3-2-5-6-5 0 3 2 5 6 5z"/>')}
-    </div>
-    <p class="fine">Sleep matters: ${cite("sleep")}.</p>`;
-  el.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => ctx.director.run([{ cmd: "open_screen", name: b.dataset.go }])));
-  return () => {};
-}
-const tile = (go, t, d, icon) => `<button type="button" class="card well-tile" data-go="${go}"><span class="well-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><strong>${esc(t)}</strong><small>${esc(d)}</small></button>`;
 
 // ---------------- organ detail view ----------------
 const ORGAN_PART = { head: "brain", eyes: "eyes", heart: "heart", lungs: "lungs", gut: "intestines", bones: "skeleton" };

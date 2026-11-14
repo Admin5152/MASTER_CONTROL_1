@@ -40,3 +40,7 @@ three.js (MIT), GSAP (GreenSock standard licence), Chart.js (MIT), MediaPipe Tas
 ## Reference images
 
 `design/refs/` holds style references collected by the team lead (Dribbble and similar shots, the Kurzgesagt-style art reference). They guided layout and mood only; no image, character or brand from them is used in the app.
+
+## Mars surface texture
+
+- `app/assets/mars/ground_diff.jpg`, `ground_nor_gl.jpg`, `ground_rough.jpg`: "Aerial Ground Rock" by Amal Kumar, Poly Haven (https://polyhaven.com/a/aerial_ground_rock), CC0. Resized from 2K to 1K.

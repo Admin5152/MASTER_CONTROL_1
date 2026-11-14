@@ -1,0 +1,108 @@
+{
+  "_doc": "Evidence behind each Sentinel wellbeing activity. Each entry: what the research found (paraphrased, conservative), how the game uses that mechanism, and the source (DOI link where there is one). These studies were done on Earth with general or clinical groups, not on this app and not in spaceflight unless stated. They show why the mechanism is plausible; they do not prove Sentinel's version works. Sentinel logs mood before and after each session so each crew member builds their own evidence.",
+  "honesty": "Research on Earth, mostly not in spaceflight. It explains why each activity is designed the way it is; your own before and after log is the real test.",
+  "activities": {
+    "orb_calm": {
+      "title": "Stillpoint",
+      "mechanism": "Slow, paced breathing with a long out-breath shifts the body toward its rest-and-recover state, and seeing your heart rate fall (biofeedback) helps you learn to do it on demand.",
+      "evidence": [
+        {
+          "id": "balban_2023",
+          "finding": "In a randomised trial, five minutes a day of cyclic sighing (a double in-breath, then a long slow out-breath) for a month improved mood and lowered breathing rate more than the same time spent on mindfulness meditation.",
+          "used": "The Cyclic sigh pattern.",
+          "cite": "Balban MY et al. (2023). Brief structured respiration practices enhance mood and reduce physiological arousal. Cell Reports Medicine 4(1):100895.",
+          "url": "https://doi.org/10.1016/j.xcrm.2022.100895"
+        },
+        {
+          "id": "zaccaro_2018",
+          "finding": "A systematic review found slow breathing (under about 10 breaths a minute) is linked with more heart rate variability, more parasympathetic activity, and more relaxation and comfort, with less anxiety and anger.",
+          "used": "Every pattern runs at under 7 breaths a minute, well inside the slow range.",
+          "cite": "Zaccaro A et al. (2018). How breath-control can change your life: a systematic review on psycho-physiological correlates of slow breathing. Frontiers in Human Neuroscience 12:353.",
+          "url": "https://doi.org/10.3389/fnhum.2018.00353"
+        },
+        {
+          "id": "lehrer_2014",
+          "finding": "Breathing near your resonance frequency, about 5.5 to 6 breaths a minute for most adults, produces the largest heart rhythm swings and exercises the baroreflex that steadies blood pressure.",
+          "used": "The Resonance pattern (5.5 breaths a minute).",
+          "cite": "Lehrer PM, Gevirtz R (2014). Heart rate variability biofeedback: how and why does it work? Frontiers in Psychology 5:756.",
+          "url": "https://doi.org/10.3389/fpsyg.2014.00756"
+        },
+        {
+          "id": "goessl_2017",
+          "finding": "A meta-analysis of heart rate variability biofeedback studies found a large reduction in self-reported stress and anxiety.",
+          "used": "The orb shows your heart rate falling in real time: that live signal is the biofeedback.",
+          "cite": "Goessl VC, Curtiss JE, Hofmann SG (2017). The effect of heart rate variability biofeedback training on stress and anxiety: a meta-analysis. Psychological Medicine 47(15):2578-2586.",
+          "url": "https://doi.org/10.1017/S0033291717001003"
+        }
+      ]
+    },
+    "race": {
+      "title": "Slipstream",
+      "mechanism": "A short, absorbing game you can't fail gives the mind a real break: it pulls attention fully away from worry and boredom, then hands it back refreshed.",
+      "evidence": [
+        {
+          "id": "russoniello_2009",
+          "finding": "Adults who played casual video games for about 20 minutes reported better mood than a control group, with physiological measures (EEG and heart rate variability) pointing the same way.",
+          "used": "One race takes about three minutes; Sentinel offers it when boredom or stress shows up.",
+          "cite": "Russoniello CV, O'Brien K, Parks JM (2009). The effectiveness of casual video games in improving mood and decreasing stress. Journal of CyberTherapy and Rehabilitation 2(1):53-66.",
+          "url": null
+        },
+        {
+          "id": "rupp_2017",
+          "finding": "After a stressful task, a short casual game break restored positive mood better than a guided relaxation break or sitting quietly.",
+          "used": "No fail state: an asteroid only slows you for a second, so the break never adds stress.",
+          "cite": "Rupp MA et al. (2017). Searching for affective and cognitive restoration: examining the restorative effects of casual video game play. Human Factors 59(7):1096-1107.",
+          "url": "https://doi.org/10.1177/0018720817715360"
+        },
+        {
+          "id": "granic_2014",
+          "finding": "A review in American Psychologist set out the emotional benefits of play, including better mood, relaxation and keeping going through frustration, alongside its cognitive benefits.",
+          "used": "Boost, slipstream and a personal best give you a clear goal and instant feedback, the conditions for absorbed play.",
+          "cite": "Granic I, Lobel A, Engels RCME (2014). The benefits of playing video games. American Psychologist 69(1):66-78.",
+          "url": "https://doi.org/10.1037/a0034857"
+        }
+      ]
+    },
+    "greenhouse": {
+      "title": "Red Harvest",
+      "mechanism": "Looking after living plants gives you something green to look at, a small daily responsibility and fresh food: three things a sealed spacecraft lacks.",
+      "evidence": [
+        {
+          "id": "soga_2017",
+          "finding": "A meta-analysis of 22 studies found gardening has a significant positive effect on health, including less depression and anxiety and better life satisfaction and quality of life.",
+          "used": "Plant, water and harvest every sol: small, regular care.",
+          "cite": "Soga M, Gaston KJ, Yamaura Y (2017). Gardening is beneficial for health: a meta-analysis. Preventive Medicine Reports 5:92-99.",
+          "url": "https://doi.org/10.1016/j.pmedr.2016.11.007"
+        },
+        {
+          "id": "kaplan_1995",
+          "finding": "Attention Restoration Theory: natural scenes hold attention gently, letting the effortful, focused attention used for work recover.",
+          "used": "The pods are full of slowly growing green, lit the pink-purple of real space-farming LEDs.",
+          "cite": "Kaplan S (1995). The restorative benefits of nature: toward an integrative framework. Journal of Environmental Psychology 15(3):169-182.",
+          "url": "https://doi.org/10.1016/0272-4944(95)90001-2"
+        },
+        {
+          "id": "veggie_2025",
+          "finding": "A 2025 NASA study of 27 astronauts who worked with the Veggie plant system on the ISS concluded that working with and eating the plants was a positive experience.",
+          "used": "Every crop in the game has been grown in space or in NASA plant research.",
+          "cite": "NASA Technical Reports Server 20250000411 (2025).",
+          "url": "https://ntrs.nasa.gov/citations/20250000411"
+        },
+        {
+          "id": "khodadad_2020",
+          "finding": "Red romaine lettuce grown on the ISS in the Veggie unit was safe to eat and nutritionally comparable to the same lettuce grown on the ground.",
+          "used": "Harvests count as fresh food for the crew.",
+          "cite": "Khodadad CLM et al. (2020). Microbiological and nutritional analysis of lettuce crops grown on the International Space Station. Frontiers in Plant Science 11:199.",
+          "url": "https://doi.org/10.3389/fpls.2020.00199"
+        },
+        {
+          "id": "wamelink_2014",
+          "finding": "Plants germinated and grew on a Mars soil simulant in a greenhouse experiment, some of them flowering.",
+          "used": "The Mars setting: growing food there is an active research question, not fantasy.",
+          "cite": "Wamelink GWW et al. (2014). Can plants grow on Mars and the Moon: a growth experiment on Mars and Moon soil simulants. PLoS ONE 9(8):e103138.",
+          "url": "https://doi.org/10.1371/journal.pone.0103138"
+        }
+      ]
+    }
+  }
+}
