@@ -483,3 +483,14 @@ body.is-pointing .body-right { opacity: 0.55; }
 body.is-fullscreen .stages, body.is-fullscreen .dock, body.is-fullscreen .statusline, body.is-fullscreen #bubble,
 body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen .orb-hit { opacity: 0; visibility: hidden; pointer-events: none; }
 .race-ui .mood-row button { width: 52px; height: 52px; border-radius: 50%; font-size: var(--fs-md); }
+
+/* ---------- alignment pass: one symmetric input row; the suggestion line spans exactly that row ---------- */
+:root { --row-w: min(760px, calc(100vw - 2 * var(--gutter))); }
+.dock .legend-mini { display: none; }                         /* the badge key lives in the menu now */
+.dock { gap: 12px; }
+.dock .askbar { width: calc(var(--row-w) - 2 * (52px + 12px)); }
+.home-caption .suggest { width: var(--row-w); display: flex; justify-content: space-between; box-sizing: border-box; }
+.home-caption .suggest .ac-text { flex: 1; min-width: 0; }
+.menu-key { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; margin: 0; padding-top: var(--s-3); border-top: 1px solid var(--rule); font-size: var(--fs-xs); color: var(--ink-3); }
+.menu-key > span { display: inline-flex; align-items: center; gap: 6px; }
+.home-caption .suggest { justify-self: start; width: var(--row-w); min-width: var(--row-w); max-width: none; margin-left: calc(50% - var(--row-w) / 2); margin-right: 0; }   /* exactly the input row: same width, same centre */

@@ -225,3 +225,8 @@ body[data-organ="heart"] #zone-heart, body[data-organ="lungs"] #zone-lungs, body
 body[data-organ="eyes"] #zone-eyes, body[data-organ="gut"] #zone-gut, body[data-organ="bones"] #zone-bones { display: grid; }
 .callout { scrollbar-width: none; } .callout::-webkit-scrollbar { display: none; }
 .notice { position: fixed; z-index: calc(var(--z-sheet) + 2); top: calc(var(--top-h) + env(safe-area-inset-top) + 8px); right: var(--gutter); margin: 0; padding: 8px 14px; border-radius: var(--radius-pill); background: var(--watch-soft); color: var(--watch-ink); border: 1px solid var(--watch); font-size: var(--fs-xs); font-weight: var(--fw-medium); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+/* alignment pass: the two chest readings no longer meet in the middle; insights never ride up into the top edge */
+#zone-lungs .zchip { transform: translateY(-115%); }
+#zone-heart .zchip { transform: translateY(15%); }
+@media (max-width: 1000px) and (orientation: portrait) { .insights { top: 12px; bottom: auto; left: var(--gutter); } }   /* one column with the rail */
