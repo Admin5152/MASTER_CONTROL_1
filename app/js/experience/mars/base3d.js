@@ -11,6 +11,7 @@ import { MAX_PODS, podStatus, tankSize } from "./farm.js";
 
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const GRID = 3.6;
+const PLANT_SCALE = 1.8;   // crops read clearly against the trays
 const DOME_R = 9.4;
 
 // ---------- procedural textures (canvas, generated once) ----------
@@ -265,16 +266,18 @@ export function createMarsBase(world) {
   const metal = new THREE.MeshStandardMaterial({ color: 0xd6d9de, roughness: 0.32, metalness: 0.85 });
   const white = new THREE.MeshStandardMaterial({ color: 0xd8d8d4, roughness: 0.55, metalness: 0.05 });
   const ring = shade(new THREE.Mesh(new THREE.CylinderGeometry(DOME_R + 0.25, DOME_R + 0.45, 0.8, 64), white)); ring.position.y = 0.4; gh.add(ring);
-  const floor = shade(new THREE.Mesh(new THREE.CylinderGeometry(DOME_R, DOME_R, 0.1, 64), new THREE.MeshStandardMaterial({ color: 0x3e4249, roughness: 0.85, metalness: 0.1 })), false); floor.position.y = 0.82; gh.add(floor);
+  const floorMap = T.pad.map.clone(), floorBump = T.pad.bump.clone(); floorMap.repeat.set(5, 5); floorBump.repeat.set(5, 5); floorMap.needsUpdate = floorBump.needsUpdate = true;
+  const floor = shade(new THREE.Mesh(new THREE.CylinderGeometry(DOME_R, DOME_R, 0.1, 64), new THREE.MeshStandardMaterial({ map: floorMap, bumpMap: floorBump, bumpScale: 0.4, color: 0xd9d4cc, roughness: 0.7, metalness: 0.05 })), false); floor.position.y = 0.82; gh.add(floor);
   const glass = new THREE.Mesh(new THREE.SphereGeometry(DOME_R, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2),
     new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.045, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.1, depthWrite: false, side: THREE.DoubleSide }));
   glass.position.y = 0.8; glass.renderOrder = 3; gh.add(glass);
-  for (let k = 0; k < 16; k++) {   // thin geodesic ribs
-    const a = (k / 16) * Math.PI * 2, pts = [];
+  const ribMat = metal.clone(); ribMat.transparent = true;    // the dome frame fades as the camera comes in close
+  for (let k = 0; k < 12; k++) {   // thin geodesic ribs
+    const a = (k / 12) * Math.PI * 2, pts = [];
     for (let j = 0; j <= 18; j++) { const t = (j / 18) * Math.PI / 2; pts.push(new THREE.Vector3(Math.cos(a) * Math.cos(t) * DOME_R, Math.sin(t) * DOME_R + 0.8, Math.sin(a) * Math.cos(t) * DOME_R)); }
-    gh.add(shade(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 18, 0.05, 6), metal), true, false));
+    gh.add(shade(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 18, 0.035, 6), ribMat), true, false));
   }
-  for (const t of [0.3, 0.62, 0.98]) { const tor = shade(new THREE.Mesh(new THREE.TorusGeometry(Math.cos(t) * DOME_R, 0.05, 6, 96), metal), true, false); tor.rotation.x = Math.PI / 2; tor.position.y = Math.sin(t) * DOME_R + 0.8; gh.add(tor); }
+  for (const t of [0.3, 0.62, 0.98]) { const tor = shade(new THREE.Mesh(new THREE.TorusGeometry(Math.cos(t) * DOME_R, 0.035, 6, 96), ribMat), true, false); tor.rotation.x = Math.PI / 2; tor.position.y = Math.sin(t) * DOME_R + 0.8; gh.add(tor); }
   const tun = shade(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 7, 32), white)); tun.rotation.z = Math.PI / 2; tun.position.set(DOME_R + 3, 1.6, 0); gh.add(tun);
   for (const x of [DOME_R + 0.6, DOME_R + 5.4]) { const rib = new THREE.Mesh(new THREE.TorusGeometry(1.42, 0.08, 8, 32), metal); rib.rotation.y = Math.PI / 2; rib.position.set(x, 1.6, 0); gh.add(rib); }
 
@@ -306,7 +309,7 @@ export function createMarsBase(world) {
     const sel = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.035, 8, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
     sel.rotation.x = Math.PI / 2; sel.position.y = 0.06; sel.visible = false; g.add(sel);
     const hit = new THREE.Mesh(new THREE.BoxGeometry(3.1, 3.6, 3.1), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.8; hit.userData.pod = i; g.add(hit);
-    const plantHolder = new THREE.Group(); plantHolder.position.y = 1.07; g.add(plantHolder);
+    const plantHolder = new THREE.Group(); plantHolder.position.y = 1.07; plantHolder.scale.setScalar(PLANT_SCALE); g.add(plantHolder);
     pods.push({ g, box, soil, legs, arch, led, ledMat, pool, water, sel, hit, plantHolder, key: "", plant: null, sway: Math.random() * 6, pop: 0 });
   }
 
@@ -378,6 +381,32 @@ export function createMarsBase(world) {
   for (let k = 0; k < 3; k++) { const cup = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 8, 0, Math.PI), white); const a = (k / 3) * Math.PI * 2; cup.position.set(Math.cos(a) * 0.4, 0, Math.sin(a) * 0.4); cup.rotation.y = -a; vane.add(cup); const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4, 6), metal); rod.rotation.z = Math.PI / 2; rod.rotation.y = -a; rod.position.set(Math.cos(a) * 0.2, 0, Math.sin(a) * 0.2); vane.add(rod); }
   const metBox = shade(new THREE.Mesh(new RoundedBoxGeometry(0.6, 0.4, 0.4, 2, 0.04), white)); metBox.position.y = 2.6; met.add(metBox);
 
+  // ---- an astronaut walking a loop between the trays ----
+  const suitW = new THREE.MeshStandardMaterial({ color: 0xeeeeea, roughness: 0.6 });
+  const astro = new THREE.Group(); gh.add(astro);
+  { const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.55, 6, 16), suitW); torso.position.y = 1.85; astro.add(torso);
+    const pack = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.6, 0.25, 2, 0.06), suitW); pack.position.set(0, 1.95, -0.3); astro.add(pack);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.27, 24, 16), suitW); helmet.position.y = 2.55; astro.add(helmet);
+    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.2, 24, 12, -Math.PI * 0.45, Math.PI * 0.9, Math.PI * 0.3, Math.PI * 0.35), new THREE.MeshPhysicalMaterial({ color: 0xc8962e, metalness: 1, roughness: 0.1, clearcoat: 1 })); visor.position.set(0, 2.56, 0.1); astro.add(visor);
+    for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.6, 4, 10), suitW); leg.position.set(sx * 0.15, 1.05, 0); leg.name = sx < 0 ? "legL" : "legR"; astro.add(leg);
+      const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.5, 4, 10), suitW); arm.position.set(sx * 0.42, 1.85, 0); arm.name = sx < 0 ? "armL" : "armR"; astro.add(arm); }
+    astro.traverse((o) => { if (o.isMesh) o.castShadow = true; }); }
+  const walkPts = [[-5.4, -5.4], [5.4, -5.4], [5.4, 5.4], [-5.4, 5.4]].map(([x, z]) => new THREE.Vector3(x, 0.82, z));
+  const walk = new THREE.CatmullRomCurve3(walkPts, true, "centripetal");
+  // ---- the helper drone ----
+  const drone = new THREE.Group(); gh.add(drone); drone.position.set(0, 7, 0);
+  { const body = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.22, 0.7, 2, 0.08), new THREE.MeshStandardMaterial({ color: 0xdedede, roughness: 0.35, metalness: 0.4 })); drone.add(body);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8), new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0x6fd0ff, emissiveIntensity: 2 })); eye.position.set(0, -0.08, 0.32); drone.add(eye);
+    for (const [x, z] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]]) { const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.02, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 })); rotor.position.set(x, 0.14, z); rotor.name = "rotor"; drone.add(rotor); }
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.2, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0x6fd0ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); beam.position.y = -1.2; beam.name = "beam"; drone.add(beam); }
+  const droneTarget = new THREE.Vector3(0, 7, 0), droneTmp = new THREE.Vector3();
+  let droneBeam = 0, droneColor = new THREE.Color(0x6fd0ff);
+  /** Send the drone to a tray for an action: "water" (blue), "harvest" (gold), "plant" (green). */
+  function droneTo(i, kind = "water") {
+    pods[i].g.getWorldPosition(droneTmp); droneTarget.set(droneTmp.x, droneTmp.y + 3.4, droneTmp.z);
+    droneColor.set(kind === "harvest" ? 0xffd34a : kind === "plant" ? 0x8fe37a : 0x6fd0ff); droneBeam = 1.4;
+  }
+
   // ---- airborne dust and harvest sparkles ----
   const N = tablet ? 300 : 700;
   const dp = new Float32Array(N * 3);
@@ -392,7 +421,7 @@ export function createMarsBase(world) {
   let sparkT = 0;
 
   // ---- camera ----
-  const HOME = { yaw: 1.0, pitch: 0.86, dist: 44, target: new THREE.Vector3(0, 1.2, 0) };
+  const HOME = { yaw: 1.0, pitch: 0.95, dist: 31, target: new THREE.Vector3(0, 1.4, 0) };
   const cam = { yaw: HOME.yaw, pitch: HOME.pitch, dist: HOME.dist, tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist, target: HOME.target.clone() };
   let W = 1, H = 1, t = 0, storm = false, inset = { right: 0, bottom: 0, top: 0 };
   const applyView = () => { camera.setViewOffset(W, H, inset.right / 2, (inset.bottom - inset.top) / 2, W, H); camera.updateProjectionMatrix(); };
@@ -408,9 +437,11 @@ export function createMarsBase(world) {
     update(dt) {
       t += dt;
       placeCamera(reduced() ? 1 : 1 - Math.pow(0.002, dt));
+      const fade = THREE.MathUtils.clamp((cam.dist - 26) / 26, 0.08, 1);
+      ribMat.opacity = fade; ribMat.depthWrite = fade > 0.9; glass.material.opacity = 0.045 * fade;
       for (const p of pods) {
         if (p.plant) { p.plant.rotation.z = Math.sin(t * 0.9 + p.sway) * 0.02; p.plant.rotation.x = Math.cos(t * 0.7 + p.sway) * 0.015; }
-        if (p.pop > 0) { p.pop = Math.max(0, p.pop - dt * 2.5); p.plantHolder.scale.setScalar(1 + Math.sin(p.pop * Math.PI) * 0.12); }
+        if (p.pop > 0) { p.pop = Math.max(0, p.pop - dt * 2.5); p.plantHolder.scale.setScalar(PLANT_SCALE * (1 + Math.sin(p.pop * Math.PI) * 0.14)); }
         if (p.sel.visible) p.sel.material.opacity = 0.55 + 0.35 * Math.sin(t * 4);
       }
       beacon.material.emissiveIntensity = Math.sin(t * 2.4) > 0.7 ? 5 : 0.2;
@@ -425,6 +456,20 @@ export function createMarsBase(world) {
         for (let i = 0; i < SP; i++) { spVel[i * 3 + 1] -= 5 * dt; SPp.setXYZ(i, SPp.getX(i) + spVel[i * 3] * dt, SPp.getY(i) + spVel[i * 3 + 1] * dt, SPp.getZ(i) + spVel[i * 3 + 2] * dt); }
         SPp.needsUpdate = true;
       }
+      // astronaut: walks the loop, legs and arms swing
+      { const u = (t * 0.018) % 1, p0 = walk.getPointAt(u), p1 = walk.getPointAt((u + 0.01) % 1);
+        astro.position.copy(p0); astro.lookAt(p1.x, astro.position.y, p1.z);
+        const sw = Math.sin(t * 5.5) * 0.4;
+        astro.getObjectByName("legL").rotation.x = sw; astro.getObjectByName("legR").rotation.x = -sw;
+        astro.getObjectByName("armL").rotation.x = -sw * 0.8; astro.getObjectByName("armR").rotation.x = sw * 0.8;
+        astro.position.y = 0.82 + Math.abs(Math.sin(t * 5.5)) * 0.05; }
+      // drone: glides to its target, hovers, shines a beam during an action, then drifts home
+      drone.position.lerp(droneTarget, 1 - Math.pow(0.02, dt));
+      drone.position.y += Math.sin(t * 3) * 0.004;
+      drone.children.forEach((c) => { if (c.name === "rotor") c.rotation.y += dt * 40; });
+      droneBeam = Math.max(0, droneBeam - dt * 0.9);
+      const bm = drone.getObjectByName("beam"); bm.material.opacity = Math.min(0.35, droneBeam * 0.35); bm.material.color.copy(droneColor);
+      if (droneBeam <= 0) droneTarget.lerp(new THREE.Vector3(0, 7.5, 0), 1 - Math.pow(0.5, dt));
       def.onFrame?.();
     },
     onShow() {
@@ -503,11 +548,11 @@ export function createMarsBase(world) {
     P.needsUpdate = true; sparkT = 1.2;
   }
   function orbit(dx, dy) { cam.tYaw += dx * 0.006; cam.tPitch = Math.max(0.4, Math.min(1.25, cam.tPitch + dy * 0.004)); }
-  function zoom(f) { cam.tDist = Math.max(36, Math.min(120, cam.tDist * f)); }
+  function zoom(f) { cam.tDist = Math.max(18, Math.min(110, cam.tDist * f)); }
   /** Screen space taken by the HUD (px): the base centres itself in what is left. */
   function setInsets(v) { inset = { right: 0, bottom: 0, top: 0, ...v }; applyView(); }
   function home() { Object.assign(cam, { tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist }); cam.target.copy(HOME.target); }
 
   placeCamera(1);
-  return { def, setSky, setFarm, pick, podScreen, solarScreen, select, burst, orbit, zoom, home, setInsets };
+  return { def, setSky, setFarm, pick, podScreen, solarScreen, select, burst, orbit, zoom, home, setInsets, droneTo, get cam() { return { ...cam, pos: camera.position.toArray().map((v) => +v.toFixed(1)), fov: camera.fov, view: camera.view && { ...camera.view } }; } };
 }

@@ -83,6 +83,7 @@ export function renderGreenhouse(el, ctx) {
 
   const base = createMarsBase(world);
   world.add("mars", base.def);
+  ctx.farmDebug = base;   // for the browser test harness
   world.show("mars", { fade: false });
   base.setSky(14.5, false);   // golden Martian afternoon; the real Mars time shows in the header tooltip
   // centre the base in the space the HUD leaves free
@@ -234,16 +235,16 @@ export function renderGreenhouse(el, ctx) {
       if (!seed) return openSeeds(i);
       if (f.reserve < F.WATER_COST) return toast("Out of water: the tank refills one litre every 8 seconds.", "is-warn");
       if (F.CROPS[seed].lvl > f.level) return;
-      F.plant(f, i, seed); cue.tick(); navigator.vibrate?.(8);
+      F.plant(f, i, seed); cue.tick(); navigator.vibrate?.(8); base.droneTo(i, "plant");
       floatText(at.x, at.y, `−1 water`, "is-water");
     } else if (st === "thirsty") {
       if (!F.water(f, i)) return toast("Out of water: the tank refills one litre every 8 seconds.", "is-warn");
-      cue.point(); navigator.vibrate?.(10);
+      cue.point(); navigator.vibrate?.(10); base.droneTo(i, "water");
       floatText(at.x, at.y, "Watered!", "is-water");
     } else if (st === "ready") {
       const h = F.harvest(f, i);
       cue.done(); navigator.vibrate?.([10, 30, 10]);
-      base.burst(i);
+      base.burst(i); base.droneTo(i, "harvest");
       session.harvests++;
       fly(at.x, at.y, $(`[data-st-it="${h.crop}"]`) || $("[data-store]"), cropIcon(h.crop), h.n);
       floatText(at.x, at.y - 30, `+${h.n} ${F.CROPS[h.crop].name}`, "is-good");
