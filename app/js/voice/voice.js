@@ -210,7 +210,7 @@ export function speak(text, { interrupt = true } = {}) {
   if (interrupt) stopSpeaking();
   return new Promise((resolve) => {
     const myGen = gen;
-    const parts = String(text).match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [text];
+    const parts = String(text).split(/(?<=[.!?]["')\]]*)\s+(?=[A-Z0-9"'])/);   // "7.2 hours" and "e.g. this" stay whole
     // short replies go as one request; long ones by sentence so speech starts sooner
     const chunks = text.length < 160 ? [text] : parts.map((p) => p.trim()).filter(Boolean);
     chunks.forEach((c, i) => {

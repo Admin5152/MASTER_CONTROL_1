@@ -535,7 +535,7 @@ function wireVoice() {
   });
   on("voice:thinking", (t) => { if (t) orb.setState("thinking"); else if (orb.getState() === "thinking") orb.setState("idle"); });
   on("voice:speaking-start", () => { orb.setState("speaking"); stages.setOrbBig(true); });
-  on("voice:speaking-end", () => { orb.setState("idle"); orb.setSpeakLevel(0); stages.setOrbBig(false); });
+  on("voice:speaking-end", () => { answering = false; orb.setState("idle"); orb.setSpeakLevel(0); stages.setOrbBig(false); });
   on("voice:status", (t) => note(t));
   on("voice:notice", (t) => showNotice(t));
   on("voice:sentence", (t) => caption(t, speakingSource));
@@ -590,6 +590,7 @@ function resetCaption() {
 }
 
 let speakingSource = "";
+let answering = false;   // a streamed answer is being spoken
 function say(text, opts = {}) {
   if (!text) return Promise.resolve();
   logLine("Sentinel", text, opts.source);
@@ -597,7 +598,9 @@ function say(text, opts = {}) {
   // the caption follows what is being said: a queued sentence is captioned when it starts playing
   if (!opts.append || !voiceMod.voice.speaking) caption(text, opts.source);
   if (sleeping) return Promise.resolve();   // the quiet tab never speaks
-  return voiceMod.speak(text, { interrupt: opts.append ? false : true });
+  // during a spoken answer, anything else (a screen's narration) is queued after it, never cut into it
+  const append = opts.append || (answering && opts.source !== "LLM" && opts.source !== "rules" && !opts.interrupt);
+  return voiceMod.speak(text, { interrupt: !append });
 }
 
 function logLine(who, text, source) {
@@ -626,6 +629,7 @@ ctx.showNotice = showNotice;
 
 // ---------- commands ----------
 async function handleCommand(text, meta = {}) {
+  answering = false;   // a new request outranks the last answer
   if (meta.heard) logLine("You", meta.via === "typed" ? text : meta.heard);
   if (meta.wakeOnly || !text) {
     // instant: a chime and the orb leaning in, no spoken "yes?" to wait through. The next thing said is the command.
@@ -687,6 +691,7 @@ async function handleCommand(text, meta = {}) {
   caption("Thinking…", "");
   try {
     let spoke = false, first = true;
+    answering = true;
     const r = await api.chatStream(view.crewId, text, (sentence, source) => {
       const isFirst = first;
       if (first) { emit("voice:thinking", false); first = false; }

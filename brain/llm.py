@@ -442,7 +442,7 @@ def build_messages(state: dict, transcript: str, history: list[dict] | None = No
 
 def _body(cfg: dict, messages: list[dict], stream: bool, model: str | None = None) -> dict:
     model = model or cfg["model"]
-    body = {"model": model, "temperature": 0.5, "max_tokens": 500, "messages": messages, "stream": stream}
+    body = {"model": model, "temperature": 0.5, "max_tokens": 1100, "messages": messages, "stream": stream}
     if "gpt-oss" in model:
         body["reasoning_effort"] = "low"
     elif "qwen" in model:
@@ -607,7 +607,9 @@ def chat_stream(state: dict, transcript: str, crew_id: str | None = None,
                 if not s:
                     continue
                 if health and not numbers_ok(s, state, allowed_text):
-                    raise ValueError("number not in state")
+                    if not spoken:
+                        raise ValueError("number not in state")   # nothing said yet: the checked rules reply instead
+                    continue                                     # drop only this sentence; the answer carries on
                 spoken.append(s)
                 yield {"type": "sentence", "text": s, "source": "llm"}
         reply_tail, cmds = parse_llm_content(buf)
@@ -616,7 +618,9 @@ def chat_stream(state: dict, transcript: str, crew_id: str | None = None,
             if not s:
                 continue
             if health and not numbers_ok(s, state, allowed_text):
-                raise ValueError("number not in state")
+                if not spoken:
+                    raise ValueError("number not in state")
+                continue
             spoken.append(s)
             yield {"type": "sentence", "text": s, "source": "llm"}
         if not spoken:
