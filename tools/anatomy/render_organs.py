@@ -15,8 +15,8 @@ import bpy
 from mathutils import Vector
 
 args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-SRC = Path(args[0] if args else "app/assets/body3d/anatomy_male.glb")
-OUT = Path(args[1] if len(args) > 1 else "app/assets/organs")
+SRC = Path(args[0] if args else "app/assets/body3d/anatomy_male.glb").resolve()
+OUT = Path(args[1] if len(args) > 1 else "app/assets/organs").resolve()
 OUT.mkdir(parents=True, exist_ok=True)
 SIZE = 512
 
@@ -91,7 +91,7 @@ scene.world = world
 world.use_nodes = True
 bg = next(n for n in world.node_tree.nodes if n.type == "BACKGROUND")
 bg.inputs["Color"].default_value = (0.55, 0.6, 0.7, 1)
-bg.inputs["Strength"].default_value = 0.6
+bg.inputs["Strength"].default_value = 0.35
 
 cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
 cam.data.lens = 85
@@ -117,11 +117,11 @@ for card, (names, view) in CARDS.items():
     dist = size / (2 * math.tan(cam.data.angle / 2)) * 1.25
     cam.location = center + d * dist
     cam.rotation_euler = (center - cam.location).to_track_quat("-Z", "Y").to_euler()
-    for L, loc in lights:
+    for (L, loc), base in zip(lights, (260, 120, 200)):
         L.location = center + loc * size * 2.2
         L.rotation_euler = (center - L.location).to_track_quat("-Z", "Y").to_euler()
-        L.data.energy = L.data.energy if card == "heart" else L.data.energy
-    for L, _ in lights:
+        # light falls off with distance squared: keep the exposure the same for a small heart and a skeleton
+        L.data.energy = base * (loc.length * size * 2.2) ** 2 * 0.05
         L.data.size = size * 1.5
     scene.render.filepath = str(OUT / f"{card}.png")
     bpy.ops.render.render(write_still=True)
