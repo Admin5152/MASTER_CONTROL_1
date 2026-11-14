@@ -28,3 +28,17 @@ def test_ground_routes(client):
 def test_pvt_and_measures_log_fields_accepted(client):
     for f, v in (("session.pvt_lapses", 2), ("session.pvt_mean_ms", 312), ("session.sit_to_stand_s", 11.4), ("session.tandem_walk_s", 8.2)):
         assert client.post("/api/log/james", json={"field": f, "value": v, "source": "user"}).status_code == 200, f
+
+
+def test_sentinel_skin_sim_feed(client):
+    assert client.get("/api/aux/james").json()["skin"] == {"on": False}
+    r = client.post("/api/skin/james", json={"on": True}).json()
+    assert r["on"] is True
+    eyes = r["zones"]["eyes"][0]
+    assert eyes["field"] == "skin.onsd_mm" and eyes["unit"] == "mm" and 4.0 < eyes["value"] < 6.0
+    assert any(lv.get("above") == 5.0 for lv in eyes["levels"]) and eyes["source"]["url"]
+    assert r["zones"]["heart"][0]["field"] == "skin.ejection_fraction"
+    assert client.get("/api/aux/james").json()["skin"]["on"] is True
+    assert client.get("/api/aux/amara").json()["skin"] == {"on": False}
+    client.post("/api/skin/james", json={"on": False})
+    assert client.get("/api/aux/james").json()["skin"] == {"on": False}

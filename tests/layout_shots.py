@@ -12,7 +12,8 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = next((a for a in sys.argv[1:] if a.startswith("http")), "https://127.0.0.1:8444")
-SIZE = next((a for a in sys.argv[1:] if "x" in a and a[0].isdigit()), "1366x768")
+import re
+SIZE = next((a for a in sys.argv[1:] if re.fullmatch(r"\d+x\d+", a)), "1366x768")
 W, H = map(int, SIZE.split("x"))
 THEMES = ["dark", "light"] if "both" in sys.argv else ["light"] if "light" in sys.argv else ["dark"]
 ONLY = [a for a in sys.argv[1:] if a not in (BASE, SIZE, "dark", "light", "both")]

@@ -1,7 +1,8 @@
 // Sentinel Skin (brief section 7 item 7): the DESIGNED wearable. Each module says what it would measure,
 // the real, published technology it is based on, and its source. Nothing on this screen is running.
 // The body behind it shows where each module sits (chips pinned to the 3D body).
-import { esc } from "../interface/readings.js";
+import { api } from "../core/api.js";
+import { badgeHTML, esc } from "../interface/readings.js";
 
 export const MODULES = [
   { id: "shirt", zone: "lungs", name: "Base-layer smart shirt", measures: "ECG, heart rate, breathing rate and volume, blood pressure, SpO2, skin temperature, activity",
@@ -23,7 +24,15 @@ export function renderHardware(el, ctx) {
       <ol class="skin-mods">${MODULES.map((m, i) => `<li class="card ${open === m.id ? "is-open" : ""}">
         <button type="button" data-mod="${m.id}"><span class="skin-n">${i + 1}</span><span><strong>${esc(m.name)}</strong><small>${esc(m.measures)}</small></span><span class="badge badge-designed">DESIGNED</span></button>
         ${open === m.id ? `<div class="skin-more"><p><span class="label">Based on</span> ${esc(m.basis)}</p><a class="src-link" href="${m.src}" target="_blank" rel="noopener">Source</a></div>` : ""}</li>`).join("")}</ol>
-      <p class="fine">Fed by SIM data in a demo, its readings would be labelled "SIM · Sentinel Skin" and never confused with live webcam data.</p>`;
+      <div class="skin-feed card"><div><strong>Demo: feed simulated Skin data</strong><small>Zone checks then show what the wearable would add: heart chamber motion with a looping echo view, lung B-lines, the optic nerve sheath diameter against its 5.0 mm line, and the vena cava. Every value is labelled ${badgeHTML("SIM · Sentinel Skin")}.</small></div>
+        <button class="pill ${ctx.view.aux?.skin?.on ? "pill-light" : "pill-ghost"}" type="button" data-feed aria-pressed="${!!ctx.view.aux?.skin?.on}">${ctx.view.aux?.skin?.on ? "SIM feed on" : "Turn on"}</button></div>
+      ${ctx.view.aux?.skin?.on ? `<div class="exam-nav"><button class="pill pill-ghost" type="button" data-try="eyes">Check my eyes</button><button class="pill pill-ghost" type="button" data-try="heart">Check my heart</button></div>` : ""}`;
+    el.querySelector("[data-feed]").addEventListener("click", async () => {
+      const on = !ctx.view.aux?.skin?.on;
+      try { const r = await api.skin(ctx.view.crewId, on); if (ctx.view.aux) ctx.view.aux.skin = r; } catch { /* brain offline */ }
+      draw();
+    });
+    el.querySelectorAll("[data-try]").forEach((b) => b.addEventListener("click", () => { ctx.screens.close(); ctx.director.run([{ cmd: "check_zone", zones: [b.dataset.try] }]); }));
     el.querySelectorAll("[data-mod]").forEach((b) => b.addEventListener("click", () => {
       open = open === b.dataset.mod ? null : b.dataset.mod;
       draw();

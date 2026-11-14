@@ -218,3 +218,5 @@ body.is-pointing .zone .zchip { opacity: 0; }
 .stage-vitals { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); padding-bottom: 28px; }
 .sheet.is-full .sheet-body, .sheet.is-orb .sheet-body { -webkit-mask-image: none; mask-image: none; padding-bottom: 0; }
 .bubble.is-tucked { display: none; }
+.skin-feed { display: flex; gap: var(--s-3); align-items: center; justify-content: space-between; padding: 14px 16px; margin-top: var(--s-3); }
+.skin-feed small { display: block; color: var(--ink-2); font-size: 12px; line-height: 1.45; margin-top: 4px; }

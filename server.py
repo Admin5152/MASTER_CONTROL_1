@@ -27,6 +27,7 @@ for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".
 
 from brain import llm, speech  # noqa: E402
 from brain.ground import Ground  # noqa: E402
+from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
 from brain.contract import ContractError  # noqa: E402
@@ -39,6 +40,7 @@ store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("
 spaceweather = SpaceWeather()
 scenarios = Scenarios(store, spaceweather)
 ground = Ground(persist=os.getenv("SENTINEL_NO_PERSIST") != "1")
+skin = Skin()
 SPEAKER_OK = speaker.available()
 
 
@@ -170,7 +172,17 @@ def assessment(cid: str):
 def aux(cid: str):
     """Everything the screen needs besides the contract object, in one poll."""
     _need(cid)
-    return {"assessment": store.assessment(cid), "scenario": scenarios.status, "clock": store.mission_clock()}
+    clock = store.mission_clock()
+    return {"assessment": store.assessment(cid), "scenario": scenarios.status, "clock": clock,
+            "skin": skin.aux(cid, store.get(cid), int(clock.get("mission_day", 0)))}
+
+
+@app.post("/api/skin/{cid}")
+def skin_toggle(cid: str, body: dict = Body(...)):
+    """Switch the Sentinel Skin SIM data source on or off for one crew member (demo only)."""
+    _need(cid)
+    skin.set(cid, bool(body.get("on", True)))
+    return skin.aux(cid, store.get(cid), int(store.mission_clock().get("mission_day", 0)))
 
 
 @app.get("/api/history/{cid}")

@@ -42,6 +42,7 @@ export const api = {
   clock: (hours) => req("POST", "../api/clock", { advance_hours: hours }),
   json: (path) => req("GET", path),
   ground: (id, packet) => req("POST", `../api/ground/${id}`, packet),
+  skin: (id, on) => req("POST", `../api/skin/${id}`, { on }),
   groundList: (id) => req("GET", `../api/ground?crew_id=${encodeURIComponent(id)}`),
 };
 
