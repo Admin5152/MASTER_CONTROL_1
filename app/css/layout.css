@@ -230,3 +230,8 @@ body[data-organ="eyes"] #zone-eyes, body[data-organ="gut"] #zone-gut, body[data-
 #zone-lungs .zchip { transform: translateY(-115%); }
 #zone-heart .zchip { transform: translateY(15%); }
 @media (max-width: 1000px) and (orientation: portrait) { .insights { top: 12px; bottom: auto; left: var(--gutter); } }   /* one column with the rail */
+/* the system rail: its natural width, centred in its column, every icon centred in its button */
+.sys-rail { width: max-content; justify-self: center; justify-items: center; box-sizing: border-box; padding: 8px; }
+.rail-btn { margin: 0; }
+.rail-btn svg { display: block; margin: auto; }
+@media (max-width: 1000px) and (orientation: portrait) { .stage-body { grid-template-columns: 70px 1fr; } }
