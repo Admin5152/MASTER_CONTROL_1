@@ -661,14 +661,14 @@ export function islands(index, vertexCount, keepVertex) {
  * stay one connected chain instead of each finding its own spot.
  * Returns { pieces, moved, shrunk, out } (out: vertices still outside afterwards).
  */
-export function containIslands(pos, index, surf, inRegion, { margin = 0.0025, iters = 8, maxMove = 0.035, minScale = 0.7, rootOf = null, chain = 0.045 } = {}) {
+export function containIslands(pos, index, surf, inRegion, { margin = 0.0025, iters = 8, maxMove = 0.035, minScale = 0.7, rootOf = null, chain = 0.045, skip = null } = {}) {
   const n = pos.length / 3;
   const centre = (vs) => {
     let x = 0, y = 0, z = 0;
     for (const v of vs) { x += pos[v * 3]; y += pos[v * 3 + 1]; z += pos[v * 3 + 2]; }
     return [x / vs.length, y / vs.length, z / vs.length];
   };
-  const pieces = islands(index, n).map((vs) => ({ vs, c0: centre(vs) })).filter((p) => p.vs.length >= 3 && inRegion(...p.c0));
+  const pieces = islands(index, n).map((vs) => ({ vs, c0: centre(vs) })).filter((p) => p.vs.length >= 3 && !(skip && skip[p.vs[0]]) && inRegion(...p.c0));
   if (rootOf) { for (const p of pieces) p.root = rootOf(...p.c0); pieces.sort((a, b) => a.root - b.root); }
   const done = [];
   const nrm = [0, 0, 0];
@@ -724,6 +724,256 @@ export function containIslands(pos, index, surf, inRegion, { margin = 0.0025, it
 }
 
 /**
+ * One bone chain in each of the five fingers, laid along that finger. The hand bones are separate pieces:
+ * carpals, five metacarpals, then three phalanges per finger (two in the thumb).
+ *  - Bone chains: from each fingertip bone (a large piece touching one large piece, further from the wrist
+ *    than it) walk toward the wrist: three phalanges (two for the thumb), then the metacarpal.
+ *  - Body fingers: sweep the hand's skin from its lowest point up, joining each vertex to its swept mesh
+ *    neighbours. Each finger starts as its own piece at its tip and joins the rest at the web; the five that
+ *    stay separate longest are the fingers. A finger's skin (below its web) gives its axis.
+ *  - The thumb is the tip furthest from the other four, on the bones and on the body, and is paired with
+ *    the thumb; the four fingers are paired by the least total distance.
+ *  - Each chain is moved, turned and scaled as one piece so it runs down its finger's axis and ends just
+ *    inside the tip; the bones stay joined. The metacarpal bends from the wrist (unchanged) to the knuckle
+ *    (following the chain). Crumbs left by mesh decimation follow the piece they sit on.
+ * Returns { report, done } where done flags the vertices placed here (the later bone-by-bone pass skips them).
+ */
+export function fitFingers(pos, index, bodyPos, bodyIndex, handOf, wrist, { big = 40, touch = 0.006, inset = 0.008, surf = null } = {}) {
+  const n = pos.length / 3, done = new Uint8Array(n);
+  const P = (v) => [pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2]];
+  const B = (v) => [bodyPos[v * 3], bodyPos[v * 3 + 1], bodyPos[v * 3 + 2]];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const len = (a) => Math.hypot(a[0], a[1], a[2]), unit = (a) => mul(a, 1 / (len(a) || 1));
+  const all = islands(index, n).map((vs) => {
+    let c = [0, 0, 0];
+    for (const v of vs) c = add(c, P(v));
+    return { vs, c: mul(c, 1 / vs.length) };
+  });
+  const report = {};
+  for (const sg of [1, -1]) {
+    const W = wrist[sg];
+    if (!W) continue;
+    const dW = (p) => len(sub(p, W));
+    // ---- bone chains ----
+    const hand = all.filter((p) => p.c[0] * sg > 0 && handOf(p.c[0], p.c[1]));
+    const bigs = hand.filter((p) => p.vs.length >= big);
+    if (bigs.length < 15) { report[sg] = { why: "bigs", n: bigs.length }; continue; }
+    for (const p of bigs) { p.s = p.vs.filter((_, i) => i % 2 === 0); p.nb = []; p.d = dW(p.c); }
+    const touching = (A, B2) => {
+      for (const a of A.s) for (const b of B2.s) if ((pos[a * 3] - pos[b * 3]) ** 2 + (pos[a * 3 + 1] - pos[b * 3 + 1]) ** 2 + (pos[a * 3 + 2] - pos[b * 3 + 2]) ** 2 < touch * touch) return true;
+      return false;
+    };
+    for (let i = 0; i < bigs.length; i++) for (let j = i + 1; j < bigs.length; j++) {
+      if (len(sub(bigs[i].c, bigs[j].c)) > 0.08) continue;
+      if (touching(bigs[i], bigs[j])) { bigs[i].nb.push(bigs[j]); bigs[j].nb.push(bigs[i]); }
+    }
+    const leaves = bigs.filter((p) => p.nb.length === 1 && p.d > p.nb[0].d).sort((a, b) => b.d - a.d).slice(0, 5);
+    if (leaves.length !== 5) { report[sg] = { why: "leaves", n: leaves.length }; continue; }
+    const farthest = (pts) => { let bi = 0, bs = -1; pts.forEach((p, i) => { let s = 0; pts.forEach((q, j) => { if (j !== i) s += len(sub(p, q)); }); if (s > bs) { bs = s; bi = i; } }); return bi; };
+    const leafTip = (leaf) => { let t = null, td = -1; for (const v of leaf.vs) { const d = dW(P(v)); if (d > td) { td = d; t = P(v); } } return t; };
+    const boneTips = leaves.map(leafTip), boneThumb = farthest(boneTips);
+    const chains = leaves.map((leaf, i) => {
+      const phal = [leaf];
+      let cur = leaf;
+      const nPh = i === boneThumb ? 2 : 3;
+      const step = () => cur.nb.filter((q) => q.d < cur.d && !phal.includes(q)).sort((a, b) => b.d - a.d)[0];
+      while (phal.length < nPh) { const nx = step(); if (!nx) break; phal.push(nx); cur = nx; }
+      const meta = step() || null;
+      // the knuckle: where the first phalanx meets the metacarpal (mean of its vertices nearest it)
+      let K;
+      if (meta) {
+        const near = cur.vs.map((v) => [Math.min(...meta.s.map((m) => len(sub(P(v), P(m))))), v]).sort((a, b) => a[0] - b[0]).slice(0, 12);
+        K = mul(near.reduce((s, [, v]) => add(s, P(v)), [0, 0, 0]), 1 / near.length);
+      } else { let kd = Infinity; for (const v of cur.vs) { const d = dW(P(v)); if (d < kd) { kd = d; K = P(v); } } }
+      return { phal, meta, K, tip: boneTips[i], thumb: i === boneThumb };
+    });
+    // ---- body fingers (persistence sweep over the hand's skin) ----
+    const nb = bodyPos.length / 3, inH = new Uint8Array(nb);
+    let cnt = 0;
+    for (let v = 0; v < nb; v++) if (bodyPos[v * 3] * sg > 0 && handOf(bodyPos[v * 3], bodyPos[v * 3 + 1]) && bodyPos[v * 3 + 1] < W[1] + 0.02) { inH[v] = 1; cnt++; }
+    if (cnt < 50) { report[sg] = { why: "hand skin", n: cnt }; continue; }
+    const adj = new Map(), link = (u, w) => { (adj.get(u) || adj.set(u, []).get(u)).push(w); (adj.get(w) || adj.set(w, []).get(w)).push(u); };
+    const nTri = (bodyIndex ? bodyIndex.length : nb) / 3;
+    for (let t = 0; t < nTri; t++) {
+      const tri = [0, 1, 2].map((q) => (bodyIndex ? bodyIndex[t * 3 + q] : t * 3 + q));
+      for (let q = 0; q < 3; q++) if (inH[tri[q]] && inH[tri[(q + 1) % 3]]) link(tri[q], tri[(q + 1) % 3]);
+    }
+    const posKey = new Map();   // seams: vertices at the same position are the same skin point
+    for (let v = 0; v < nb; v++) {
+      if (!inH[v]) continue;
+      const k = `${Math.round(bodyPos[v * 3] * 1e4)},${Math.round(bodyPos[v * 3 + 1] * 1e4)},${Math.round(bodyPos[v * 3 + 2] * 1e4)}`;
+      const o = posKey.get(k);
+      if (o != null) link(v, o); else posKey.set(k, v);
+    }
+    const order = [];
+    for (let v = 0; v < nb; v++) if (inH[v]) order.push(v);
+    order.sort((x, y) => bodyPos[x * 3 + 1] - bodyPos[y * 3 + 1]);
+    const par = new Map(), birth = new Map(), seen = new Uint8Array(nb), born = [];
+    const root = (x) => { while (par.get(x) !== x) { par.set(x, par.get(par.get(x))); x = par.get(x); } return x; };
+    for (const v of order) {
+      seen[v] = 1; par.set(v, v); birth.set(v, v);
+      let mine = v;
+      for (const u of adj.get(v) || []) {
+        if (!seen[u]) continue;
+        const ru = root(u), rm = root(mine);
+        if (ru === rm) continue;
+        const bu = birth.get(ru), bm = birth.get(rm);
+        const [old, young] = bodyPos[bu * 3 + 1] <= bodyPos[bm * 3 + 1] ? [ru, rm] : [rm, ru];
+        const yb = birth.get(young);
+        if (yb !== v) born.push({ pers: bodyPos[v * 3 + 1] - bodyPos[yb * 3 + 1], tip: yb, webY: bodyPos[v * 3 + 1] });
+        par.set(young, old);
+        mine = old;
+      }
+    }
+    born.push({ pers: Infinity, tip: birth.get(root(order[0])), webY: null });
+    born.sort((x, y) => y.pers - x.pers);
+    const fingers = born.slice(0, 5);
+    if (fingers.length < 5) { report[sg] = { why: "body fingers", n: fingers.length }; continue; }
+    const webs = fingers.filter((f) => f.webY != null).map((f) => f.webY).sort((a, b) => a - b);
+    for (const f of fingers) if (f.webY == null) f.webY = webs[0];
+    // each finger's skin below its web, reached from its tip; its axis (principal direction, toward the tip)
+    for (const f of fingers) {
+      const tipP = B(f.tip), mem = [f.tip], mark = new Set([f.tip]);
+      for (let i = 0; i < mem.length; i++) for (const u of adj.get(mem[i]) || []) if (!mark.has(u) && bodyPos[u * 3 + 1] <= f.webY) { mark.add(u); mem.push(u); }
+      let C = [0, 0, 0];
+      for (const v of mem) C = add(C, B(v));
+      C = mul(C, 1 / mem.length);
+      // principal axis by power iteration on the covariance
+      let D = unit(sub(tipP, C));
+      for (let it = 0; it < 12; it++) {
+        let nd = [0, 0, 0];
+        for (const v of mem) { const d = sub(B(v), C); nd = add(nd, mul(d, dot(d, D))); }
+        D = unit(nd);
+      }
+      if (dot(D, sub(tipP, C)) < 0) D = mul(D, -1);
+      // axis points level with the tip and with the web
+      f.axisTip = add(C, mul(D, dot(sub(tipP, C), D) - inset));
+      let wp = -Infinity; for (const v of mem) wp = Math.max(wp, -dot(sub(B(v), C), D));
+      f.axisWeb = add(C, mul(D, -wp));
+      f.D = D; f.tipP = tipP; f.n = mem.length;
+    }
+    const bodyThumb = farthest(fingers.map((f) => f.tipP));
+    // order the fingers thumb, index, middle, ring, little (by distance from the thumb tip), on both
+    // the four fingers in a row along the line they spread across; the end nearer the thumb is the index
+    const rank = (tipsArr, thumbI) => {
+      const four = [0, 1, 2, 3, 4].filter((i) => i !== thumbI);
+      let m = [0, 0, 0];
+      for (const i of four) m = add(m, tipsArr[i]);
+      m = mul(m, 0.25);
+      // the spread line: the pair of fingertips furthest apart
+      let e = null, bd = -1;
+      for (const i of four) for (const j of four) { const d = len(sub(tipsArr[i], tipsArr[j])); if (d > bd) { bd = d; e = unit(sub(tipsArr[j], tipsArr[i])); } }
+      const row = four.map((i) => [dot(sub(tipsArr[i], m), e), i]).sort((x, y) => x[0] - y[0]).map(([, i]) => i);
+      const T = tipsArr[thumbI];
+      if (len(sub(tipsArr[row[3]], T)) < len(sub(tipsArr[row[0]], T))) row.reverse();
+      return [thumbI, ...row];
+    };
+    const bodyTips = fingers.map((f) => f.tipP);
+    const rb = rank(boneTips, boneThumb), rf = rank(bodyTips, bodyThumb);
+    // turn the whole hand about the wrist so its frame (wrist to the four fingertips; index to little)
+    // matches the body's: the specimen's palm faces forward, these bodies' palms face the thighs
+    const frame = (tipsArr, r) => {
+      const m = mul(add(add(tipsArr[r[1]], tipsArr[r[2]]), add(tipsArr[r[3]], tipsArr[r[4]])), 0.25);
+      const e1 = unit(sub(m, W));
+      let e2 = sub(tipsArr[r[1]], tipsArr[r[4]]);
+      e2 = unit(sub(e2, mul(e1, dot(e2, e1))));
+      const e3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+      return [e1, e2, e3];
+    };
+    const Fa = frame(boneTips, rb), Fb = frame(bodyTips, rf);
+    // the frames give the direction down the hand; the roll about it (which way the palm faces) is chosen
+    // by trying 12 turns and keeping the one that leaves the fewest hand bones outside the skin
+    const rollAbout = (v, th) => { const k = Fb[0], c = Math.cos(th), sn = Math.sin(th), kv = dot(k, v); const kx = [k[1] * v[2] - k[2] * v[1], k[2] * v[0] - k[0] * v[2], k[0] * v[1] - k[1] * v[0]]; return [0, 1, 2].map((q) => v[q] * c + kx[q] * sn + k[q] * kv * (1 - c)); };
+    const turnAt = (th) => (p) => { const d = sub(p, W), c = [dot(d, Fa[0]), dot(d, Fa[1]), dot(d, Fa[2])]; return add(W, rollAbout(add(add(mul(Fb[0], c[0]), mul(Fb[1], c[1])), mul(Fb[2], c[2])), th)); };
+    // full turn from 3 cm past the wrist, blending in from the wrist so the carpals meet the forearm
+    const wTurn = (p) => { let t = dot(sub(p, W), Fa[0]) / 0.03; t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+    const blendOf = (turn) => (p) => { const w = wTurn(p); return add(p, mul(sub(turn(p), p), w)); };
+    const sampleV = [];
+    for (const p of hand) for (let i = 0; i < p.vs.length; i += 5) sampleV.push(p.vs[i]);
+    let bestTh = 0, bestOut = Infinity;
+    if (surf) for (let k = 0; k < 12; k++) {
+      const th = (k * Math.PI) / 6, f = blendOf(turnAt(th));
+      let out = 0;
+      for (const v of sampleV) { const q = f(P(v)); if (surf.signedOut(q[0], q[1], q[2]) > 0.001) out++; }
+      if (out < bestOut) { bestOut = out; bestTh = th; }
+    }
+    const turnW = blendOf(turnAt(bestTh));
+    for (const p of hand) {
+      for (const v of p.vs) { const r = turnW(P(v)); pos[v * 3] = r[0]; pos[v * 3 + 1] = r[1]; pos[v * 3 + 2] = r[2]; }
+      p.c = turnW(p.c);
+    }
+    for (const ch of chains) { ch.K = turnW(ch.K); ch.tip = turnW(ch.tip); }
+    // pair: thumb with thumb, then the four fingers by the least total distance once the hand is turned
+    const fIdx = [0, 1, 2, 3, 4].filter((i) => i !== bodyThumb), cIdx = [0, 1, 2, 3, 4].filter((i) => i !== boneThumb);
+    let best = null, bc = Infinity;
+    const perm = (arr, q = 0) => {
+      if (q === arr.length) { let c = 0; arr.forEach((fi, j) => { c += len(sub(chains[cIdx[j]].tip, fingers[fi].tipP)) ** 2; }); if (c < bc) { bc = c; best = [...arr]; } return; }
+      for (let i = q; i < arr.length; i++) { [arr[q], arr[i]] = [arr[i], arr[q]]; perm(arr, q + 1); [arr[q], arr[i]] = [arr[i], arr[q]]; }
+    };
+    perm([...fIdx]);
+    const pairs = [[boneThumb, bodyThumb], ...cIdx.map((ci, j) => [ci, best[j]])];
+    const roll = Math.round((bestTh * 180) / Math.PI);
+    // ---- place each chain down its finger ----
+    const moves = new Map();   // piece -> (point) => new point (chains), or (point, weight) for metacarpals
+    for (const [ci, fi] of pairs) {
+      const ch = chains[ci], f = fingers[fi];
+      const a = sub(ch.tip, ch.K), la = len(a);
+      if (!(la > 0.01)) continue;
+      let s, Kt, ub;
+      if (true) {
+        // turn and scale the chain about its own knuckle so its tip lands just inside its own fingertip (the
+        // finger axes measured from the skin were not reliable enough to place the knuckles)
+        // first the knuckle moves through the hand's thickness to the fingertip's depth, so the chain lies
+        // in the plane of the hand instead of slanting out of it
+        const nrm = Fb[2];
+        Kt = add(ch.K, mul(nrm, dot(sub(f.tipP, ch.K), nrm)));
+        const target = add(f.tipP, mul(unit(sub(Kt, f.tipP)), inset));
+        const tb = sub(target, Kt);
+        s = Math.min(1.45, Math.max(0.7, len(tb) / la)); ub = unit(tb);
+      } else {
+        // a finger: the knuckle goes onto the finger's axis a little above the web (the web sits about a
+        // third of the way along the first phalanx), and the chain runs down the axis to just inside the tip
+        const Lv = len(sub(f.axisTip, f.axisWeb));
+        s = Math.min(1.35, Math.max(0.75, Lv / (0.86 * la)));
+        ub = f.D;
+        Kt = sub(f.axisTip, mul(ub, la * s));
+      }
+      const ua = unit(a), ax = [ua[1] * ub[2] - ua[2] * ub[1], ua[2] * ub[0] - ua[0] * ub[2], ua[0] * ub[1] - ua[1] * ub[0]];
+      const sn = len(ax), cs = dot(ua, ub), k = sn > 1e-6 ? mul(ax, 1 / sn) : [1, 0, 0];
+      const rot = (v) => { const kv = dot(k, v), kx = [k[1] * v[2] - k[2] * v[1], k[2] * v[0] - k[0] * v[2], k[0] * v[1] - k[1] * v[0]]; return [0, 1, 2].map((q) => v[q] * cs + kx[q] * sn + k[q] * kv * (1 - cs)); };
+      // stretched along the finger only; across it the bones are made a little slimmer to sit inside the
+      // body's slimmer fingers (scaling them evenly made a 1.4x longer finger 1.4x thicker too)
+      const sr = 0.78;
+      const fn = (p) => { const d = sub(p, ch.K), da = mul(ua, dot(d, ua)), dr = sub(d, da); return add(Kt, rot(add(mul(da, s), mul(dr, sr)))); };
+      for (const p of ch.phal) moves.set(p, fn);
+      if (ch.meta) {
+        // the metacarpal bends: unchanged at its wrist end, carried with the knuckle at its finger end
+        let far = null, fd = -1;
+        for (const v of ch.meta.vs) { const d = len(sub(P(v), ch.K)); if (d > fd) { fd = d; far = P(v); } }
+        const axm = sub(ch.K, far), lm = dot(axm, axm) || 1, shift = sub(Kt, ch.K);
+        moves.set(ch.meta, (p) => { let w = dot(sub(p, far), axm) / lm; w = Math.min(1, Math.max(0, w)); w = w * w * (3 - 2 * w); return add(p, mul(shift, w)); });
+      }
+      ch.fitted = { s: +s.toFixed(2), finger: fi };
+    }
+    const placed = [...moves.keys()];
+    let moved = 0;
+    for (const p of hand) {
+      let fn = moves.get(p);
+      if (!fn && p.vs.length < big) {
+        let bp = null, bd = 0.01;
+        for (const q of placed) { const d = len(sub(q.c, p.c)); if (d < bd) { bd = d; bp = q; } }
+        if (bp) fn = moves.get(bp);
+      }
+      if (!fn) continue;
+      for (const v of p.vs) { const r = fn(P(v)); pos[v * 3] = r[0]; pos[v * 3 + 1] = r[1]; pos[v * 3 + 2] = r[2]; done[v] = 1; moved++; }
+    }
+    report[sg] = { chains: chains.map((c) => c.phal.length + (c.meta ? 1 : 0)), thumb: { bone: boneThumb, body: bodyThumb }, order: { bone: rb, body: rf }, roll, pairs, scale: chains.map((c) => c.fitted?.s ?? null), fingerSkin: fingers.map((f) => f.n), moved };
+  }
+  return { report: Object.keys(report).length ? report : null, done };
+}
+
+/**
  * Stretch each foot's bones, heel to toe, to the body's own foot: the specimen's foot is shorter, so the
  * toe bones stopped two thirds of the way along the body's foot. Depth (z, toward the toes) is mapped
  * from the bone heel..toe onto the body heel..toe (less `skin`), fully below `y1` and fading out by `y2`
@@ -769,7 +1019,7 @@ export const CUT_NODES = ["arteries", "veins", "kidneys"];   // kidneys: the gro
  * Returns a per-node report so the fit can be checked (tests, body3d.debug()): fitted = vertices the trunk
  * field moved, moved = vertices then pressed under the skin, lost = left outside, cut = triangles removed.
  */
-export function conformAnatomy(body, parts, { cell = 0.004, margin = 0.004, reach = 0.008, skin = 0.012, trunk = true } = {}) {
+export function conformAnatomy(body, parts, { cell = 0.004, margin = 0.004, reach = 0.008, skin = 0.012, trunk = true, fingers: perFinger = false } = {}) {
   const map = depthMap(body.pos, body.index, cell);
   const report = {};
   const field = trunk ? trunkField(map, parts, { skin }) : null;
@@ -821,12 +1071,33 @@ export function conformAnatomy(body, parts, { cell = 0.004, margin = 0.004, reac
     // feet first stretched to the body's foot length (bones and vessels together)
     const stretch = footFit(body.pos, parts.limbs.pos, H);
     for (const name of LEG_NODES) if (parts[name]?.pos?.length) stretch(parts[name].pos);
+    // one bone chain in each of the five fingers (the wrist: 76% of the way down the arm line)
+    const wrist = {};
+    for (const sg of [1, -1]) {
+      const A = arms?.arms?.[sg];
+      if (!A) continue;
+      const t = A.Lb * 0.76, x = A.pv[0] + A.dx * t, y = A.pv[1] + A.dy * t, col = columnAt(map, x, y);
+      wrist[sg] = [x, y, col ? (col[0] + col[1]) / 2 : 0];
+    }
+    // experimental, off by default: one bone chain per finger (re-posing the specimen's hand in the browser
+    // is not reliable yet; app/dev/xray_check.html?fingers=1 shows it)
+    const fingers = perFinger ? fitFingers(parts.limbs.pos, parts.limbs.index, body.pos, body.index, inHand, wrist, { surf }) : { report: null, done: new Uint8Array(parts.limbs.pos.length / 3) };
+    // the finger bones just placed are not moved again piece by piece (that pulled their joints apart)
     // then each small bone, wrist or heel outward, so fingers and toes stay connected chains
     const handRoot = (x, y) => { const A = arms?.arms?.[x >= 0 ? 1 : -1]; return A ? A.toAxis(x, y)[0] : -y; };
-    const rh = containIslands(parts.limbs.pos, parts.limbs.index, surf, inHand, { rootOf: handRoot });
+    const rh = containIslands(parts.limbs.pos, parts.limbs.index, surf, inHand, { rootOf: handRoot, skip: fingers.done });
     const rf = containIslands(parts.limbs.pos, parts.limbs.index, surf, inFoot, { rootOf: (x, y, z) => z });
     fitted.limbs = Math.max(fitted.limbs || 0, rh.pieces + rf.pieces);
-    extremities = { hands: rh, feet: rf };
+    // how much of the finger bones placed above is outside the skin, per hand
+    const outside = { 1: [0, 0], [-1]: [0, 0] };
+    const lp = parts.limbs.pos;
+    for (let v = 0; v < lp.length / 3; v++) {
+      if (!fingers.done[v]) continue;
+      const o = outside[lp[v * 3] >= 0 ? 1 : -1];
+      o[1]++;
+      if (surf.signedOut(lp[v * 3], lp[v * 3 + 1], lp[v * 3 + 2]) > 0.001) o[0]++;
+    }
+    extremities = { hands: rh, feet: rf, fingers: fingers.report, fingerBonesOutside: outside };
     for (const name of ["arteries", "veins"]) {
       const p = parts[name]?.pos;
       if (!p?.length) continue;

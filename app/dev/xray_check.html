@@ -32,7 +32,7 @@ if (q.get('fit') !== '0') {
   let bg = null; body.scene.traverse(o => { if (o.isMesh && !bg) bg = o.geometry; });
   const fp = {}, gs = {};
   anat.scene.traverse(o => { if (o.isMesh) { gs[o.name] = o.geometry; fp[o.name] = { pos: o.geometry.attributes.position.array, index: o.geometry.index ? o.geometry.index.array : null }; } });
-  const fitOut = conformAnatomy({ pos: bg.attributes.position.array, index: bg.index ? bg.index.array : null }, fp);
+  const fitOut = conformAnatomy({ pos: bg.attributes.position.array, index: bg.index ? bg.index.array : null }, fp, { fingers: q.get('fingers') === '1' });
   fitReport = fitOut.report; window.__fitExtra = fitOut.extremities;
   for (const [n, r] of Object.entries(fitReport)) {
     if (r.cut) gs[n].setIndex(new THREE.BufferAttribute(fp[n].index, 1));
