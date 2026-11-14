@@ -574,6 +574,192 @@ export function applyArmField(pos, f) {
   return moved;
 }
 
+// ---------- hands and feet: every small bone moved, whole, into the nearest finger, toe or palm ----------
+// The specimen's fingers are posed differently from the bodies' (straighter, less spread), so after the
+// arm fit finger bones still crossed between the body's fingers, and the feet sat slightly off. Each small
+// bone (a phalanx, a carpal, a metatarsal: one connected island of the mesh) is translated as a rigid
+// piece, and if it still does not fit, shrunk a little about its centre, until it lies under the skin.
+// Inside/outside is judged against the nearest body vertex and its normal, which works in 3D (a finger
+// seen edge-on), where the front-view depth map does not.
+
+/** Area-weighted vertex normals of a triangle mesh. */
+export function vertexNormals(pos, index) {
+  const n = new Float32Array(pos.length), nTri = (index ? index.length : pos.length / 3) / 3;
+  for (let t = 0; t < nTri; t++) {
+    const a = (index ? index[t * 3] : t * 3) * 3, b = (index ? index[t * 3 + 1] : t * 3 + 1) * 3, c = (index ? index[t * 3 + 2] : t * 3 + 2) * 3;
+    const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2];
+    const vx = pos[c] - pos[a], vy = pos[c + 1] - pos[a + 1], vz = pos[c + 2] - pos[a + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    for (const k of [a, b, c]) { n[k] += nx; n[k + 1] += ny; n[k + 2] += nz; }
+  }
+  for (let i = 0; i < n.length; i += 3) { const l = Math.hypot(n[i], n[i + 1], n[i + 2]) || 1; n[i] /= l; n[i + 1] /= l; n[i + 2] /= l; }
+  return n;
+}
+
+/** Nearest-vertex lookup over the body vertices `keep` selects; signedOut(p) > 0 means outside the skin. */
+export function surfaceIndex(pos, normals, keep, cell = 0.01) {
+  // numeric cell keys (the body is a couple of metres across: 1024 cells a side is plenty)
+  const grid = new Map(), key = (i, j, k) => ((i + 512) * 1024 + (j + 512)) * 1024 + (k + 512);
+  for (let v = 0; v < pos.length / 3; v++) {
+    if (!keep(pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2])) continue;
+    const k = key(Math.floor(pos[v * 3] / cell), Math.floor(pos[v * 3 + 1] / cell), Math.floor(pos[v * 3 + 2] / cell));
+    (grid.get(k) || grid.set(k, []).get(k)).push(v);
+  }
+  function nearest(x, y, z) {
+    const ci = Math.floor(x / cell), cj = Math.floor(y / cell), ck = Math.floor(z / cell);
+    let best = -1, bd = Infinity;
+    for (let r = 1; r <= 4 && best < 0; r++) {
+      for (let i = ci - r; i <= ci + r; i++) for (let j = cj - r; j <= cj + r; j++) for (let k = ck - r; k <= ck + r; k++) {
+        // only the shell of this radius: the inside was searched at a smaller one
+        if (r > 1 && Math.abs(i - ci) < r && Math.abs(j - cj) < r && Math.abs(k - ck) < r) continue;
+        const list = grid.get(key(i, j, k));
+        if (!list) continue;
+        for (const v of list) {
+          const d = (pos[v * 3] - x) ** 2 + (pos[v * 3 + 1] - y) ** 2 + (pos[v * 3 + 2] - z) ** 2;
+          if (d < bd) { bd = d; best = v; }
+        }
+      }
+    }
+    return best;
+  }
+  /** How far outside the skin (metres, along the nearest normal); negative inside. NaN: no skin near. */
+  function signedOut(x, y, z, out) {
+    const v = nearest(x, y, z);
+    if (v < 0) return NaN;
+    const nx = normals[v * 3], ny = normals[v * 3 + 1], nz = normals[v * 3 + 2];
+    if (out) { out[0] = nx; out[1] = ny; out[2] = nz; }
+    return (x - pos[v * 3]) * nx + (y - pos[v * 3 + 1]) * ny + (z - pos[v * 3 + 2]) * nz;
+  }
+  return { nearest, signedOut, size: grid.size };
+}
+
+/** Connected pieces of a mesh (vertex islands joined by triangles), as arrays of vertex numbers. */
+export function islands(index, vertexCount, keepVertex) {
+  const parent = Int32Array.from({ length: vertexCount }, (_, i) => i);
+  const find = (a) => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+  const nTri = (index ? index.length : vertexCount) / 3;
+  for (let t = 0; t < nTri; t++) {
+    const a = index ? index[t * 3] : t * 3, b = index ? index[t * 3 + 1] : t * 3 + 1, c = index ? index[t * 3 + 2] : t * 3 + 2;
+    const ra = find(a), rb = find(b), rc = find(c);
+    parent[rb] = ra; parent[find(rc)] = ra;
+  }
+  const groups = new Map();
+  for (let v = 0; v < vertexCount; v++) {
+    if (keepVertex && !keepVertex(v)) continue;
+    const r = find(v);
+    (groups.get(r) || groups.set(r, []).get(r)).push(v);
+  }
+  return [...groups.values()];
+}
+
+/**
+ * Move each island of `pos` (only those `inRegion` selects by centroid) as a rigid piece until it is under
+ * the skin by `margin`: up to `iters` steps of the mean push of its outside vertices, at most `maxMove` in
+ * all; a piece still mostly outside is shrunk about its centre, never below `minScale`.
+ * With `rootOf(x, y, z)` (distance from the wrist or heel) the pieces are done from the root outward, and
+ * each first takes the move of the nearest piece before it (within `chain` metres), so a finger's bones
+ * stay one connected chain instead of each finding its own spot.
+ * Returns { pieces, moved, shrunk, out } (out: vertices still outside afterwards).
+ */
+export function containIslands(pos, index, surf, inRegion, { margin = 0.0025, iters = 8, maxMove = 0.035, minScale = 0.7, rootOf = null, chain = 0.045 } = {}) {
+  const n = pos.length / 3;
+  const centre = (vs) => {
+    let x = 0, y = 0, z = 0;
+    for (const v of vs) { x += pos[v * 3]; y += pos[v * 3 + 1]; z += pos[v * 3 + 2]; }
+    return [x / vs.length, y / vs.length, z / vs.length];
+  };
+  const pieces = islands(index, n).map((vs) => ({ vs, c0: centre(vs) })).filter((p) => p.vs.length >= 3 && inRegion(...p.c0));
+  if (rootOf) { for (const p of pieces) p.root = rootOf(...p.c0); pieces.sort((a, b) => a.root - b.root); }
+  const done = [];
+  const nrm = [0, 0, 0];
+  let moved = 0, shrunk = 0, out = 0;
+  for (const piece of pieces) {
+    const vs = piece.vs;
+    piece.tr = [0, 0, 0];
+    // inherit the move of the piece before it in the chain (the nearest one closer to the root)
+    if (rootOf) {
+      let best = null, bd = chain * chain;
+      for (const q of done) {
+        if (q.root >= piece.root) continue;
+        const d = (q.c0[0] - piece.c0[0]) ** 2 + (q.c0[1] - piece.c0[1]) ** 2 + (q.c0[2] - piece.c0[2]) ** 2;
+        if (d < bd) { bd = d; best = q; }
+      }
+      if (best) {
+        piece.tr = [...best.tr];
+        for (const v of vs) { pos[v * 3] += best.tr[0]; pos[v * 3 + 1] += best.tr[1]; pos[v * 3 + 2] += best.tr[2]; }
+      }
+    }
+    done.push(piece);
+    let total = 0, scale = 1;
+    for (let it = 0; it < iters; it++) {
+      let px = 0, py = 0, pz = 0, k = 0;
+      for (const v of vs) {
+        const d = surf.signedOut(pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2], nrm) + margin;
+        if (!(d > 0)) continue;
+        px -= nrm[0] * d; py -= nrm[1] * d; pz -= nrm[2] * d; k++;
+      }
+      if (!k) break;
+      const frac = k / vs.length;
+      let mx = px / k, my = py / k, mz = pz / k;
+      const len = Math.hypot(mx, my, mz), room = maxMove - total;
+      if (len > room) { const f = Math.max(0, room) / len; mx *= f; my *= f; mz *= f; }
+      total += Math.hypot(mx, my, mz);
+      // most of it out and no more room to move: make it a little smaller instead
+      const s = (frac > 0.25 && (it >= 3 || room <= 0)) ? Math.max(minScale / scale, 0.94) : 1;
+      let cx = 0, cy = 0, cz = 0;
+      for (const v of vs) { cx += pos[v * 3]; cy += pos[v * 3 + 1]; cz += pos[v * 3 + 2]; }
+      cx /= vs.length; cy /= vs.length; cz /= vs.length;
+      for (const v of vs) {
+        pos[v * 3] = cx + (pos[v * 3] - cx) * s + mx;
+        pos[v * 3 + 1] = cy + (pos[v * 3 + 1] - cy) * s + my;
+        pos[v * 3 + 2] = cz + (pos[v * 3 + 2] - cz) * s + mz;
+      }
+      if (s < 1) { scale *= s; shrunk++; }
+      piece.tr[0] += mx; piece.tr[1] += my; piece.tr[2] += mz;
+      moved++;
+    }
+    for (const v of vs) if (surf.signedOut(pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2]) > margin) out++;
+  }
+  return { pieces: pieces.length, moved, shrunk, out };
+}
+
+/**
+ * Stretch each foot's bones, heel to toe, to the body's own foot: the specimen's foot is shorter, so the
+ * toe bones stopped two thirds of the way along the body's foot. Depth (z, toward the toes) is mapped
+ * from the bone heel..toe onto the body heel..toe (less `skin`), fully below `y1` and fading out by `y2`
+ * so the ankle joint is not pulled apart. Returns a function that applies it to positions in place.
+ */
+export function footFit(bodyPos, limbs, H, { skin = 0.006 } = {}) {
+  const y1 = 0.075 * H, y2 = 0.11 * H, sides = {};
+  for (const sg of [1, -1]) {
+    let bh = Infinity, bt = -Infinity, ah = Infinity, at = -Infinity;
+    for (let i = 0; i < bodyPos.length; i += 3) {
+      const x = bodyPos[i] * sg;
+      if (x > 0 && x < 0.2 * H && bodyPos[i + 1] < 0.07 * H) { bh = Math.min(bh, bodyPos[i + 2]); bt = Math.max(bt, bodyPos[i + 2]); }
+    }
+    for (let i = 0; i < limbs.length; i += 3) {
+      const x = limbs[i] * sg;
+      if (x > 0 && x < 0.2 * H && limbs[i + 1] < y1) { ah = Math.min(ah, limbs[i + 2]); at = Math.max(at, limbs[i + 2]); }
+    }
+    if (!(bt > bh && at > ah)) continue;
+    const k = Math.min(1.6, Math.max(0.8, (bt - bh - 2 * skin) / (at - ah)));
+    sides[sg] = { ah, base: bh + skin, k };
+  }
+  return (pos) => {
+    let moved = 0;
+    for (let i = 0; i < pos.length; i += 3) {
+      const y = pos[i + 1], S = sides[pos[i] >= 0 ? 1 : -1];
+      if (!S || y >= y2 || Math.abs(pos[i]) > 0.2 * H) continue;
+      let w = y <= y1 ? 1 : 1 - (y - y1) / (y2 - y1);
+      w = w * w * (3 - 2 * w);
+      const z2 = S.base + (pos[i + 2] - S.ah) * S.k;
+      pos[i + 2] += w * (z2 - pos[i + 2]);
+      moved++;
+    }
+    return moved;
+  };
+}
+
 /** Which nodes are cut rather than left outside: thin strands, where a stray piece reads as a defect. */
 export const CUT_NODES = ["arteries", "veins", "kidneys"];   // kidneys: the group carries the (male) urethra
 
@@ -619,6 +805,38 @@ export function conformAnatomy(body, parts, { cell = 0.004, margin = 0.004, reac
   // arms: measured on the bones as they are now, then applied to the bones and the vessels that run down them
   const arms = trunk ? armField(map, body, parts) : null;
   if (arms) for (const name of LEG_NODES) if (parts[name]?.pos?.length) fitted[name] = Math.max(fitted[name] || 0, applyArmField(parts[name].pos, arms));
+  // hands and feet: each small bone moved whole into the nearest finger, toe or palm; vessel strands that
+  // still leave the skin there are cut
+  let extremities = null;
+  if (trunk && parts.limbs?.pos?.length) {
+    const H = map.ny * map.cell;
+    const inHand = (x, y) => {
+      const A = arms?.arms?.[x >= 0 ? 1 : -1];
+      if (A) { if (!A.isArm(x, y)) return false; const [t] = A.toAxis(x, y); return t / A.Lb > 0.76; }
+      return Math.abs(x) > 0.2 * H && y < 0.6 * H;
+    };
+    const inFoot = (x, y) => y < 0.075 * H && Math.abs(x) < 0.2 * H;
+    const inExt = (x, y) => inHand(x, y) || inFoot(x, y);
+    const surf = surfaceIndex(body.pos, vertexNormals(body.pos, body.index), (x, y) => (Math.abs(x) > 0.17 * H && y < 0.62 * H) || y < 0.1 * H);
+    // feet first stretched to the body's foot length (bones and vessels together)
+    const stretch = footFit(body.pos, parts.limbs.pos, H);
+    for (const name of LEG_NODES) if (parts[name]?.pos?.length) stretch(parts[name].pos);
+    // then each small bone, wrist or heel outward, so fingers and toes stay connected chains
+    const handRoot = (x, y) => { const A = arms?.arms?.[x >= 0 ? 1 : -1]; return A ? A.toAxis(x, y)[0] : -y; };
+    const rh = containIslands(parts.limbs.pos, parts.limbs.index, surf, inHand, { rootOf: handRoot });
+    const rf = containIslands(parts.limbs.pos, parts.limbs.index, surf, inFoot, { rootOf: (x, y, z) => z });
+    fitted.limbs = Math.max(fitted.limbs || 0, rh.pieces + rf.pieces);
+    extremities = { hands: rh, feet: rf };
+    for (const name of ["arteries", "veins"]) {
+      const p = parts[name]?.pos;
+      if (!p?.length) continue;
+      const nv = p.length / 3, flag = new Uint8Array(nv);
+      for (let v = 0; v < nv; v++) if (inExt(p[v * 3], p[v * 3 + 1]) && surf.signedOut(p[v * 3], p[v * 3 + 1], p[v * 3 + 2]) > 0.002) flag[v] = 1;
+      const before = (parts[name].index ? parts[name].index.length : nv) / 3;
+      parts[name].index = dropLost(parts[name].index, nv, flag);
+      cut[name] = (cut[name] || 0) + before - parts[name].index.length / 3;
+    }
+  }
   for (const [name, part] of Object.entries(parts)) {
     if (!part?.pos?.length || HEAD_NODES.includes(name)) continue;
     const n = part.pos.length / 3;
@@ -630,5 +848,5 @@ export function conformAnatomy(body, parts, { cell = 0.004, margin = 0.004, reac
     }
     report[name] = { verts: n, fitted: fitted[name] || 0, moved: r.moved, lost: r.lost, cut: cut[name] };
   }
-  return { map, field, head, legs, arms, report };
+  return { map, field, head, legs, arms, extremities, report };
 }

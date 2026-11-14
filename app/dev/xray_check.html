@@ -32,13 +32,15 @@ if (q.get('fit') !== '0') {
   let bg = null; body.scene.traverse(o => { if (o.isMesh && !bg) bg = o.geometry; });
   const fp = {}, gs = {};
   anat.scene.traverse(o => { if (o.isMesh) { gs[o.name] = o.geometry; fp[o.name] = { pos: o.geometry.attributes.position.array, index: o.geometry.index ? o.geometry.index.array : null }; } });
-  fitReport = conformAnatomy({ pos: bg.attributes.position.array, index: bg.index ? bg.index.array : null }, fp).report;
+  const fitOut = conformAnatomy({ pos: bg.attributes.position.array, index: bg.index ? bg.index.array : null }, fp);
+  fitReport = fitOut.report; window.__fitExtra = fitOut.extremities;
   for (const [n, r] of Object.entries(fitReport)) {
     if (r.cut) gs[n].setIndex(new THREE.BufferAttribute(fp[n].index, 1));
     if (r.moved || r.fitted) { gs[n].attributes.position.needsUpdate = true; gs[n].computeVertexNormals(); }
   }
 }
 window.fitReport = fitReport;
+window.fitExtra = window.__fitExtra || null;
 const names = [];
 anat.scene.traverse(o => { if (!o.isMesh) return; const g = o.name; names.push(g);
   const bone = BONES.includes(g);
@@ -57,8 +59,19 @@ const zoom = q.get('zoom'); const d = q.get('d') ? h * parseFloat(q.get('d')) : 
 const ty = q.get('cy') ? box.min.y + h * parseFloat(q.get('cy')) : zoom === 'chest' ? box.min.y + h * 0.72 : zoom === 'head' ? box.min.y + h * 0.92 : c.y;
 if (q.get('cx')) c.x += h * parseFloat(q.get('cx'));
 if (q.get('cz')) c.z += h * parseFloat(q.get('cz'));
-const dir = view === 'side' ? new THREE.Vector3(1, 0, 0) : view === 'three' ? new THREE.Vector3(0.7, 0, 0.7) : new THREE.Vector3(0, 0, 1);
-cam.position.set(c.x + dir.x * d, ty, c.z + dir.z * d); cam.lookAt(c.x, ty, c.z);
+// at=hand | foot: frame the subject's left hand or foot (found from the body's own vertices)
+let ty2 = ty;
+if (q.get('at')) {
+  let bg = null; body.scene.traverse(o => { if (o.isMesh && !bg) bg = o.geometry; });
+  const P = bg.attributes.position, v = new THREE.Vector3(), acc = new THREE.Vector3(); let tip = null, n = 0;
+  for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i);
+    if (q.get('at') === 'hand' && v.x > 0.2 * h && (!tip || v.y < tip.y)) tip = v.clone();
+    if (q.get('at') === 'foot' && v.x > 0 && v.y < 0.07 * h) { acc.add(v); n++; } }
+  const t = q.get('at') === 'hand' ? tip.add(new THREE.Vector3(-0.03, 0.07, 0)) : acc.divideScalar(n);
+  c.copy(t); ty2 = t.y;
+}
+const dir = view === 'side'  ? new THREE.Vector3(1, 0, 0) : view === 'three' ? new THREE.Vector3(0.7, 0, 0.7) : new THREE.Vector3(0, 0, 1);
+cam.position.set(c.x + dir.x * d, ty2, c.z + dir.z * d); cam.lookAt(c.x, ty2, c.z);
 r.render(s, cam);
 document.title = 'READY ' + names.length + ' ' + names.join(',');
 </script></body></html>
