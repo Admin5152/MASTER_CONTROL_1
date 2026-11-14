@@ -77,8 +77,8 @@ function createRaceScene(world, tex) {
   const at = (dist, x = 0, y = 0) => { const f = frameAt(dist / length); return { ...f, pos: f.p.clone().addScaledVector(f.side, x).addScaledVector(f.up, y) }; };
 
   // faint guide lights along the course
-  const guideGeo = new THREE.BufferGeometry().setFromPoints(curve.getSpacedPoints(600));
-  const guide = new THREE.Points(guideGeo, new THREE.PointsMaterial({ color: 0x7fd8ff, size: 0.35, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const guideGeo = new THREE.BufferGeometry().setFromPoints(curve.getSpacedPoints(1200));
+  const guide = new THREE.LineLoop(guideGeo, new THREE.LineBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
   scene.add(guide);
 
   // planets beside the course (real textures); each has a beacon on the course for its power-up
@@ -386,7 +386,7 @@ export function renderRace(el, ctx) {
     startedAt = performance.now();
     $("[data-menu]").hidden = true;
     hud.hidden = false;
-    ctx.raceDebug = { me, rivals, pickups, get t() { return t; } };
+    ctx.raceDebug = { me, rivals, pickups, get t() { return t; }, place(x, y) { px = x; py = y; vx = vy = 0; } };
   }
 
   return () => {
@@ -396,7 +396,7 @@ export function renderRace(el, ctx) {
     ctx.raceDebug = null;
     if (world.active === "race") {
       const back = prevScene && prevScene !== "race" ? prevScene : "space";
-      world.show(back).then(() => world.remove("race"));
+      world.show(back, { fade: false }).then(() => world.remove("race"));
     } else world.remove("race");
   };
 }

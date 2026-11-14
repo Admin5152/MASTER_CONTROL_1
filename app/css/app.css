@@ -474,3 +474,8 @@ body.is-pointing .body-right { opacity: 0.55; }
 .hud-touch { position: absolute; right: var(--gutter); bottom: calc(var(--s-5) + env(safe-area-inset-bottom)); display: none; }
 @media (pointer: coarse) { .hud-touch { display: block; } }
 @media (prefers-reduced-motion: reduce) { .hud-count.is-on, .hud-toast.is-on { animation-duration: 0.01s; opacity: 1; } }
+
+/* a full-screen experience (the race) owns the screen: the app chrome steps away */
+body.is-fullscreen .stages, body.is-fullscreen .dock, body.is-fullscreen .statusline, body.is-fullscreen #bubble,
+body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen .orb-hit { opacity: 0; visibility: hidden; pointer-events: none; }
+.race-ui .mood-row button { width: 52px; height: 52px; border-radius: 50%; font-size: var(--fs-md); }

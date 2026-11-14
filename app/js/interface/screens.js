@@ -39,6 +39,7 @@ function show(name, arg) {
   el.hidden = false;
   el.classList.toggle("is-wide", !!def.wide);
   el.classList.toggle("is-full", !!def.full);
+  document.body.classList.toggle("is-fullscreen", !!def.full);
   el.classList.toggle("is-orb", !!def.orb);
   el.dataset.screen = name;
   document.getElementById("sheet-title").textContent = typeof def.title === "function" ? def.title(arg) : def.title;
@@ -71,6 +72,7 @@ export function closeScreen(silent = false) {
   currentName = null;
   sheet().hidden = true;
   sheet().classList.remove("is-wide", "is-full", "is-orb");
+  document.body.classList.remove("is-fullscreen");
   document.getElementById("sheet-body").innerHTML = "";
   if (def?.orb || def?.full) ctxRef.stages?.restoreOrb();
   if (!silent && was) emit("screen:close", was);
