@@ -54,11 +54,16 @@ def write_json(path: Path, obj) -> None:
 
 
 def read_json(path: Path):
-    """Read an encrypted file, or a plaintext one from before encryption (migrated on the next write)."""
+    """Read an encrypted file, or a plaintext one from before encryption (encrypted in place as it is read)."""
     raw = path.read_bytes()
     if raw.startswith(MAGIC):
         try:
             return json.loads(_f().decrypt(raw[len(MAGIC):]).decode("utf-8"))
         except InvalidToken as e:
             raise ValueError(f"{path.name}: cannot decrypt (wrong SENTINEL_DATA_KEY?)") from e
-    return json.loads(raw.decode("utf-8"))
+    obj = json.loads(raw.decode("utf-8"))
+    try:
+        write_json(path, obj)   # migrate now: a plaintext health file must not wait for the next change to be encrypted
+    except OSError:
+        pass
+    return obj
