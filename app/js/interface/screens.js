@@ -288,6 +288,9 @@ function renderSettings(el, ctx) {
     <h3>Theme</h3>
     <div class="mood-row"><button type="button" data-theme-set="dark" aria-pressed="${document.documentElement.dataset.theme !== "light"}">Space (dark)</button><button type="button" data-theme-set="light" aria-pressed="${document.documentElement.dataset.theme === "light"}">Clinical light</button></div>
     <h3>Camera</h3><div class="field"><select data-cam><option value="">Default (built-in)</option></select><span class="hint">Used for the face scan and the camera pulse. Remembered in this browser.</span></div>
+    <h3>Camera mood analysis</h3>
+    <div class="mood-row"><button type="button" data-mood-optin="on" aria-pressed="${st.get(`mood_optin:${ctx.view.crewId}`) !== "off"}">On</button><button type="button" data-mood-optin="off" aria-pressed="${st.get(`mood_optin:${ctx.view.crewId}`) === "off"}">Off</button></div>
+    <p class="hint fine">For the current crew member. On: about once a second the face scan sends a face crop to the model on this laptop to read expression; no image is stored. Off: no face crop is sent and expression is not read; pulse and breathing still work.</p>
     <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
     <h3>Sentinel's voice</h3><div class="field"><select data-voice></select><span class="hint" data-voice-note></span></div>
     <p style="margin-top:var(--s-3)"><button class="pill pill-ghost" type="button" data-test-voice>Test voice</button> <span class="note" data-voice-res aria-live="polite"></span></p>
@@ -297,6 +300,10 @@ function renderSettings(el, ctx) {
   el.querySelectorAll("[data-theme-set]").forEach((b) => b.addEventListener("click", () => {
     ctx.setTheme?.(b.dataset.themeSet);
     el.querySelectorAll("[data-theme-set]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
+  el.querySelectorAll("[data-mood-optin]").forEach((b) => b.addEventListener("click", () => {
+    st.set(`mood_optin:${ctx.view.crewId}`, b.dataset.moodOptin);
+    el.querySelectorAll("[data-mood-optin]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
   }));
   el.querySelectorAll("[data-listen]").forEach((b) => b.addEventListener("click", () => {
     st.set("listen", b.dataset.listen); ctx.applyListening?.();

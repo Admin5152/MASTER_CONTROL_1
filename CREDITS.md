@@ -35,7 +35,7 @@ Show these on the About panel (in the app) and in the presentation.
 
 ## Libraries (vendored or installed)
 
-three.js (MIT), GSAP (GreenSock standard licence), Chart.js (MIT), MediaPipe Tasks Vision (Apache 2.0), FastAPI (MIT), uvicorn (BSD), httpx (BSD), numpy (BSD), onnxruntime (MIT), Playwright (Apache 2.0, tests only).
+three.js (MIT), GSAP (GreenSock standard licence), Chart.js (MIT), MediaPipe Tasks Vision (Apache 2.0), FastAPI (MIT), uvicorn (BSD), httpx (BSD), numpy (BSD), onnxruntime (MIT), hsemotion-onnx (Apache 2.0; the enet_b0_8_va_mtl model was trained on AffectNet, a research-only dataset) with opencv-python (Apache 2.0), Playwright (Apache 2.0, tests only).
 
 ## Reference images
 

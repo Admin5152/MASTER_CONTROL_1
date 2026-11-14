@@ -324,11 +324,16 @@ function handleText(text, audio, { ptt = false, awaiting = false } = {}) {
   const w = matchWake(text);
   if (w.woke) {
     if (audio) onUtteranceAudio(audio);
-    if (w.command) { awaitingUntil = 0; onCommand(w.command, { via: "voice", heard: text }); }
+    if (w.command) {
+      awaitingUntil = 0;
+      emit("voice.command", { text: w.command, speakerId: null, confidence: 0.95 });
+      onCommand(w.command, { via: "voice", heard: text });
+    }
     else { awaitingUntil = Date.now() + 8000; onCommand("", { via: "voice", heard: text, wakeOnly: true }); }
   } else if (ptt || awaiting || Date.now() < awaitingUntil) {
     awaitingUntil = 0;
     if (audio) onUtteranceAudio(audio);
+    emit("voice.command", { text, speakerId: null, confidence: 0.95 });
     onCommand(text, { via: "voice", heard: text });
   }
 }
@@ -344,6 +349,7 @@ export function startListening() {
   wake = true;
   voice.listening = true;
   emit("voice:listening", true);
+  emit("voice.listening", { active: true });
   return true;
 }
 
@@ -352,6 +358,7 @@ export function stopListening() {
   voice.listening = false;
   try { rec?.stop(); } catch { /* not running */ }
   emit("voice:listening", false);
+  emit("voice.listening", { active: false });
 }
 
 function pauseListening() { paused = true; vad?.reset(); if (voice.capturing) { voice.capturing = false; emit("voice:capture", false); } try { rec?.abort(); } catch { /* none */ } }
