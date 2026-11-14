@@ -123,6 +123,15 @@ FIXTURE = ROOT / "tests" / "fixtures" / "kokoro_check_heart_lungs_16k.wav"
 def test_stt_local_whisper_transcribes_kokoro_speech(client):
     """The fixture is Kokoro (af_heart) saying "Hey Sentinel, check my heart and my lungs.", resampled to 16 kHz."""
     r = client.post("/api/stt?prefer=local", content=FIXTURE.read_bytes(), headers={"Content-Type": "audio/wav"})
+    if r.status_code == 503:
+        # find out why: on a laptop short of commit memory the Whisper worker cannot allocate next to torch
+        import os
+        import subprocess
+        import sys
+        p = subprocess.run([sys.executable, "-m", "brain.whisper_worker"], input=FIXTURE.read_bytes(), capture_output=True,
+                           cwd=str(ROOT), env=dict(os.environ, OPENBLAS_NUM_THREADS="1"))
+        if b"failed to allocate memory" in p.stderr:
+            pytest.skip("not enough free memory on this machine for local Whisper next to the server's torch stack")
     assert r.status_code == 200, r.text
     r = r.json()
     assert r["source"] == "local"
