@@ -284,4 +284,8 @@ body.is-pointing .zone .zstat, .zone.is-hidden .zstat { opacity: 0; }
 @media (max-width: 1000px) and (orientation: portrait) { .stage-body { grid-template-columns: 70px 1fr; } }
 
 /* Mission: card headers wrap rather than overflow ("Crew status · 3 to review") */
-.mission-cards .mcard-top { flex-wrap: wrap; row-gap: 2px; }
+.mcard-top { flex-wrap: wrap; row-gap: 2px; }
+.mcard-top > * { min-width: 0; }
+/* Mission cards: a long status ("3 to review") drops under the label instead of running out of the card */
+.card-head { flex-wrap: wrap; row-gap: 2px; }
+.card-head > * { min-width: 0; }

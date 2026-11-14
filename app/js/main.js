@@ -25,6 +25,7 @@ import { renderOrbCalm } from "./experience/orbcalm.js";
 import { renderCognitive } from "./systems/cognitive.js";
 import { renderRadiation } from "./systems/radiation.js";
 import { createVision } from "./vision/vision.js";
+import { CameraLog } from "./systems/face.js";
 import * as voiceMod from "./voice/voice.js";
 import { createWorld, isTablet } from "./world/world.js";
 import { createSpace } from "./world/space.js";
@@ -129,6 +130,7 @@ async function start() {
   ctx.setGlove(settings.get("glove") === "on");
   await stages.go("assistant");
   world.remove("intro");
+  fetch("../api/warm", { method: "POST" }).catch(() => {});   // open the brain and voice connections before the first word
   openWho();   // straight away: choosing who you are never waits on the microphone prompt
   if (navigator.mediaDevices?.getUserMedia) {
     try {
@@ -262,14 +264,37 @@ async function mountApp() {
   vision = createVision({
     video: $("cam-video"), overlay: $("cam-overlay"), msg: $("cam-msg"), badge: $("cam-badge"),
     pulseValue: $("pulse-value"), pulseQuality: $("pulse-quality"), arc: $("pulse-arc"), stage: $("stage-vision"),
+    emotionList: $("emotion-list"), emotionTop: $("emotion-top"), camButton: $("btn-cam"),
+    moodOptIn: () => settings.get(`mood_optin:${view.crewId}`) !== "off",
     deviceId: () => settings.get("camera"),
     canPatch: () => !view.aux?.scenario?.running && !view.hrOverride,
     patchHr: (bpm) => patch({ vitals: { heart_rate: bpm, source: "camera", sources: { heart_rate: "camera" } } }).catch(() => {}),
     onFallback: () => {
-      if (view.state?.vitals?.sources?.heart_rate === "camera") patch({ vitals: { source: "sim", sources: { heart_rate: "sim" } } }).catch(() => {});
+      const src = view.state?.vitals?.sources || {};
+      const back = {};
+      if (src.heart_rate === "camera") back.heart_rate = "sim";
+      if (src.breathing_rate === "camera" && !vision.state.on) back.breathing_rate = "sim";   // breathing does not depend on the pulse lock
+      if (Object.keys(back).length) patch({ vitals: { ...(back.heart_rate ? { source: "sim" } : {}), sources: back } }).catch(() => {});
+      if (!vision.state.on) camLog.reset();
+      showCamLog();
     },
   });
   ctx.vision = vision;
+  // Face scan -> the crew member's record: breathing rate and expression are written to the state like the pulse is.
+  const camLog = new CameraLog();
+  const showCamLog = () => {
+    const el = $("cam-log"); if (!el) return;
+    const text = vision.state.on ? camLog.summary(view.state) : "";
+    el.textContent = text ? `Saved to ${view.state?.display_name || "this crew member"}'s record: ${text}` : "Nothing saved to the record yet.";
+  };
+  const logCamera = (p) => {
+    if (!p || view.aux?.scenario?.running) return;
+    patch(p).then(showCamLog).catch((e) => { camLog.reset(); console.warn(`[sentinel vision] camera reading not saved: ${e.message}`); });
+  };
+  on("reading.added", (r) => logCamera(camLog.fromReading(r, performance.now())));
+  on("vision:emotion", (e) => logCamera(camLog.fromEmotion(e, performance.now())));
+  on("vision:hr", showCamLog);
+  on("crew:changed", () => { camLog.reset(); showCamLog(); });
   renderRadiation($("radiation-host"), ctx);
   registerScreen("readings", { title: "All readings", render: renderAllReadings });
 
@@ -456,6 +481,8 @@ function pushToTalk() {
 
 function wireVoice() {
   voiceMod.initVoice({ onCommand: (text, meta) => handleCommand(text, meta), onUtterance: (audio) => onUtterance(audio) });
+  voiceMod.setOpenMic(() => choosing);   // "Who's here?": just say your name, no wake phrase and no tap
+  on("voice:open", () => { $("btn-mic").classList.add("is-open"); clearTimeout(wireVoice.t); wireVoice.t = setTimeout(() => $("btn-mic").classList.remove("is-open"), 8000); });
   on("voice:transcript", ({ text, final }) => { if (!final && text) caption(`“${text}”`, ""); });
   on("voice:level", (l) => { if (orb.getState() === "listening") orb.setLevel(l); });
   on("voice:speak-level", (l) => orb.setSpeakLevel(l));
@@ -558,24 +585,36 @@ ctx.showNotice = showNotice;
 async function handleCommand(text, meta = {}) {
   if (meta.heard) logLine("You", meta.via === "typed" ? text : meta.heard);
   if (meta.wakeOnly || !text) {
+    // instant: a chime and the orb leaning in, no spoken "yes?" to wait through. The next thing said is the command.
+    voiceMod.stopSpeaking();
     cue.wake();
-    say(`Yes${view.state?.display_name ? `, ${view.state.display_name}` : ""}?`, { source: "local" });
+    caption(choosing ? "Who's here? Say your name." : "I'm listening.", "");
+    orb.setState("listening"); stages.setOrbBig(true);
+    voiceMod.expectReply(8000);
     return;
   }
   const firstTime = !interacted;
   interacted = true;
   const who = crewFromSpeech(text, view.crew, { bare: choosing });
   if (who && (choosing || who !== view.crewId)) { chooseCrew(who); return; }
+  if (choosing && meta.via === "voice") {   // heard something while the chooser is up that is not a name: stay put, say how
+    caption(`I heard “${text}”. Say a name: ${view.crew.map((c) => c.display_name).join(", ")}.`, "");
+    return;
+  }
+  // conversation: after Sentinel answers a spoken request, the next thing said needs no wake phrase
+  const followUp = () => { if (meta.via === "voice" && settings.get("listen") !== "ptt") voiceMod.expectReply(9000); };
   const m = matchIntent(text);
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
     if (m.local === "cabin") {
       const c = view.state?.cabin || {};
       say(`Cabin oxygen is ${c.oxygen_pct} percent and carbon dioxide ${c.co2_ppm} parts per million. ${c.alert ? "That is out of range and flagged to ground." : "Both are within limits."} These cabin readings are simulated.`, { source: "local" });
+      followUp();
       return;
     }
     if (m.intent === "vision") say("Let me see you.", { source: "local" });
     director.run(m.commands);
+    followUp();
     return;
   }
   // everything else goes to the brain (streamed: first sentence is spoken while the rest arrives)
@@ -588,10 +627,17 @@ async function handleCommand(text, meta = {}) {
       if (first) { emit("voice:thinking", false); first = false; }
       spoke = true;
       say(sentence, { source: source === "llm" ? "LLM" : "rules", append: !isFirst });
-    });
+    }, { screen: screens.current?.() || "", view: stages.current, theme: document.documentElement.dataset.theme === "light" ? "light" : "dark" });
+    // commands for the app itself (theme, who is here); the rest go to the director
+    for (const c of r.commands || []) {
+      if (c.cmd === "set_theme") ctx.setTheme?.(c.theme);
+      if (c.cmd === "switch_crew") { const m = view.crew.find((x) => x.display_name.toLowerCase() === String(c.name).toLowerCase()); if (m && m.crew_id !== view.crewId) switchCrew(m.crew_id, "manual"); }
+    }
+    r.commands = (r.commands || []).filter((c) => c.cmd !== "set_theme" && c.cmd !== "switch_crew");
     emit("voice:thinking", false);
     if (!spoke && r.reply) say(r.reply, { source: r.source === "llm" ? "LLM" : "rules" });
-    if (r.commands?.length) { await new Promise((res) => setTimeout(res, 400)); director.run(r.commands); }
+    followUp();
+    if (r.commands?.length) director.run(r.commands);   // straight away: the screen moves while Sentinel is still speaking
     else if (firstTime && stages.current === "assistant") setTimeout(() => { if (!director.busy && stages.current === "assistant" && !voiceMod.voice.capturing) stages.go("mission"); }, 9000);
   } catch {
     emit("voice:thinking", false);

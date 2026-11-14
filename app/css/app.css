@@ -243,7 +243,18 @@ body:not([data-stage="body"]) .zone { opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .stage-vision.is-scanning .cam-band { animation: none; top: 40%; } }
 .cam-msg { position: absolute; left: var(--s-5); bottom: var(--s-4); right: var(--s-5); color: var(--ink-2); font-size: var(--fs-sm); }
 .cam-head { position: absolute; left: var(--s-5); top: var(--s-4); right: var(--s-5); display: flex; justify-content: space-between; align-items: center; }
-.pulse-panel { padding: var(--s-5); display: grid; align-content: center; gap: var(--s-4); }
+.pulse-panel { padding: var(--s-5); display: grid; align-content: safe center; gap: var(--s-4); overflow-y: auto; }
+.emotion-panel { display: grid; gap: var(--s-2); }
+.emotion-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); }
+.emotion-top { color: var(--ink-2); font-size: var(--fs-sm); text-align: right; }
+.emotion-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.emotion-row { display: grid; grid-template-columns: 74px minmax(0, 1fr) 34px; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); color: var(--ink-3); }
+.emotion-bar { height: 4px; border-radius: 2px; background: var(--surface-sunk); overflow: hidden; }
+.emotion-fill { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--assist); opacity: 0.55; transition: width var(--t-med) var(--ease-out), opacity var(--t-med); }
+.emotion-pct { text-align: right; }
+.emotion-row.is-top { color: var(--ink); }
+.emotion-row.is-top .emotion-fill { opacity: 1; box-shadow: 0 0 6px var(--assist); }
+@media (prefers-reduced-motion: reduce) { .emotion-fill { transition: none; } }
 .pulse-ring { position: relative; width: 170px; height: 170px; justify-self: center; }
 .pulse-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .ring-bg { stroke: var(--surface-sunk); stroke-width: 3; }
@@ -524,3 +535,6 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 .who-grid button small { font-size: 11px; color: var(--ink-3); }
 .who-grid button.is-last { border-color: var(--assist); }
 @media (max-width: 520px) { .who-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* the microphone is open for a reply: no wake phrase needed for the next thing said */
+.mic.is-open { box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }

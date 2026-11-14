@@ -149,6 +149,8 @@ async function pump() {
   const myGen = gen;
   if (!voice.speaking) {
     voice.speaking = true;
+    // a reply window that was already open moves to after this speech, so talking never eats it
+    if (Date.now() < awaitingUntil) { pendingReply = Math.max(pendingReply, 9000); awaitingUntil = 0; }
     pauseListening();
     emit("voice:speaking-start", job.text);
   }
@@ -209,7 +211,7 @@ export function speak(text, { interrupt = true } = {}) {
 }
 
 export function stopSpeaking() {
-  gen++;
+  gen++; pendingReply = 0;
   const q = queue; queue = [];
   q.forEach((j) => j.resolve());
   if (playing?.src) { try { playing.src.onended = null; playing.src.stop(); } catch { /* already stopped */ } }
@@ -228,6 +230,18 @@ let wake = false;              // always-on wake-phrase mode
 let pttUntil = 0;              // push-to-talk window: the next utterance is a command
 let awaitingUntil = 0;         // after a bare "hey sentinel"
 let paused = false;
+let pendingReply = 0;          // a reply window to open as soon as Sentinel stops speaking
+let openMic = () => false;     // while this is true every utterance is a command (the "Who's here?" chooser)
+/** While fn() is true, every utterance is taken as a command: no wake phrase, no tap. */
+export function setOpenMic(fn) { openMic = typeof fn === "function" ? fn : () => false; }
+/** Conversation: the next utterance within `ms` is a command with no wake phrase. If Sentinel is speaking,
+ *  the window opens when it stops (so its own speech never eats the window). */
+export function expectReply(ms = 8000) {
+  if (voice.speaking) { pendingReply = ms; return; }
+  pendingReply = 0; paused = false;
+  awaitingUntil = Date.now() + ms;
+  emit("voice:open", ms);
+}
 let sttFails = 0;
 let rec = null;                // browser SpeechRecognition fallback
 
@@ -247,7 +261,7 @@ export async function initMic(stream) {
     const d = e.inputBuffer.getChannelData(0);
     for (let i = 0; i < d.length; i++) { ring[ringPos] = d[i]; ringPos = (ringPos + 1) % ring.length; }
     written += d.length;
-    if (!paused && (wake || Date.now() < pttUntil || Date.now() < awaitingUntil)) { vadCount += d.length; onVad(vad.push(d)); }
+    if (!paused && (wake || Date.now() < pttUntil || Date.now() < awaitingUntil || openMic())) { vadCount += d.length; onVad(vad.push(d)); }
   };
   const mute = ctx.createGain();
   mute.gain.value = 0;
@@ -324,12 +338,18 @@ function handleText(text, audio, { ptt = false, awaiting = false } = {}) {
   const w = matchWake(text);
   if (w.woke) {
     if (audio) onUtteranceAudio(audio);
-    if (w.command) { awaitingUntil = 0; onCommand(w.command, { via: "voice", heard: text }); }
-    else { awaitingUntil = Date.now() + 8000; onCommand("", { via: "voice", heard: text, wakeOnly: true }); }
-  } else if (ptt || awaiting || Date.now() < awaitingUntil) {
+    if (w.command) {
+      awaitingUntil = 0;
+      emit("voice.command", { text: w.command, speakerId: null, confidence: 0.95 });
+      onCommand(w.command, { via: "voice", heard: text });
+    }
+    else { awaitingUntil = Date.now() + 8000; emit("voice:open", 8000); onCommand("", { via: "voice", heard: text, wakeOnly: true }); }
+  } else if (ptt || awaiting || Date.now() < awaitingUntil || openMic()) {
+    const open = !(ptt || awaiting || Date.now() < awaitingUntil);
     awaitingUntil = 0;
     if (audio) onUtteranceAudio(audio);
-    onCommand(text, { via: "voice", heard: text });
+    emit("voice.command", { text, speakerId: null, confidence: 0.95 });
+    onCommand(text, { via: "voice", heard: text, open });
   }
 }
 
@@ -344,6 +364,7 @@ export function startListening() {
   wake = true;
   voice.listening = true;
   emit("voice:listening", true);
+  emit("voice.listening", { active: true });
   return true;
 }
 
@@ -352,10 +373,11 @@ export function stopListening() {
   voice.listening = false;
   try { rec?.stop(); } catch { /* not running */ }
   emit("voice:listening", false);
+  emit("voice.listening", { active: false });
 }
 
 function pauseListening() { paused = true; vad?.reset(); if (voice.capturing) { voice.capturing = false; emit("voice:capture", false); } try { rec?.abort(); } catch { /* none */ } }
-function resumeListening() { paused = false; if (rec && wake) { try { rec.start(); } catch { /* running */ } } }
+function resumeListening() { paused = false; if (pendingReply) { awaitingUntil = Date.now() + pendingReply; emit("voice:open", pendingReply); pendingReply = 0; } if (rec && wake) { try { rec.start(); } catch { /* running */ } } }
 
 /** Push-to-talk: the next utterance (within 8 s) is a command, no wake phrase needed. */
 export function pushToTalk() {

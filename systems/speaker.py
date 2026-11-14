@@ -100,3 +100,11 @@ def identify(data: bytes) -> dict:
     except ValueError as err:
         return {"crew_id": None, "confidence": 0.0, "source": "voice", "reason": str(err)}
     return match(e, prints)
+
+
+def enrolled_status() -> dict:
+    """Which crew members have a voiceprint: {"available": bool, "enrolled": [crew_id, ...]}."""
+    try:
+        return {"available": available(), "enrolled": sorted(enrolled().keys())}
+    except Exception as e:   # a broken voiceprint file must not take speaker ID down
+        return {"available": False, "enrolled": [], "error": str(e)[:120]}

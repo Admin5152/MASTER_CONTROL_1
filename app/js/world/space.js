@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 const TEX = "assets/space/";
 const SUN = new THREE.Vector3(-1, 0.35, 0.62).normalize();
-const MARS_POS = new THREE.Vector3(-1.75, 0.95, -0.9);   // well clear of Earth on the mission view
+const MARS_POS = new THREE.Vector3(2.5, 1.8, -14);   // small and far, up and to the right of Earth: the destination, clear of the text
 
 const VIEWS = {
   // fx, fy: where the planet sits on screen (fractions); r: planet radius as a fraction of screen height

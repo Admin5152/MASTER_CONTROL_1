@@ -34,6 +34,7 @@ export const api = {
   history: (id, field) => req("GET", `../api/history/${id}?field=${encodeURIComponent(field)}`),
   log: (id, field, value, source = "user") => req("POST", `../api/log/${id}`, { field, value, source }),
   chat: (crew_id, transcript) => req("POST", "../api/chat", { crew_id, transcript }, { timeout: 10000 }),
+  faceEmotion: (jpeg) => req("POST", "../api/face/emotion", jpeg, { timeout: 5000 }),
   identify: (wav) => req("POST", "../api/identify", wav, { timeout: 15000 }),
   enrol: (id, wav) => req("POST", `../api/enrol/${id}`, wav, { timeout: 30000 }),
   cabin: (body) => req("POST", "../api/cabin", body),
@@ -48,10 +49,10 @@ export const api = {
 
 /** Streamed chat: calls onSentence(text, source) for each complete sentence as it arrives (NDJSON),
  *  resolves with the final {reply, commands, source}. Falls back to /api/chat if streaming fails. */
-api.chatStream = async (crew_id, transcript, onSentence) => {
+api.chatStream = async (crew_id, transcript, onSentence, context) => {
   let r;
   try {
-    r = await fetch("../api/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ crew_id, transcript }) });
+    r = await fetch("../api/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ crew_id, transcript, context }) });
   } catch (e) { r = null; console.warn(`[sentinel brain] /api/chat/stream failed: ${e.message}`); }
   if (!r || !r.ok || !r.body) {
     if (r) console.warn(`[sentinel brain] /api/chat/stream HTTP ${r.status}; trying /api/chat`);

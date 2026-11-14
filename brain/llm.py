@@ -18,6 +18,7 @@ import json
 import os
 import re
 import threading
+import time
 import unicodedata
 from collections import deque
 from typing import Any, Callable, Iterator
@@ -25,7 +26,8 @@ from typing import Any, Callable, Iterator
 import httpx
 
 SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
-           "orb_calm", "aurora_run", "race", "greenhouse", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "symptom"]
+           "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "symptom",
+           "interventions", "earth_window", "music", "connection", "readings", "settings", "about"]
 ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
 METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
            "reaction", "talk_time", "pitch", "o2", "co2"]
@@ -37,8 +39,17 @@ MAX_COMMANDS = 3
 MEMORY_TURNS = 8
 DEFAULT_MODEL = "openai/gpt-oss-120b"
 
-SYSTEM_PROMPT = """You are Sentinel, the onboard crew-health companion on a long space mission.
-You speak to one crew member, by name or as "you". Your reply is read aloud.
+SYSTEM_PROMPT = """You are Sentinel, the onboard crew-health companion on a long space mission: calm, warm, quick and a
+little dry, like a trusted crewmate who happens to know medicine. You are talking out loud with one crew member, in
+real time. Your reply is spoken, so it must sound like speech.
+
+How to talk:
+- Lead with the answer. One or two short sentences; three or four only when they ask you to explain something.
+- Use their name now and then, not every time. Use contractions. No preamble ("Sure", "Of course", "Great
+  question"), no repeating the question back, no listing what you can do unless asked.
+- Remember the conversation so far: "and yesterday?", "why?", "show me" refer to what was just said.
+- If they are just chatting, or say how they feel, respond like a person first, then offer one useful thing.
+- If you did not understand, say so in a few words and ask one short question.
 
 There are two kinds of question.
 1. Health and mission questions (how they are, their readings, body, sleep, mood, cabin, radiation, the mission):
@@ -49,31 +60,45 @@ There are two kinds of question.
    - If action.type is not "none", say what Sentinel is doing about it (action.detail).
    - At most two short sentences.
 2. General questions (facts, science, space, places, a joke, how something works): answer naturally and
-   correctly in two to four short spoken sentences, in a calm, warm voice. If you are not sure, say so.
+   correctly in two to four short spoken sentences. If you are not sure, say so.
    TIME-DEPENDENT FACTS: you have no live data, no ephemeris and no clock or calendar. For anything that changes
    with time (the current distance or position of a planet, today's date, upcoming events, news, current light
    delay) give the average and the range, and say plainly that you don't have live data, unless the value is in
    the STATE (for example radiation.mission_day). Never state a "current" or "closest in N weeks" value.
 
 Always: plain spoken English, no markdown, no lists, no emoji, no symbols that cannot be read aloud.
-You cannot raise alerts or change actions. You may change what is on screen.
+You cannot raise alerts or change medical actions.
 
-Write the spoken reply first. Then, only if the screen should change, add ONE final line:
+You run the whole interface. STATE.app says what is on screen now (screen, theme) and who the crew are. When they
+ask to see, open, start, play, go to, check, change or close something, DO it with a command and say so in a
+few words ("Opening your vitals."); do not describe how they could do it themselves. When your answer is about
+something that has a screen (a reading, a body part, radiation, the cabin), take them there.
+
+Write the spoken reply first. Then, only if something should happen, add ONE final line:
 COMMANDS: [ ...json array... ]
 Allowed commands (at most 3):
+  {"cmd":"open_screen","name":N}         N is one of:
+       home, mission, body, vitals, radiation (the main views); vision (camera face and pulse scan);
+       wellbeing (the wellbeing hub), orb_calm (Stillpoint: guided breathing), race (Slipstream: the space race),
+       greenhouse (Red Harvest: the Mars farm), grounding (5-4-3-2-1 grounding), interventions (what helps you),
+       earth_window, music (ambient sound), connection (message a crewmate);
+       health_log, trends, readings, cabin, cognitive (3-minute reaction test), exam (guided health exam),
+       measures (weekly standard measures), symptom (log a symptom by pointing at the body: "where does it hurt"),
+       ground (messages to ground), crew, hardware, settings, about (sources and credits)
   {"cmd":"point_to","zone":Z}            Z in head, eyes, heart, lungs, gut, bones, whole_body
   {"cmd":"check_zone","zones":[Z,...]}   a focused check of one to three zones
-  {"cmd":"open_screen","name":N}         N in home, body, vitals, mission, vision, health_log, trends, radiation, cabin, cognitive (3-minute reaction test), orb_calm, race, greenhouse, hardware, crew, wellbeing, exam (guided health exam), ground (messages to ground), measures (weekly standard measures), symptom (log a symptom by pointing at the body: "where does it hurt")
   {"cmd":"show_chart","metric":M}        M in heart_rate, breathing_rate, spo2, bp, glucose, temp, sleep, mood, reaction, talk_time, pitch, o2, co2
-  {"cmd":"start_scan"}
+  {"cmd":"start_scan"}                   the full body scan
   {"cmd":"rotate_body","view":V}         V in front, back, left, right
   {"cmd":"zoom_body","zone":Z}           Z as above, or "reset"
   {"cmd":"xray","on":true,"style":S}     S in radiograph, anatomy
   {"cmd":"isolate","part":P}             P in spine, skull, ribcage, pelvis, brain, heart, lungs, liver, stomach, intestines, kidneys, vessels, skeleton, organs
   {"cmd":"show_radiation","on":true}
-  {"cmd":"close"}
-Most replies need no commands. But if your reply says you are showing, opening, checking or pointing at
-something, you MUST add the matching COMMANDS line, or nothing will happen on screen."""
+  {"cmd":"set_theme","theme":T}          T in dark, light
+  {"cmd":"switch_crew","name":NAME}      NAME is a crew display name from STATE.app.crew (when someone else takes over)
+  {"cmd":"close"}                        close what is open and go back
+A plain answer needs no commands. But if your reply says you are showing, opening, starting, checking or pointing
+at something, you MUST add the matching COMMANDS line, or nothing will happen on screen."""
 
 # words that make a question about this crew member's health or the mission (the numeric guard applies)
 HEALTH_WORDS = re.compile(
@@ -119,6 +144,10 @@ def validate_commands(cmds: Any) -> list[dict]:
             out.append({"cmd": "show_radiation", "on": bool(c.get("on", True))})
         elif name == "close":
             out.append({"cmd": "close"})
+        elif name == "set_theme" and c.get("theme") in ("dark", "light"):
+            out.append({"cmd": "set_theme", "theme": c["theme"]})
+        elif name == "switch_crew" and isinstance(c.get("name"), str) and re.fullmatch(r"[A-Za-z][A-Za-z .'-]{0,23}", c["name"].strip()):
+            out.append({"cmd": "switch_crew", "name": c["name"].strip()})
         elif name == "rotate_body":
             if c.get("view") in VIEWS:
                 out.append({"cmd": "rotate_body", "view": c["view"]})
@@ -140,6 +169,47 @@ def validate_commands(cmds: Any) -> list[dict]:
         if len(out) >= MAX_COMMANDS:
             break
     return out
+
+
+# A reply that says it is doing something must do it. If the model promised and left the COMMANDS line off
+# (the smaller fallback models do), the command is worked out from what was asked and what was said.
+PROMISE = re.compile(r"\b(opening|open up|starting|start(ed)? (a|the|your)|showing|here(?:'s| is| are)|switching|switched|taking you|pulling up|bringing up|launching|loading|closing|going (back|to))\b", re.I)
+SCREEN_WORDS = [
+    (r"settings?", "settings"), (r"about|credits|sources", "about"), (r"vitals?", "vitals"), (r"mission", "mission"),
+    (r"radiation|space weather|solar storm", "radiation"), (r"cabin|oxygen|co2|carbon dioxide", "cabin"),
+    (r"ground(ing)? exercise|grounding|5.?4.?3.?2.?1", "grounding"), (r"breath\w*|stillpoint|calm", "orb_calm"),
+    (r"slipstream|race|racing", "race"), (r"red harvest|greenhouse|farm|garden", "greenhouse"),
+    (r"earth window", "earth_window"), (r"music|ambient sound", "music"), (r"wellbeing|well-being|well being", "wellbeing"),
+    (r"health log", "health_log"), (r"trends?", "trends"), (r"reaction test|cognitive", "cognitive"),
+    (r"symptom|where (does )?it hurts?", "symptom"), (r"exam", "exam"), (r"weekly measures|measures", "measures"),
+    (r"message (to )?ground|ground (team|control)", "ground"), (r"hardware|sensors?", "hardware"), (r"crew", "crew"),
+    (r"camera|face scan|see me", "vision"), (r"body|anatomy", "body"), (r"home|main screen", "home"),
+]
+ZONE_WORDS = [(r"heart|pulse|chest", "heart"), (r"lungs?|breathing", "lungs"), (r"head|brain", "head"), (r"eyes?|vision", "eyes"),
+              (r"gut|stomach|belly", "gut"), (r"bones?|spine|skeleton", "bones")]
+
+
+def infer_commands(transcript: str, reply: str) -> list[dict]:
+    """Commands for a reply that promised an action without a COMMANDS line. Empty when nothing was promised."""
+    if not PROMISE.search(reply or ""):
+        return []
+    t, r = (transcript or "").lower(), (reply or "").lower()
+    if re.search(r"\b(closing|going back)\b", r) or re.search(r"\b(close|go back|exit)\b", t):
+        return [{"cmd": "close"}]
+    m = re.search(r"\b(light|dark) (mode|theme)\b", t + " " + r)
+    if m:
+        return [{"cmd": "set_theme", "theme": m.group(1)}]
+    if re.search(r"\b(full|whole|body) scan\b", t):
+        return [{"cmd": "start_scan"}]
+    for text in (t, r):     # what they asked for first, then what Sentinel said it is opening
+        if text is t and re.search(r"\b(show|see|point|check|look at)\b.*\bmy\b", t):
+            for pat, zone in ZONE_WORDS:
+                if re.search(rf"\bmy ({pat})\b", t):
+                    return [{"cmd": "point_to", "zone": zone}]
+        for pat, name in SCREEN_WORDS:
+            if re.search(rf"\b({pat})\b", text):
+                return [{"cmd": "open_screen", "name": name}]
+    return []
 
 
 CMD_LINE = re.compile(r"\n?\s*COMMANDS\s*:\s*(\[.*\])\s*$", re.S | re.I)
@@ -284,6 +354,28 @@ def forget(crew_id: str | None = None) -> None:
 
 # ---------------- LLM call ----------------
 
+_http: httpx.Client | None = None
+
+
+def _client() -> httpx.Client:
+    """One pooled, kept-alive client for the LLM: a fresh TLS handshake per turn costs 150-300 ms."""
+    global _http
+    if _http is None:
+        _http = httpx.Client(timeout=8.0, limits=httpx.Limits(max_keepalive_connections=4, keepalive_expiry=120))
+    return _http
+
+
+def warm_llm() -> None:
+    """Open the connection before the first question (called at startup and when the app loads)."""
+    cfg = llm_config()
+    if not cfg["key"]:
+        return
+    try:
+        _client().get(f"{cfg['base_url']}/models", headers={"Authorization": f"Bearer {cfg['key']}"}, timeout=4.0)
+    except Exception:
+        pass
+
+
 def llm_config() -> dict:
     return {
         "base_url": os.getenv("LLM_BASE_URL", "").strip().rstrip("/") or "https://api.groq.com/openai/v1",
@@ -298,21 +390,48 @@ def llm_available() -> bool:
 
 def _state_for_prompt(state: dict) -> dict:
     """The state without bulky fields the model does not need."""
-    return {k: v for k, v in state.items() if k not in ("timestamp",)}
+    return {k: v for k, v in state.items() if k not in ("timestamp", "body_model", "identity", "crew_id")}
 
 
 def build_messages(state: dict, transcript: str, history: list[dict] | None = None) -> list[dict]:
     msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
     msgs += history or []
-    msgs.append({"role": "user", "content": "STATE:\n" + json.dumps(_state_for_prompt(state)) + "\n\nCREW SAID:\n" + transcript})
+    msgs.append({"role": "user", "content": "STATE:\n" + json.dumps(_state_for_prompt(state), separators=(",", ":")) + "\n\nCREW SAID:\n" + transcript})
     return msgs
 
 
-def _body(cfg: dict, messages: list[dict], stream: bool) -> dict:
-    body = {"model": cfg["model"], "temperature": 0.4, "max_tokens": 700, "messages": messages, "stream": stream}
-    if "gpt-oss" in cfg["model"]:
+def _body(cfg: dict, messages: list[dict], stream: bool, model: str | None = None) -> dict:
+    model = model or cfg["model"]
+    body = {"model": model, "temperature": 0.5, "max_tokens": 500, "messages": messages, "stream": stream}
+    if "gpt-oss" in model:
         body["reasoning_effort"] = "low"
+    elif "qwen" in model:
+        body["reasoning_effort"] = "none"
     return body
+
+
+# When the first model is rate-limited (the free tier allows 8000 tokens a minute per model, about four turns)
+# the next one answers instead, so the conversation never drops to the scripted reply mid-chat.
+FALLBACK_MODELS = ["openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
+_cooldown: dict[str, float] = {}
+
+
+def model_chain(cfg: dict) -> list[str]:
+    """The configured model, then the fallbacks; models that just refused are tried last."""
+    extra = [m.strip() for m in os.getenv("LLM_FALLBACK_MODELS", "").split(",") if m.strip()]
+    chain = list(dict.fromkeys([cfg["model"]] + (extra or (FALLBACK_MODELS if "groq.com" in cfg["base_url"] else []))))
+    now = time.monotonic()
+    return [m for m in chain if _cooldown.get(m, 0) <= now] + [m for m in chain if _cooldown.get(m, 0) > now]
+
+
+def _refused(model: str, r) -> None:
+    """Remember a refusal (429 rate limit, or a model this key cannot use) so the next turn skips it."""
+    try:
+        wait = float(r.headers.get("retry-after", "") or 20)
+    except ValueError:
+        wait = 20.0
+    _cooldown[model] = time.monotonic() + (600 if r.status_code in (400, 404) else min(max(wait, 2.0), 90.0))
+    print(f"[sentinel brain] {model}: HTTP {r.status_code}, next model for {int(_cooldown[model] - time.monotonic())} s", flush=True)
 
 
 def call_llm(state: dict, transcript: str, timeout: float = 8.0, post=None, history: list[dict] | None = None) -> str:
@@ -320,16 +439,21 @@ def call_llm(state: dict, transcript: str, timeout: float = 8.0, post=None, hist
     cfg = llm_config()
     if not cfg["key"]:
         raise RuntimeError("no key")
-    body = _body(cfg, build_messages(state, transcript, history), False)
+    messages = build_messages(state, transcript, history)
     headers = {"Authorization": f"Bearer {cfg['key']}"}
-    if post is None:
-        with httpx.Client(timeout=timeout) as c:
-            r = c.post(f"{cfg['base_url']}/chat/completions", json=body, headers=headers)
-    else:
-        r = post(f"{cfg['base_url']}/chat/completions", body, headers)
-    if r.status_code != 200:
-        raise RuntimeError(f"http {r.status_code}")
-    return r.json()["choices"][0]["message"].get("content") or ""
+    if post is not None:
+        r = post(f"{cfg['base_url']}/chat/completions", _body(cfg, messages, False), headers)
+        if r.status_code != 200:
+            raise RuntimeError(f"http {r.status_code}")
+        return r.json()["choices"][0]["message"].get("content") or ""
+    last = "no model"
+    for model in model_chain(cfg):
+        r = _client().post(f"{cfg['base_url']}/chat/completions", json=_body(cfg, messages, False, model), headers=headers, timeout=timeout)
+        if r.status_code == 200:
+            return r.json()["choices"][0]["message"].get("content") or ""
+        _refused(model, r)
+        last = f"http {r.status_code}"
+    raise RuntimeError(last)
 
 
 def stream_llm(state: dict, transcript: str, history: list[dict] | None = None, timeout: float = 8.0) -> Iterator[str]:
@@ -337,12 +461,17 @@ def stream_llm(state: dict, transcript: str, history: list[dict] | None = None, 
     cfg = llm_config()
     if not cfg["key"]:
         raise RuntimeError("no key")
-    body = _body(cfg, build_messages(state, transcript, history), True)
+    messages = build_messages(state, transcript, history)
     headers = {"Authorization": f"Bearer {cfg['key']}"}
-    with httpx.Client(timeout=httpx.Timeout(timeout, read=timeout)) as c:
-        with c.stream("POST", f"{cfg['base_url']}/chat/completions", json=body, headers=headers) as r:
+    last = "no model"
+    for model in model_chain(cfg):
+        with _client().stream("POST", f"{cfg['base_url']}/chat/completions", json=_body(cfg, messages, True, model), headers=headers,
+                              timeout=httpx.Timeout(timeout, read=timeout)) as r:
             if r.status_code != 200:
-                raise RuntimeError(f"http {r.status_code}")
+                r.read()
+                _refused(model, r)
+                last = f"http {r.status_code}"
+                continue
             for line in r.iter_lines():
                 if not line.startswith("data:"):
                     continue
@@ -356,6 +485,8 @@ def stream_llm(state: dict, transcript: str, history: list[dict] | None = None, 
                 piece = delta.get("content")
                 if piece:
                     yield piece
+            return
+    raise RuntimeError(last)
 
 
 def _state_numbers(obj: Any, out: set[str]) -> None:
@@ -451,7 +582,7 @@ def chat_stream(state: dict, transcript: str, crew_id: str | None = None,
             raise ValueError("empty reply")
         reply = " ".join(spoken)
         remember(cid, transcript, reply)
-        yield {"type": "final", "reply": reply, "commands": cmds, "source": "llm", "kind": "health" if health else "general"}
+        yield {"type": "final", "reply": reply, "commands": cmds or infer_commands(transcript, reply), "source": "llm", "kind": "health" if health else "general"}
     except Exception:
         out = _rules(state, transcript)
         if spoken:
@@ -465,3 +596,201 @@ def chat_stream(state: dict, transcript: str, crew_id: str | None = None,
         remember(cid, transcript, out["reply"])
         out.update({"type": "final", "kind": "health" if health else "general"})
         yield out
+
+
+# ---------------- recommendation card rephrasing (Person 3: FACE-7, FACE-9) ----------------
+
+CARD_SYSTEM_PROMPT = """SYSTEM: You are Sentinel, a calm onboard health assistant for astronauts.
+You receive a JSON recommendation card and a language code. Rephrase the card as at
+most two short spoken sentences in that language. Do not add medical facts, doses,
+diagnoses or reassurance that the card does not contain. If level is 3, start with the
+single most important immediate step. If asked something the card does not answer, say
+you will note the question for the flight surgeon."""
+
+
+def card_numbers_ok(text: str, card: dict, state: dict | None = None) -> bool:
+    """Ensure no numbers are invented that do not appear in the card or state."""
+    allowed: set[str] = set()
+    def _extract(obj: Any):
+        if isinstance(obj, (int, float)) and not isinstance(obj, bool):
+            allowed.add(str(round(obj)))
+            allowed.add(f"{float(obj):g}")
+        elif isinstance(obj, str):
+            allowed.update(re.findall(r"\d+(?:\.\d+)?", obj))
+        elif isinstance(obj, dict):
+            for v in obj.values():
+                _extract(v)
+        elif isinstance(obj, list):
+            for it in obj:
+                _extract(it)
+    _extract(card)
+    if state:
+        for cat in ("vitals", "baseline", "cabin", "radiation", "thresholds"):
+            _extract(state.get(cat))
+    for n in re.findall(r"\d+(?:\.\d+)?", text.replace(",", "")):
+        if n in allowed or f"{float(n):g}" in allowed or float(n) <= 3:
+            continue
+        return False
+    return True
+
+
+def rules_rephrase_card(card: dict, lang: str = "en") -> str:
+    """Scripted fallback line spoken per level (FACE-9, SF4). Always <= 2 sentences, no invented facts."""
+    level = card.get("level", 1)
+    if isinstance(level, str):
+        level = 3 if level in ("alert", "3", "critical") else (2 if level in ("watch", "2", "warning") else 1)
+    action = card.get("action") or card.get("immediate_step") or card.get("title") or "Check current readings"
+    title = card.get("title") or "Health Status"
+    detail = card.get("detail") or card.get("description") or ""
+
+    if level >= 3:
+        # Level 3: start with the single most important immediate step
+        reply = f"{action}. This status has been noted for the flight surgeon."
+    elif level == 2:
+        reply = f"{title}: {detail}." if detail else f"{title}. Please monitor your baseline."
+    else:
+        reply = f"{title}. {detail}." if detail else f"{title}. Readings are within nominal limits."
+    return clean_reply(reply)
+
+
+def rephrase_card(card: dict, lang: str = "en", state: dict | None = None, post=None) -> dict:
+    """Brain LLM rephrases recommendation cards (FACE-7, SF7) with fallback when offline (FACE-9, SF4)."""
+    level = card.get("level", 1)
+    if isinstance(level, str):
+        level = 3 if level in ("alert", "3", "critical") else (2 if level in ("watch", "2", "warning") else 1)
+
+    if not llm_available() and post is None:
+        return {"reply": rules_rephrase_card(card, lang), "source": "rules", "level": level}
+
+    prompt = f"Card: {json.dumps(card)}\nLanguage: {lang}"
+    try:
+        cfg = llm_config()
+        messages = [
+            {"role": "system", "content": CARD_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+        body = {"model": cfg["model"], "messages": messages, "temperature": 0.2, "max_tokens": 120}
+        headers = {"Authorization": f"Bearer {cfg['key']}"}
+        if post:
+            r = post(f"{cfg['base_url']}/chat/completions", body, headers)
+            raw = r.json() if hasattr(r, "json") else r
+        else:
+            with httpx.Client(timeout=8) as c:
+                r = c.post(f"{cfg['base_url']}/chat/completions", headers=headers, json=body)
+                r.raise_for_status()
+                raw = r.json()
+        content = raw["choices"][0]["message"]["content"]
+        text = clean_reply(content)
+        sents = split_sentences(text)[:2]
+        reply = " ".join(sents)
+        if not reply or not card_numbers_ok(reply, card, state):
+            return {"reply": rules_rephrase_card(card, lang), "source": "rules", "level": level}
+        return {"reply": reply, "source": "llm", "level": level}
+    except Exception:
+        return {"reply": rules_rephrase_card(card, lang), "source": "rules", "level": level}
+
+
+# ---------------- HSEmotion ONNX Face Emotion Model (Person 3: FACE-3, FACE-4) ----------------
+
+FACE_MODEL_NAME = "enet_b0_8_va_mtl"
+# Weights kept in the project so the demo works offline; ~/.hsemotion (the library's cache) is the fallback,
+# and the library downloads there on first use when neither file exists.
+FACE_MODEL_LOCAL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "models", FACE_MODEL_NAME + ".onnx")
+FACE_MODEL_RETRY_S = 30.0
+
+_fer_model = None
+_fer_lock = threading.Lock()
+_fer_status: dict = {"loaded": False, "error": None, "path": None}
+_fer_failed_at = 0.0
+
+
+class FaceModelUnavailable(RuntimeError):
+    """The HSEmotion model could not be loaded; str(e) is the reason."""
+
+
+def hsemotion_status() -> dict:
+    """{loaded, error, path}: whether the face emotion model is loaded and, if not, why."""
+    return dict(_fer_status)
+
+
+def _get_hsemotion():
+    """Load the model once. A failed load is logged with its reason and retried at most every 30 s."""
+    global _fer_model, _fer_failed_at
+    with _fer_lock:
+        if _fer_model is not None:
+            return _fer_model
+        if _fer_status["error"] and time.monotonic() - _fer_failed_at < FACE_MODEL_RETRY_S:
+            raise FaceModelUnavailable(_fer_status["error"])
+        t0 = time.monotonic()
+        try:
+            import hsemotion_onnx.facial_emotions as fe
+            if os.path.isfile(FACE_MODEL_LOCAL):
+                path = FACE_MODEL_LOCAL
+                fe.get_model_path = lambda name: FACE_MODEL_LOCAL
+            else:
+                path = os.path.join(os.path.expanduser("~"), ".hsemotion", FACE_MODEL_NAME + ".onnx")
+                if not os.path.isfile(path):
+                    print(f"[sentinel face] HSEmotion weights not found at {FACE_MODEL_LOCAL} or {path}; downloading (needs network)", flush=True)
+            _fer_model = fe.HSEmotionRecognizer(model_name=FACE_MODEL_NAME)
+        except Exception as e:
+            _fer_failed_at = time.monotonic()
+            reason = f"{type(e).__name__}: {e}"
+            _fer_status.update(loaded=False, error=reason, path=None)
+            print(f"[sentinel face] HSEmotion model NOT loaded: {reason}", flush=True)
+            raise FaceModelUnavailable(reason) from e
+        _fer_status.update(loaded=True, error=None, path=path)
+        print(f"[sentinel face] HSEmotion model loaded from {path} in {time.monotonic() - t0:.2f} s", flush=True)
+        return _fer_model
+
+
+def warm_hsemotion() -> None:
+    """Load the HSEmotion model once at startup and run one blank frame; the outcome is logged either way."""
+    try:
+        import numpy as np
+        m = _get_hsemotion()
+        dummy = np.zeros((224, 224, 3), dtype=np.uint8)
+        m.predict_emotions(dummy, logits=False)
+        print("[sentinel face] HSEmotion warm-up inference OK", flush=True)
+    except FaceModelUnavailable:
+        pass  # already logged with the reason
+    except Exception as e:
+        print(f"[sentinel face] HSEmotion warm-up failed: {type(e).__name__}: {e}", flush=True)
+
+
+# The eight classes of enet_b0_8_va_mtl, in the model's output order.
+FACE_EMOTIONS = ("Anger", "Contempt", "Disgust", "Fear", "Happiness", "Neutral", "Sadness", "Surprise")
+
+
+def predict_face_emotion(img_bytes: bytes) -> dict:
+    """Process a cropped face image with HSEmotion (enet_b0_8_va_mtl).
+    Returns the probability of each of the eight emotions, the top emotion, and continuous
+    valence and arousal. Does not use or store any age, gender, or ethnicity; the image is not kept.
+    Wording guideline: 'expression suggests', never a diagnosis."""
+    import cv2
+    import numpy as np
+    if not img_bytes:
+        raise ValueError("empty image")
+    arr = np.frombuffer(img_bytes, dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("failed to decode face crop")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # the model was trained on RGB; OpenCV decodes to BGR
+
+    fer = _get_hsemotion()
+    emotion, scores = fer.predict_emotions(img, logits=False)
+    # scores[:-2] are the 8 emotion softmax probabilities
+    # scores[-2] is valence in [-1.0, +1.0]
+    # scores[-1] is arousal in [-1.0, +1.0]
+    probs = [float(x) for x in scores[:-2]]
+    val = float(scores[-2])
+    aro = float(scores[-1])
+
+    return {
+        "emotion": str(emotion),
+        "scores": {name: round(p, 4) for name, p in zip(FACE_EMOTIONS, probs)},
+        "valence": round(val, 3),
+        "arousal": round(aro, 3),
+        "confidence": round(max(probs), 3),
+        "wording": f"expression suggests {emotion.lower()}",
+        "source": "hsemotion"
+    }

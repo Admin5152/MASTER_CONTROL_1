@@ -167,3 +167,15 @@ def test_prompt_forbids_invented_time_dependent_facts(monkeypatch):
     r = llm.chat(_state(), "how far is Mars right now")
     assert r["source"] == "llm" and "live data" in r["reply"]
     assert "no live data" in seen["msgs"][0]["content"].lower()
+
+
+def test_a_promised_action_without_a_command_line_still_happens():
+    """The smaller fallback models say "Opening settings." and forget the COMMANDS line: the action is inferred."""
+    from brain import llm
+    assert llm.infer_commands("go to settings", "Opening settings.") == [{"cmd": "open_screen", "name": "settings"}]
+    assert llm.infer_commands("start a breathing exercise", "Starting a guided breathing exercise.") == [{"cmd": "open_screen", "name": "orb_calm"}]
+    assert llm.infer_commands("show me my heart", "Your heart rate is 51. Opening your vitals.") == [{"cmd": "point_to", "zone": "heart"}]
+    assert llm.infer_commands("switch to light mode", "Switching to light mode.") == [{"cmd": "set_theme", "theme": "light"}]
+    assert llm.infer_commands("why is the sky on mars red", "Dust scatters the light.") == []
+    assert llm.infer_commands("how is my heart", "Your heart rate is 51, a little under your usual.") == []
+    assert llm.validate_commands(llm.infer_commands("open the mars farm", "Opening the farm.")) == [{"cmd": "open_screen", "name": "greenhouse"}]

@@ -88,6 +88,37 @@ def stt_local(wav: bytes, timeout: float = 45.0) -> str:
     return json.loads(r.stdout.decode("utf-8") or "{}").get("text", "").strip()
 
 
+VOCABULARY_HINT = (
+    "Hey Sentinel, Sentinel, I'm Eliah, this is Annie, Seth, Sad, Stanley, Gadiel, "
+    "Stillpoint, Slipstream, Red Harvest, grounding, "
+    "radiation, vitals, vision, health log, trends, cognitive, orb calm, aurora run, "
+    "race, greenhouse, hardware, sentinel skin, crew, wellbeing, cabin, mission, body, "
+    "heart rate, pulse, breathing rate, spo2, blood pressure, glucose, temperature, sleep, mood, "
+    "head, eyes, heart, lungs, chest, stomach, gut, bones, muscles, spine, skull, ribcage, pelvis, "
+    "rotate, zoom, xray, isolate, scan, check, triage, headache, sore, hurts, tight"
+)
+
+
+_http: httpx.Client | None = None
+
+
+def _client() -> httpx.Client:
+    """One pooled, kept-alive client for speech in and out: no new TLS handshake per utterance or sentence."""
+    global _http
+    if _http is None:
+        _http = httpx.Client(timeout=8.0, limits=httpx.Limits(max_keepalive_connections=6, keepalive_expiry=120))
+    return _http
+
+
+def warm_speech() -> None:
+    """Open the STT and TTS connections ahead of the first utterance."""
+    for url in ("https://api.groq.com/openai/v1/models", "https://api.elevenlabs.io/v1/models"):
+        try:
+            _client().get(url, timeout=4.0)
+        except Exception:
+            pass
+
+
 def stt_groq(wav: bytes, timeout: float = 8.0, post=None) -> str:
     key = os.getenv("LLM_API_KEY", "").strip() or os.getenv("GROQ_API_KEY", "").strip()
     if not key:
@@ -96,12 +127,17 @@ def stt_groq(wav: bytes, timeout: float = 8.0, post=None) -> str:
     if "groq.com" not in base:
         base = "https://api.groq.com/openai/v1"
     files = {"file": ("speech.wav", wav, "audio/wav")}
-    data = {"model": "whisper-large-v3-turbo", "language": "en", "response_format": "json", "temperature": "0"}
+    data = {
+        "model": "whisper-large-v3-turbo",
+        "language": "en",
+        "response_format": "json",
+        "temperature": "0",
+        "prompt": VOCABULARY_HINT
+    }
     if post is not None:
         r = post(f"{base}/audio/transcriptions", files, data)
     else:
-        with httpx.Client(timeout=timeout) as c:
-            r = c.post(f"{base}/audio/transcriptions", files=files, data=data, headers={"Authorization": f"Bearer {key}"})
+        r = _client().post(f"{base}/audio/transcriptions", files=files, data=data, headers={"Authorization": f"Bearer {key}"}, timeout=timeout)
     if r.status_code != 200:
         raise RuntimeError(f"http {r.status_code}")
     return (r.json().get("text") or "").strip()
@@ -203,8 +239,7 @@ def tts_eleven(text: str, voice: str = DEFAULT_VOICE, timeout: float = 8.0, post
     if post is not None:
         r = post(url, body)
     else:
-        with httpx.Client(timeout=timeout) as c:
-            r = c.post(url, json=body, headers={"xi-api-key": key, "accept": "audio/mpeg"})
+        r = _client().post(url, json=body, headers={"xi-api-key": key, "accept": "audio/mpeg"}, timeout=timeout)
     if r.status_code != 200:
         raise RuntimeError(f"http {r.status_code}")
     _add_usage(len(text))

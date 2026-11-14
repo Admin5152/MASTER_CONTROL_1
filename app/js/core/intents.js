@@ -4,12 +4,12 @@
 // Result: { commands: [...], local?: 'stop'|'cabin', intent: name }
 
 export const ZONE_WORDS = {
-  head: ["head", "brain", "mind", "cognition", "memory", "thinking", "headache"],
-  eyes: ["eyes", "eye", "vision", "sight", "eyesight"],
-  heart: ["heart", "circulation", "heartbeat"],
-  lungs: ["lungs", "lung", "chest", "breathing", "breath"],
-  gut: ["stomach", "gut", "belly", "tummy", "digestion", "nutrition", "abdomen", "bowel"],
-  bones: ["bones", "bone", "muscles", "muscle", "legs", "leg", "skeleton", "knees", "knee", "thighs", "back pain"],
+  head: ["head", "brain", "mind", "cognition", "memory", "thinking", "headache", "migraine", "head is pounding", "pounding head", "dizzy", "dizziness", "lightheaded"],
+  eyes: ["eyes", "eye", "vision", "sight", "eyesight", "blurry", "blurred", "cant see", "cant see properly", "see properly"],
+  heart: ["heart", "circulation", "heartbeat", "pulse", "palpitations", "racing heart"],
+  lungs: ["lungs", "lung", "chest", "breathing", "breath", "respiration", "cant breathe", "trouble breathing", "hard to breathe", "short of breath", "shortness of breath"],
+  gut: ["stomach", "gut", "belly", "tummy", "digestion", "nutrition", "abdomen", "bowel", "nausea", "nauseous", "stomachache", "stomach ache", "cramps", "queasy"],
+  bones: ["bones", "bone", "muscles", "muscle", "legs", "leg", "skeleton", "knees", "knee", "thighs", "back pain", "backache", "sore back", "joint pain", "stiffness"],
   whole_body: ["whole body", "radiation dose", "everything"],
 };
 
@@ -99,16 +99,16 @@ export function matchIntent(text) {
   if (t.trim() === "") return null;
 
   // stop / back
-  if (/^ (stop|cancel|be quiet|quiet|shush|stop talking) $/.test(t) || has(t, "stop talking")) return { intent: "stop", local: "stop", commands: [] };
+  if (/^ (stop|cancel|be quiet|quiet|shush|stop talking) $/.test(t) || has(t, "stop talking")) return { intent: "stop", action: "stop", local: "stop", commands: [] };
   if (/ (go back|go home|close (this|that|it)?|back to home|never mind|nevermind) /.test(t) || /^ (back|close|home) $/.test(t)) {
-    return { intent: "close", commands: [{ cmd: "close" }] };
+    return { intent: "close", action: "go_back", commands: [{ cmd: "close" }] };
   }
 
   // body: isolate one anatomy part ("show me my spine", "show my blood vessels", "show my skeleton")
   const isoVerb = / (show|see|isolate|highlight|display) /.test(t);
   if (isoVerb && !has(t, "xray")) {
     const part = findWord(t, PART_WORDS);
-    if (part) return { intent: "isolate", commands: [{ cmd: "isolate", part }] };
+    if (part) return { intent: "isolate", action: "control_body", target: part, commands: [{ cmd: "isolate", part }] };
   }
 
   // body: X-ray on/off (radiograph or coloured anatomy)
@@ -117,25 +117,25 @@ export function matchIntent(text) {
     const x = { cmd: "xray", on: !off };
     if (!off && / (anatomy|organs|colou?r|colou?red) /.test(t)) x.style = "anatomy";
     else if (!off && / (radiograph|bones only|real xray|plain xray) /.test(t)) x.style = "radiograph";
-    return { intent: "xray", commands: [x] };
+    return { intent: "xray", action: "control_body", target: "xray", commands: [x] };
   }
   // body: turn / rotate
   const deg = t.match(/ (rotate|turn) (?:it |me |the body )?(?:by )?(-?\d{1,3}) degrees? /);
-  if (deg) return { intent: "rotate", commands: [{ cmd: "rotate_body", angle: Number(deg[2]) }] };
-  if (/ (turn around|spin around|show (me )?my back|from (the )?back|back view|rear view) /.test(t)) return { intent: "rotate", commands: [{ cmd: "rotate_body", view: "back" }] };
-  if (/ (turn|rotate) (me |the body |it )?(to the )?left /.test(t) || has(t, "left side") || has(t, "left view")) return { intent: "rotate", commands: [{ cmd: "rotate_body", view: "left" }] };
-  if (/ (turn|rotate) (me |the body |it )?(to the )?right /.test(t) || has(t, "right side") || has(t, "right view")) return { intent: "rotate", commands: [{ cmd: "rotate_body", view: "right" }] };
-  if (/ (face me|front view|from the front|turn (me |the body |it )?(to the )?front) /.test(t)) return { intent: "rotate", commands: [{ cmd: "rotate_body", view: "front" }] };
+  if (deg) return { intent: "rotate", action: "control_body", target: deg[2], commands: [{ cmd: "rotate_body", angle: Number(deg[2]) }] };
+  if (/ (turn around|spin around|show (me )?my back|from (the )?back|back view|rear view) /.test(t)) return { intent: "rotate", action: "control_body", target: "back", commands: [{ cmd: "rotate_body", view: "back" }] };
+  if (/ (turn|rotate) (me |the body |it )?(to the )?left /.test(t) || has(t, "left side") || has(t, "left view")) return { intent: "rotate", action: "control_body", target: "left", commands: [{ cmd: "rotate_body", view: "left" }] };
+  if (/ (turn|rotate) (me |the body |it )?(to the )?right /.test(t) || has(t, "right side") || has(t, "right view")) return { intent: "rotate", action: "control_body", target: "right", commands: [{ cmd: "rotate_body", view: "right" }] };
+  if (/ (face me|front view|from the front|turn (me |the body |it )?(to the )?front) /.test(t)) return { intent: "rotate", action: "control_body", target: "front", commands: [{ cmd: "rotate_body", view: "front" }] };
   // body: zoom
-  if (/ zoom (out|back)|reset (the )?(view|zoom) /.test(t)) return { intent: "zoom", commands: [{ cmd: "zoom_body", zone: "reset" }] };
+  if (/ zoom (out|back)|reset (the )?(view|zoom) /.test(t)) return { intent: "zoom", action: "zoom", target: "reset", commands: [{ cmd: "zoom_body", zone: "reset" }] };
   if (/ zoom (in )?(into|in on|on|to|in) /.test(t) || / (close up|closer look) /.test(t)) {
     const z = findZones(t)[0];
-    if (z) return { intent: "zoom", commands: [{ cmd: "zoom_body", zone: z }] };
+    if (z) return { intent: "zoom", action: "zoom", target: z, commands: [{ cmd: "zoom_body", zone: z }] };
   }
 
   // full scan
   if (/ (full|body|whole body) scan /.test(t) || / (run|do|start) (a |the )?(full )?scan /.test(t) || has(t, "scan me") || has(t, "scan my body")) {
-    return { intent: "scan", commands: [{ cmd: "start_scan" }] };
+    return { intent: "scan", action: "start_check", target: "whole_body", commands: [{ cmd: "start_scan" }] };
   }
 
   // symptom entry by pointing at the body: "log a symptom", "where does it hurt", "something hurts"
@@ -144,49 +144,57 @@ export function matchIntent(text) {
     return { intent: "symptom", commands: [{ cmd: "open_screen", name: "symptom" }] };
   }
 
-  // focused zone check: "check my chest", "check my eyes and my head", "something feels off in my stomach"
-  const checkVerb = / (check|scan|examine|inspect|test) (my |the |on |out )?/.test(t) ||
-    / (feels? (off|weird|wrong|strange|funny|bad|tight|sore)|hurts?|aches?|aching|sore|pain in|something (is )?(off|wrong) (with|in)|not right (with|in)) /.test(t);
+  // focused zone check / symptom triage: "check my chest", "i have a headache", "something feels off in my stomach", "my eye hurts", "my eyes are sore", "I can't see properly"
+  const isSymptom = / (feels? (off|weird|wrong|strange|funny|bad|tight|sore)|hurts?|aches?|aching|sore|pain|tight|cant see|blurry|cant breathe|dizzy|nauseous|something (is )?(off|wrong) (with|in)|not right (with|in)) /.test(t) ||
+    / (have|got) (a |an )?/.test(t) ||
+    has(t, "headache");
+  const checkVerb = / (check|scan|examine|inspect|test|triage) (my |the |on |out )?/.test(t) || isSymptom;
   if (checkVerb) {
     const zs = findZones(t).filter((z) => z !== "whole_body");
-    if (zs.length) return { intent: "check", commands: [{ cmd: "check_zone", zones: zs.slice(0, 3) }] };
+    if (zs.length) return { intent: "check", action: isSymptom ? "report_symptom" : "start_check", target: zs[0], commands: [{ cmd: "check_zone", zones: zs.slice(0, 3) }] };
   }
 
   // cabin status (answered locally)
   if (/ how (is|s) the (cabin|air) /.test(t) || has(t, "cabin status") || has(t, "check the cabin") || /^ (cabin|cabin air) $/.test(t)) {
-    return { intent: "cabin", local: "cabin", commands: [] };
+    return { intent: "cabin", action: "navigate", target: "cabin", local: "cabin", commands: [] };
   }
 
   // vision
   if (/ (let me see you|look at me|see me|watch me|open (the )?camera|start (the )?camera) /.test(t)) {
-    return { intent: "vision", commands: [{ cmd: "open_screen", name: "vision" }, { cmd: "start_scan" }] };
+    return { intent: "vision", action: "navigate", target: "vision", commands: [{ cmd: "open_screen", name: "vision" }, { cmd: "start_scan" }] };
   }
 
   // radiation layer toggle
   if (/ radiation layer /.test(t)) {
     const off = / (hide|off|remove) /.test(t);
-    return { intent: "radiation_layer", commands: [{ cmd: "show_radiation", on: !off }] };
+    return { intent: "radiation_layer", action: "control_body", target: "radiation", commands: [{ cmd: "show_radiation", on: !off }] };
   }
 
   // trend charts: "show my heart rate trend", "glucose history"
   if (/ (trend|trends|history|chart|graph) /.test(t)) {
     const m = findWord(t, METRIC_WORDS);
-    if (m) return { intent: "chart", commands: [{ cmd: "show_chart", metric: m }] };
-    return { intent: "trends", commands: [{ cmd: "open_screen", name: "trends" }] };
+    if (m) return { intent: "chart", action: "navigate", target: m, commands: [{ cmd: "show_chart", metric: m }] };
+    return { intent: "trends", action: "navigate", target: "trends", commands: [{ cmd: "open_screen", name: "trends" }] };
   }
 
   // screens: open / show / start / go to
   const screen = findWord(t, SCREEN_WORDS);
   const verb = / (open|show|start|go to|take me to|launch|play|bring up|let s|lets|log) /.test(t);
   if (screen && (verb || t.trim().split(" ").length <= 3)) {
-    if (screen === "home") return { intent: "close", commands: [{ cmd: "close" }] };
-    return { intent: `open_${screen}`, commands: [{ cmd: "open_screen", name: screen }] };
+    if (screen === "home") return { intent: "close", action: "go_back", commands: [{ cmd: "close" }] };
+    return { intent: `open_${screen}`, action: "navigate", target: screen, commands: [{ cmd: "open_screen", name: screen }] };
   }
 
   // point to a body zone: "show me my heart", "what's wrong with my eyes", "how is my stomach"
   const pointVerb = / (show me|show|what s wrong with|whats wrong with|what is wrong with|look at|point to|how is|how are|how s|hows) /.test(t);
   const zone = findWord(t, ZONE_WORDS);
-  if (zone && pointVerb) return { intent: "point", commands: [{ cmd: "point_to", zone }] };
+  if (zone && pointVerb) return { intent: "point", action: "zoom", target: zone, commands: [{ cmd: "point_to", zone }] };
+
+  // uncertain single zone mention -> clarification
+  if (zone && t.trim().split(" ").length <= 2) {
+    const friendlyName = { head: "head", eyes: "eyes", heart: "heart", lungs: "chest", gut: "stomach", bones: "bones and joints" }[zone] || zone;
+    return { intent: "clarify", action: "clarify", target: zone, question: `Did you mean your ${friendlyName}?`, commands: [{ cmd: "check_zone", zones: [zone] }] };
+  }
 
   return null;
 }

@@ -152,11 +152,16 @@
             <div class="pulse-read"><span id="pulse-value" class="pulse-value num">—</span><span class="pulse-unit">pulse from the camera</span></div>
           </div>
           <p id="pulse-quality" class="pulse-quality">quality —</p>
+          <div id="emotion-panel" class="emotion-panel" aria-live="off">
+            <div class="emotion-head"><span class="label">Expression</span><span id="emotion-top" class="emotion-top">camera off</span></div>
+            <ul id="emotion-list" class="emotion-list"></ul>
+          </div>
+          <p id="cam-log" class="fine" aria-live="polite">Nothing saved to the record yet.</p>
           <div class="cam-controls">
             <button id="btn-cam" class="pill pill-light" type="button">Start camera</button>
             <button id="btn-cam-devices" class="pill pill-ghost" type="button">Choose camera</button>
           </div>
-          <p class="fine">An estimate for trends, not a medical measurement. Forehead and cheeks are sampled (highlighted on the mesh).</p>
+          <p class="fine">An estimate for trends, not a medical measurement. Forehead and cheeks are sampled (highlighted on the mesh). Expression is read from the face by a local model (HSEmotion); it suggests, it does not diagnose, and no image is stored.</p>
         </aside>
       </section>
 

@@ -49,6 +49,7 @@ test("wake phrase matcher: positives", () => {
     ["hey centinel start orb calm", "start orb calm"], ["hey sentinal how is the cabin", "how is the cabin"],
     ["Hey, Sentinel. Stop.", "stop"], ["hi sentinel", ""], ["okay sentinel show me my heart", "show me my heart"],
     ["hey sent in el run a full scan", "run a full scan"], ["um hey sentinel log my health", "log my health"],
+    ["sentinel", ""], ["Sentinel.", ""], ["Sentinel, open my vitals", "open my vitals"], ["so sentinel how am I doing", "how am i doing"],
   ];
   for (const [text, cmd] of cases) {
     const r = matchWake(text);
@@ -58,7 +59,7 @@ test("wake phrase matcher: positives", () => {
 });
 
 test("wake phrase matcher: negatives", () => {
-  for (const text of ["", "sentinel", "the sentinel is on duty", "hey there", "hey sam how are you", "I said hello sentinel",
+  for (const text of ["", "the sentinel is on duty", "hey there", "hey sam how are you", "I said hello sentinel",
     "send it now", "a centimetre", "hey", "how am I doing"]) {
     assert.equal(matchWake(text).woke, false, text);
   }
@@ -164,7 +165,7 @@ test("intent matcher rejects unrelated phrases", () => {
 test("command validator drops unknown commands and zones and keeps valid ones", () => {
   const out = validateCommands([
     { cmd: "point_to", zone: "eyes" }, { cmd: "launch" }, { cmd: "point_to", zone: "tail" },
-    { cmd: "open_screen", name: "settings" }, { cmd: "open_screen", name: "radiation" }, null, "close",
+    { cmd: "open_screen", name: "launch_codes" }, { cmd: "open_screen", name: "radiation" }, null, "close",
   ]);
   assert.deepEqual(out, [{ cmd: "point_to", zone: "eyes" }, { cmd: "open_screen", name: "radiation" }]);
   assert.equal(validateCommands([{ cmd: "close" }, { cmd: "close" }, { cmd: "close" }, { cmd: "close" }]).length, 3);
