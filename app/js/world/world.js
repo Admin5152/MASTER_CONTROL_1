@@ -27,7 +27,8 @@ void main() {
   // Clinical light: soft white to pale blue-grey (refs 12-16)
   vec3 light = mix(vec3(0.96, 0.975, 0.99), vec3(0.83, 0.87, 0.92), smoothstep(0.0, 1.1, length((vUv - vec2(0.45, 0.62)) * vec2(1.0, 1.25))));
   vec3 dark = mix(space, clinic, uClinic) * uFade;
-  gl_FragColor = vec4(mix(dark, light * mix(1.0, 0.94, 1.0 - uFade), uLight), 1.0);
+  // the X-ray dims uFade: in the light theme it also takes the sky to near-black, as in refs 09-11
+  gl_FragColor = vec4(mix(dark, light, uLight * smoothstep(0.25, 1.0, uFade)), 1.0);
 }`;
 
 export function createWorld(canvas) {

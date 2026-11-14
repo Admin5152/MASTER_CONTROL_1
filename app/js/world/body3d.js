@@ -440,6 +440,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
       const blend = tg.add ? THREE.AdditiveBlending : THREE.NormalBlending;
       if (mesh.material.blending !== blend && (u.b.value < 0.12 || Math.abs(u.b.value - tg.b) < 0.02)) mesh.material.blending = blend;
     }
+    ringGroup.visible = style !== "real";
     for (const name in rings) for (const l of rings[name]) {
       const act = name === activeRing;
       const op = (act ? 0.95 : xa > 0.5 ? 0.06 : 0.2) * U.uFade.value;
@@ -531,7 +532,8 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
       const box = new THREE.Box3();
       for (const n of names) { const g = current.parts[n]; if (g) { g.computeBoundingBox(); box.union(g.boundingBox); } }
       const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
-      const dist = Math.max(distFor(Math.max(s.y * 1.25, M.height * 0.12), Math.max(s.x * 1.3, 0.2)), controls.minDistance);
+      const real = style === "real";
+      const dist = Math.max(distFor(Math.max(s.y * (real ? 2.6 : 1.25), M.height * (real ? 0.2 : 0.12)), Math.max(s.x * (real ? 2.4 : 1.3), 0.2)), controls.minDistance);
       await Promise.all([api.setXray(true, reduced() ? 0 : 0.8), moveCam({ az: 0, dist: Math.min(dist, homeDist), y: c.y, x: c.x * 0.5, z: 0, el: 0.04 }, reduced() ? 0 : seconds)]);
     },
     /** Start a mesh scan from `top` (metres). The band then moves with sweepTo(). */
