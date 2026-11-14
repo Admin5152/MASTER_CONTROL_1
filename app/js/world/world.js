@@ -169,6 +169,9 @@ export function createWorld(canvas) {
     },
     get orbPlace() { return { ...orbPlace }; },
     setBloom(strength) { bloom.strength = strength; },
+    get bloomBase() { return 0.85; },
+    /** 1 = the full sky, 0 = black: the X-ray reads on near-black (refs 09-11). Set every frame by the body. */
+    setSkyFade(v) { skyU.uFade.value = v; },
     pause(p) { paused = !!p; },
     onFrame(fn) { hooks.add(fn); return () => hooks.delete(fn); },
     stats: () => ({ fps: Math.round(stats.fps * 10) / 10, msAvg: Math.round(stats.msAvg * 100) / 100, cap: fpsCap, dpr: renderer.getPixelRatio(), active }),

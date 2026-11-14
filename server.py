@@ -14,7 +14,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Body, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).resolve().parent
@@ -25,7 +25,9 @@ for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".
                     (".task", "application/octet-stream")):
     mimetypes.add_type(_type, _ext)
 
-from brain import llm  # noqa: E402
+from brain import llm, speech  # noqa: E402
+import json  # noqa: E402
+import threading  # noqa: E402
 from brain.contract import ContractError  # noqa: E402
 from brain.radiation import SpaceWeather, storm_dose_step  # noqa: E402
 from brain.store import Store  # noqa: E402
@@ -96,6 +98,9 @@ async def lifespan(app: FastAPI):
     else:
         spaceweather.latest = spaceweather._cached_or_snapshot()
     tasks.append(asyncio.create_task(storm_dose_loop()))
+    if os.getenv("SENTINEL_NO_WARM") != "1":
+        # load Kokoro once in the background and warm it with one short sentence (fallback voice ready)
+        threading.Thread(target=speech.warm_kokoro, daemon=True).start()
     yield
     for t in tasks:
         t.cancel()
@@ -128,6 +133,8 @@ def health():
         "llm": llm.llm_available(),
         "llm_model": llm.llm_config()["model"] if llm.llm_available() else None,
         "speaker_id": SPEAKER_OK,
+        "tts": "elevenlabs" if speech.eleven_key() else "kokoro",
+        "stt": "groq" if llm.llm_available() else "local",
         "voiceprints": sorted(speaker.enrolled().keys()) if SPEAKER_OK else [],
         "spaceweather": sw["source"] if sw else "pending",
         "tablet_url": tablet_url(),
@@ -184,8 +191,64 @@ def log_event(cid: str, body: dict = Body(...)):
 def chat(body: dict = Body(...)):
     cid = body.get("crew_id")
     _need(cid)
-    transcript = str(body.get("transcript", ""))[:500]
-    return llm.chat(store.get(cid), transcript)
+    transcript = llm.normalize(str(body.get("transcript", ""))[:500])
+    return llm.chat(store.get(cid), transcript, crew_id=cid)
+
+
+@app.post("/api/chat/stream")
+def chat_stream(body: dict = Body(...)):
+    """NDJSON: one {"type":"sentence"} line per complete sentence as the LLM writes it, then {"type":"final"}."""
+    cid = body.get("crew_id")
+    _need(cid)
+    transcript = llm.normalize(str(body.get("transcript", ""))[:500])
+    state = store.get(cid)
+
+    def gen():
+        for ev in llm.chat_stream(state, transcript, crew_id=cid):
+            yield json.dumps(ev) + chr(10)
+    return StreamingResponse(gen(), media_type="application/x-ndjson", headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/chat/forget")
+def chat_forget(body: dict = Body(default={})):
+    llm.forget(body.get("crew_id"))
+    return {"ok": True}
+
+
+@app.post("/api/stt")
+async def stt(request: Request, prefer: str = "auto"):
+    """16 kHz WAV of one utterance -> {text, source: "groq" | "local"}."""
+    wav = await request.body()
+    if len(wav) < 1000:
+        raise HTTPException(400, "audio too short")
+    if len(wav) > 16000 * 2 * 20 + 1000:
+        raise HTTPException(413, "utterance longer than 20 s")
+    loop = asyncio.get_running_loop()
+    try:
+        return await loop.run_in_executor(None, lambda: speech.stt(wav, prefer))
+    except Exception as e:
+        raise HTTPException(503, f"speech recognition unavailable: {type(e).__name__}")
+
+
+@app.post("/api/tts")
+async def tts(body: dict = Body(...)):
+    """{text, voice?, engine?} -> audio (mp3 from ElevenLabs or wav from Kokoro), cached on disk."""
+    text = str(body.get("text", ""))
+    voice = str(body.get("voice") or speech.DEFAULT_VOICE)
+    engine = str(body.get("engine") or "auto")
+    loop = asyncio.get_running_loop()
+    try:
+        r = await loop.run_in_executor(None, lambda: speech.tts(text, voice, engine))
+    except ValueError:
+        raise HTTPException(400, "empty text")
+    except Exception:
+        raise HTTPException(503, "no speech engine available: use the browser voice")
+    return Response(r["audio"], media_type=r["mime"], headers={"X-TTS-Source": r["source"], "X-TTS-Cached": str(r["cached"]).lower(), "Cache-Control": "no-store"})
+
+
+@app.get("/api/voices")
+def voices():
+    return speech.voices()
 
 
 @app.post("/api/identify")

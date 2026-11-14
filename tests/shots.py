@@ -52,27 +52,27 @@ def main() -> None:
         for name in ["mission", "body", "vision", "radiation"]:
             if not want(name):
                 continue
-            page.evaluate(f"window.sentinel.director.run([{{cmd:'open_screen', name:'{name}'}}])")
+            page.evaluate(f"void window.sentinel.director.run([{{cmd:'open_screen', name:'{name}'}}])")
             page.wait_for_timeout(4200)
             page.screenshot(path=str(OUT / f"{tag}-02-{name}.png"))
         if want("point"):
-            page.evaluate("window.sentinel.director.run([{cmd:'point_to', zone:'eyes'}])")
+            page.evaluate("void window.sentinel.director.run([{cmd:'point_to', zone:'eyes'}])")
             page.wait_for_timeout(5000)
             page.screenshot(path=str(OUT / f"{tag}-03-point-eyes.png"))
         if want("check"):
-            page.evaluate("window.sentinel.director.run([{cmd:'check_zone', zones:['heart']}])")
+            page.evaluate("void window.sentinel.director.run([{cmd:'check_zone', zones:['heart']}])")
             page.wait_for_timeout(2600)
             page.screenshot(path=str(OUT / f"{tag}-03-check-mid.png"))
             page.wait_for_timeout(3200)
             page.screenshot(path=str(OUT / f"{tag}-03-check-heart.png"))
         if want("scan"):
-            page.evaluate("window.sentinel.director.run([{cmd:'start_scan'}])")
+            page.evaluate("void window.sentinel.director.run([{cmd:'start_scan'}])")
             page.wait_for_timeout(3800)
             page.screenshot(path=str(OUT / f"{tag}-04-scan-mid.png"))
             page.wait_for_timeout(6000)
             page.screenshot(path=str(OUT / f"{tag}-05-scan-end.png"))
         if want("menu"):
-            page.evaluate("window.sentinel.director.run([{cmd:'close'}]); window.sentinel.stages.go('assistant')")
+            page.evaluate("void window.sentinel.director.run([{cmd:'close'}]); window.sentinel.stages.go('assistant')")
             page.wait_for_timeout(1500)
             page.click("#btn-menu")
             page.wait_for_timeout(800)

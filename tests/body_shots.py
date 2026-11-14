@@ -42,14 +42,14 @@ def main() -> None:
         print("debug", page.evaluate("JSON.stringify(window.sentinel.body3d.debug())"))
 
         def run(cmds: str, wait: int, name: str) -> None:
-            page.evaluate(f"window.sentinel.director.run({cmds})")
+            page.evaluate(f"void window.sentinel.director.run({cmds})")
             page.wait_for_timeout(wait)
             page.screenshot(path=str(OUT / f"{tag}-{name}.png"))
 
         run("[{cmd:'xray', on:true, style:'radiograph'}]", 3000, "02-radiograph")
         run("[{cmd:'xray', on:true, style:'anatomy'}]", 3000, "03-anatomy")
         run("[{cmd:'xray', on:false}]", 1500, "03b-solid-again")
-        page.evaluate("window.sentinel.director.run([{cmd:'check_zone', zones:['heart']}])")
+        page.evaluate("void window.sentinel.director.run([{cmd:'check_zone', zones:['heart']}])")
         page.wait_for_timeout(2600)
         page.screenshot(path=str(OUT / f"{tag}-04-check-sweep.png"))
         page.wait_for_timeout(5500)
@@ -58,8 +58,9 @@ def main() -> None:
         run("[{cmd:'isolate', part:'spine'}]", 3500, "06-isolate-spine")
         run("[{cmd:'isolate', part:'vessels'}]", 3500, "07-isolate-vessels")
         run("[{cmd:'point_to', zone:'eyes'}]", 6000, "08-point-eyes")
+        run("[{cmd:'point_to', zone:'heart'}]", 6500, "08b-point-heart")
         page.evaluate("window.sentinel.director.cancel(); window.sentinel.body3d.zoomReset(0); window.sentinel.body3d.setXray(false, 0)")
-        page.evaluate("window.sentinel.body3d.setModel('female')")
+        page.evaluate("window.sentinel.setCrew('amara', 'manual')")
         page.wait_for_timeout(5000)
         page.screenshot(path=str(OUT / f"{tag}-09-female-solid.png"))
         print("female", page.evaluate("JSON.stringify(window.sentinel.body3d.debug())"))

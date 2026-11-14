@@ -426,3 +426,8 @@ select option { background: var(--surface-solid); color: var(--ink); }
   .callout { width: min(300px, 62vw); }
   .menu-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+/* while Sentinel points, the findings step aside so the callout floats beside the body (ref 06) */
+.body-left, .body-right { transition: opacity 0.5s ease, transform 0.5s ease; }
+body.is-pointing .body-left { opacity: 0; transform: translateX(-16px); pointer-events: none; }
+body.is-pointing .body-right { opacity: 0.35; }

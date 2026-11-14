@@ -48,7 +48,7 @@ void main() {
 }`;
 const xrayFrag = /* glsl */`
 uniform vec3 c; uniform float p; uniform float b; uniform float k; uniform float vis;
-uniform float uAmt; uniform float uTop; uniform float uScan; uniform float uFade;
+uniform float uAmt; uniform float uTop; uniform float uScan; uniform float uFade; uniform float uGain;
 varying vec3 vN; varying vec3 vV; varying float vY;
 void main() {
   float passed = step(uScan, vY) * step(vY, uTop);
@@ -56,7 +56,7 @@ void main() {
   if (show < 0.004) discard;
   float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), p);
   float a = clamp(b + k * f, 0.0, 1.0) * show;
-  gl_FragColor = vec4(c * (0.55 + 0.9 * f), a);
+  gl_FragColor = vec4(c * (0.55 + 0.9 * f) * uGain, a);
 }`;
 const wireVert = /* glsl */`
 varying float vY;
@@ -143,7 +143,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
   scene.add(shadow);
 
   // shared uniforms: uAmt = how much X-ray (0 solid .. 1 X-ray), uTop/uScan = the scan band, uFade = model cross-fade
-  const U = { uTop: { value: 2.2 }, uScan: { value: 3.0 }, uAmt: { value: 0 }, uFade: { value: 1 } };
+  const U = { uTop: { value: 2.2 }, uScan: { value: 3.0 }, uAmt: { value: 0 }, uFade: { value: 1 }, uGain: { value: 0.72 } };
 
   const clayMat = new THREE.MeshStandardMaterial({ color: C.slate, roughness: 0.6, metalness: 0.05 });
   clayMat.onBeforeCompile = (sh) => {
@@ -431,6 +431,10 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
       l.material.color.lerp(tmpC.set(act ? 0x6fd0ff : 0xffffff), Math.min(1, dt * 5));
     }
     if (radOn) radMat.uniforms.uAmt.value = 0.55 + 0.25 * Math.sin(t * 2.2);
+    // X-ray reads on near-black with little bloom; the solid body keeps the navy studio
+    const xv = Math.max(xa, wireU.uOn.value * 0.6);
+    world.setSkyFade(1 - 0.82 * xv);
+    world.setBloom(world.bloomBase * (1 - 0.72 * xv));
     updateHotspots();
   }
 
@@ -441,6 +445,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
 
   const api = {
     scene, camera, update, resize,
+    onHide() { world.setSkyFade(1); world.setBloom(world.bloomBase); },
     hotspots: hot,
     zoneEl: (z) => hot[z] || null,
     anchorWorld: (z) => anchors[z],

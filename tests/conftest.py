@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 os.environ["SENTINEL_NO_PERSIST"] = "1"
 os.environ["SENTINEL_NO_NETWORK"] = "1"
 os.environ["SENTINEL_FRESH"] = "1"
+os.environ["SENTINEL_NO_WARM"] = "1"
 REAL_KEY = os.environ.get("LLM_API_KEY", "")
 
 

@@ -160,6 +160,7 @@ export function createDirector(deps) {
     const beam = el("line", "beam");
     callout.innerHTML = html;
     callout.hidden = false;
+    document.body.classList.add("is-pointing");
     callout.dataset.zone = zone;
     const off = onFrame(() => {
       const p = body.screenPoint(zone);
@@ -180,7 +181,7 @@ export function createDirector(deps) {
       window.gsap.fromTo(callout, { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" });
     }
     const usOff = mountUltrasound(callout.querySelector("[data-us]"), zone, getView().aux?.skin);
-    cleanup.push(() => { off(); usOff?.(); dot.remove(); leader.remove(); beam.remove(); callout.hidden = true; callout.innerHTML = ""; });
+    cleanup.push(() => { off(); usOff?.(); dot.remove(); leader.remove(); beam.remove(); callout.hidden = true; callout.innerHTML = ""; document.body.classList.remove("is-pointing"); });
     let acted = null;
     const wait = new Promise((res) => {
       callout.querySelector("[data-next]")?.addEventListener("click", () => { acted = next; res(); }, { once: true });
