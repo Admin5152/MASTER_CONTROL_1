@@ -66,7 +66,7 @@ export function createDirector(deps) {
 
   async function step(c, token) {
     switch (c.cmd) {
-      case "point_to": return pointTo(c.zone, token);
+      case "point_to": return pointTo(c.zone, token, !!c.silent);
       case "open_screen": return screens.open(c.name);
       case "show_chart": return screens.chart(c.metric);
       case "start_scan": return fullScan(token);
@@ -217,7 +217,7 @@ export function createDirector(deps) {
   const nowStr = () => new Date().toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
   // ---------- pointing: best view, zoom, X-ray, red dot, leader, callout ----------
-  async function pointTo(zone, token) {
+  async function pointTo(zone, token, silent = false) {
     const b = await toBody();
     if (!b || token.cancelled) return;
     const sev = zoneSeverity(zone);
@@ -247,7 +247,7 @@ export function createDirector(deps) {
       ${skinBlock(zone)}
       <button class="pill pill-dark pill-block" type="button" data-next>${esc(next.label)}</button>`;
     const co = showCallout(zone, html, SEV_COLOR[sev] || SEV_COLOR.alert, token, next);
-    say(sentenceFor(zone, readings), { kind: "point" });
+    if (!silent) say(sentenceFor(zone, readings), { kind: "point" });
     await Promise.race([co.wait, sleep(8000, token)]);
     if (token.cancelled) return;
     await easeOut(token, wasX);

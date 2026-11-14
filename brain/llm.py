@@ -141,8 +141,14 @@ HEALTH_WORDS = re.compile(
     r"reading|vitals|scan|check|medicine|medication|pill|kit|doing)\b", re.I)
 
 
+PERSONAL = re.compile(r"\b(i|i'm|im|i've|me|my|mine|am i|how am|we|our|us|crew|cabin|reading|readings|baseline|vitals)\b", re.I)
+
+
 def is_health_question(transcript: str) -> bool:
-    return bool(HEALTH_WORDS.search(transcript or ""))
+    """A question about this person's own health or the mission's readings: the number guard applies.
+    "What does space do to the human body?" is general knowledge and keeps its facts."""
+    t = transcript or ""
+    return bool(HEALTH_WORDS.search(t) and PERSONAL.search(t))
 
 
 def normalize(text: str) -> str:

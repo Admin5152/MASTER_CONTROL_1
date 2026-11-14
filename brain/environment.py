@@ -66,8 +66,8 @@ NOTES = {
     },
     "air": {
         "station": "Follow the mission emergency procedure and tell ground.",
-        "transit": "Say which compartment; all crew alerted; more is done on board.",
-        "base": "All crew alerted; also check the airlock and suit stores.",
+        "transit": "Say which compartment; more is done on board, so expect a delayed reply.",
+        "base": "Also check the airlock and suit stores.",
     },
 }
 

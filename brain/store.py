@@ -320,14 +320,20 @@ class Store:
             absolute = self._mute(absolute, quiet)
             d = {**d, "items": [i for i in d["items"] if i.get("metric") not in quiet]}
         s["drift"] = {"flag": d["flag"] if d["items"] else False, "note": d["note"] if d["items"] else "", "items": d["items"]}
-        act = decide(s, absolute, d, self.kit, self.flag_storm_level)
+        view = s
+        if "vitals.heart_rate" in quiet and get_path(s, "baseline.heart_rate"):
+            view = copy.deepcopy(s); view["vitals"]["heart_rate"] = s["baseline"]["heart_rate"]   # an estimate drives no decision
+        act = decide(view, absolute, d, self.kit, self.flag_storm_level)
+        HARD = ("flag_cabin", "flag_redflag", "flag_radiation", "flag_ground")
+        if act.get("severity") == "alert" and act.get("type") not in HARD:
+            act = {**act, "severity": "watch"}   # section 19.3: a change from your own baseline is never above level 2
         # settling in (S16): after an environment switch, a personal-baseline change reads as adjusting;
         # ranges, cabin air, radiation and red flags still alert
         day = int(self.mission_clock()["mission_day"]) if self.clock else 0
         if it.get("settling_until_day", -1) > day and act.get("severity") != "alert" and act.get("type") in ("offer_orb_calm", "offer_intervention", "gentle_checkin"):
             act = {**act, "severity": "info", "detail": "Adjusting to the new environment: " + (act.get("detail") or "")}
         # same problem, different plan (S17): urgent cards carry what this environment means for help
-        if act.get("severity") == "alert":
+        if act.get("severity") == "alert" and act.get("type") in HARD:
             from brain.environment import card_note
             note = card_note(rad["mission_profile"], "air" if act.get("type") == "flag_cabin" else "severe")
             if note and note not in (act.get("detail") or ""):

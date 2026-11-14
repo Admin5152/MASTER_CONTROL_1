@@ -670,8 +670,10 @@ async function safetyFlow(category) {
   setTimeout(() => { if (safetyOn) say(`You're not alone. ${who.buddy} and the commander are being told. Let's breathe together.`, { source: "safety", append: true }); }, 400);
 }
 
+let lastTurnAt = 0;
 async function handleCommand(text, meta = {}) {
   answering = false;   // a new request outranks the last answer
+  lastTurnAt = Date.now();
   const concernCat = text ? wellbeingConcern(text) : null;
   if (concernCat) { if (meta.heard) logLine("You", meta.heard); await safetyFlow(concernCat); return; }
   if (text && view.profile?.wellbeingPlan?.earlySigns?.length) {
@@ -914,7 +916,9 @@ async function suitCommand(c) {
     const st = await api.suit(view.crewId, { action: c.action, region: c.region, text: c.text, size: c.size });
     if (view.aux) view.aux.suit = st;
     updateSuit(st);
-    if (c.action === "eva") say(`EVA started. ${st.readiness ? st.readiness.summary.replace(/;/g, ",") + "." : ""} I'm watching your suit, and routine reminders are paused.`, { source: "local" });
+    if (c.action === "eva") say(st.readiness && !st.readiness.ready
+      ? `EVA mode is on, but the readiness check says hold: ${st.readiness.summary.replace(/^Hold the EVA: /, "").replace(/;/g, ",")}. I've logged it; go out only if your EVA lead clears it. I'm watching your suit.`
+      : `EVA started. ${st.readiness ? st.readiness.summary.replace(/;/g, ",") + "." : ""} I'm watching your suit, and routine reminders are paused.`, { source: "local" });
     if (c.action === "iva") say("Welcome back. Recovery check: drink some water, log anything that hurts or feels off, and I'll look at your pulse again in ten minutes. Reminders are back on.", { source: "local" });
     if (c.action === "seal") say("Leak sealed. Suit pressure is holding.", { source: "local" });
   } catch (e) { showNotice(`Suit link: ${e.message}`); }
@@ -995,7 +999,7 @@ function onState(v) {
   if (!ctx.skinChips) ctx.body3d?.setChips(ctx.organZone ? Object.fromEntries([[ctx.organZone, chipText(ctx.organZone, v)]].filter(([, c]) => c)) : Object.fromEntries(["heart", "lungs", "head"].map((z) => [z, chipText(z, v)]).filter(([, c]) => c)));
   space.setProfile(s.radiation.mission_profile);
   const sev = s.action?.severity || "none";
-  orb.setSeverity(["flag_cabin", "flag_radiation", "flag_ground"].includes(s.action?.type) ? "alert" : sev === "watch" ? "watch" : "none");
+  orb.setSeverity(["flag_cabin", "flag_radiation", "flag_ground", "flag_redflag"].includes(s.action?.type) ? "alert" : sev === "watch" ? "watch" : "none");
   banner.update(s, aux);
   renderActionCard(s, aux);
   // Sentinel noticed something: point at it
@@ -1004,7 +1008,9 @@ function onState(v) {
   if (lastZone === null) lastZone = z;   // on start or a crew switch, Sentinel mentions it rather than taking over the screen
   else if (z !== lastZone) {
     lastZone = z;
-    if (z && z !== "cabin" && !director.busy && !document.querySelector("#sheet.is-full:not([hidden])")) director.run([{ cmd: "point_to", zone: z }]);
+    // visual only while a conversation is going (no interjecting); spoken when the room is quiet
+    const talking = answering || voiceMod.voice.speaking || Date.now() - lastTurnAt < 30000;
+    if (z && z !== "cabin" && !director.busy && !document.querySelector("#sheet.is-full:not([hidden])")) director.run([{ cmd: "point_to", zone: z, silent: talking }]);
   }
   const sc = aux?.scenario;
   if (sc && sc.seq !== view.scenarioSeq) {

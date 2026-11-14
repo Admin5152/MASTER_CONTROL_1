@@ -23,7 +23,7 @@ export function validateCommands(cmds, max = MAX_COMMANDS) {
   for (const c of cmds) {
     if (!c || typeof c !== "object") continue;
     switch (c.cmd) {
-      case "point_to": if (ZONES.includes(c.zone)) out.push({ cmd: "point_to", zone: c.zone }); break;
+      case "point_to": if (ZONES.includes(c.zone)) out.push({ cmd: "point_to", zone: c.zone, ...(c.silent ? { silent: true } : {}) }); break;
       case "open_screen": if (SCREENS.includes(c.name)) out.push({ cmd: "open_screen", name: c.name }); break;
       case "show_chart": if (METRICS.includes(c.metric)) out.push({ cmd: "show_chart", metric: c.metric }); break;
       case "start_scan": out.push({ cmd: "start_scan" }); break;

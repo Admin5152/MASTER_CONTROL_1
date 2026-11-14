@@ -282,7 +282,8 @@ export function matchIntent(text, ctx = {}) {
     / (have|got) (a |an )?/.test(t) ||
     has(t, "headache");
   const checkVerb = / (check|scan|examine|inspect|test|triage) (my |the |on |out )?/.test(t) || isSymptom;
-  if (checkVerb) {
+  const isQuestion = /^ (what|why|how|should|is it|is that|do i|does|can i|could|would|when) /.test(t) && !/ (show|open|check|scan|start|point) /.test(t);
+  if (checkVerb && !isQuestion) {
     const zs = findZones(t).filter((z) => z !== "whole_body");
     if (zs.length) return { intent: "check", action: isSymptom ? "report_symptom" : "start_check", target: zs[0], commands: [{ cmd: "check_zone", zones: zs.slice(0, 3) }] };
   }

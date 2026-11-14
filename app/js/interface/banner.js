@@ -60,6 +60,12 @@ export function createBanner({ say }) {
       d = stormChecklist(state.radiation.storm_level);
       spoken = stormChecklist(state.radiation.storm_level);
       b = state.radiation.source === "live_feed" ? "LIVE · NOAA" : "SIM";
+    } else if (a.type === "flag_redflag") {
+      key = `redflag-${state.crew_id}-${a.zone}`;
+      t = `${state.display_name}: red-flag symptom`;
+      d = `${a.detail}`;
+      spoken = `${state.display_name}, ${a.detail}`;
+      b = "MANUAL";
     } else if (a.type === "flag_ground") {
       key = `crew-${state.crew_id}-${a.zone}`;
       t = `${state.display_name}: reading past the alert line`;
