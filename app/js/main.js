@@ -35,6 +35,7 @@ import { chipText, defaultSystem, mountBodyPanels, render as renderBodyPanels, s
 import { mountVitals, renderVitals } from "./interface/vitals.js";
 import { registerMissionMed } from "./experience/missionmed.js";
 import { registerProfile } from "./experience/profile.js";
+import * as reminders from "./core/reminders.js";
 import { registerSymptom } from "./systems/symptom.js";
 import { REGION_NAMES, REGION_ZONE, regionOf, zoneStatuses } from "./interface/body.js";
 
@@ -701,6 +702,7 @@ async function handleCommand(text, meta = {}) {
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
     if (m.local === "digest") { await sendDigest(); followUp(); return; }
+    if (m.local === "snooze") { if (dueRoutine()) snoozeDue(); else say("There's nothing to snooze right now.", { source: "local" }); return; }
     if (m.local === "mode") { await setMode(m.mode); followUp(); return; }
     if (m.local === "blackout") {
       try { const o = await api.ops(view.crewId, { blackout_min: m.minutes }); if (view.aux) view.aux.ops = o; renderOps(o); } catch (e) { showNotice(e.message); }
@@ -977,12 +979,13 @@ function renderActionCard(s, aux) {
   const key = `${s.crew_id}|${a.type}|${a.zone}|${a.intervention}|${a.detail}`;
   if (key === lastActionKey) return;
   lastActionKey = key;
-  let text = "", btn = null, sev = "info", badge = "SIM";
+  let text = "", btn = null, sev = "info", badge = "SIM", snoozeBtn = false;
   if (!a.type || a.type === "none" || a.type.startsWith("flag_")) {
     const due = dueRoutine();
     if (!due) { card.hidden = true; return; }
     text = `Due now: ${due.label}`; badge = "LIVE";
     btn = [due.button, () => director.run([{ cmd: "open_screen", name: due.screen }])];
+    snoozeBtn = reminders.canSnooze(due.id, snoozesFor(view.aux.clock.mission_day));
   } else {
     const readings = zoneReadings(a.zone, s, aux);
     badge = readings.some((r) => r.badge !== "LIVE") || !readings.length ? "SIM" : "LIVE";
@@ -997,8 +1000,9 @@ function renderActionCard(s, aux) {
   }
   card.hidden = false;
   card.className = `suggest is-${sev}`;
-  card.innerHTML = `<span class="ac-text">${esc(text)}</span>${badgeHTML(badge)}${btn ? `<button class="pill pill-light" type="button" data-act>${esc(btn[0])}</button>` : ""}`;
+  card.innerHTML = `<span class="ac-text">${esc(text)}</span>${badgeHTML(badge)}${btn ? `<button class="pill pill-light" type="button" data-act>${esc(btn[0])}</button>` : ""}${snoozeBtn ? `<button class="pill pill-ghost" type="button" data-snooze>Snooze 30 min</button>` : ""}`;
   card.querySelector("[data-act]")?.addEventListener("click", btn[1]);
+  card.querySelector("[data-snooze]")?.addEventListener("click", snoozeDue);
 }
 
 // ---------- routine prompts and the greenhouse ----------
@@ -1013,6 +1017,15 @@ const ROUTINE = [
 const nudged = new Set();
 function routineKey(day) { return `sentinel:routine:${view.crewId}:${day}`; }
 function routineDone(day) { try { return JSON.parse(localStorage.getItem(routineKey(day)) || "{}"); } catch { return {}; } }
+function snoozesFor(day) { try { return JSON.parse(localStorage.getItem(`${routineKey(day)}:snooze`) || "{}"); } catch { return {}; } }
+function saveSnoozes(day, s) { try { localStorage.setItem(`${routineKey(day)}:snooze`, JSON.stringify(s)); } catch { /* storage blocked */ } }
+const escalated = {};
+/** The sleep block from the profile's reminder times (wind-down hour to check-in hour), else 22 to 6. */
+function sleepBlock() {
+  const t = view.profile?.preferences?.reminderTimes || {};
+  const h = (x, d) => { const m = /^(\d{1,2}):(\d{2})/.exec(x || ""); return m ? Number(m[1]) + Number(m[2]) / 60 : d; };
+  return { from: Math.max(20, Math.ceil(h(t.winddown, 21.5) + 0.5)), to: Math.floor(h(t.checkin, 8)) - 2 };
+}
 function setRoutineDone(day, id) {
   const d = routineDone(day);
   d[id] = true;
@@ -1021,9 +1034,19 @@ function setRoutineDone(day, id) {
 function dueRoutine() {
   const c = view.aux?.clock;
   if (!c) return null;
-  const done = routineDone(c.mission_day);
-  return ROUTINE.find((r) => c.hour >= r.from && c.hour < r.to && !done[r.id]) || null;
+  return reminders.dueNow(ROUTINE, c, routineDone(c.mission_day), snoozesFor(c.mission_day), { paused: !!view.aux?.ops?.reminders_paused, sleep: sleepBlock() });
 }
+function snoozeDue() {
+  const c = view.aux?.clock, due = dueRoutine();
+  if (!c || !due) return;
+  const s = snoozesFor(c.mission_day);
+  if (!reminders.canSnooze(due.id, s)) { say(`I can't snooze the ${due.label} again; it's been put off twice. It only takes a minute.`, { source: "local" }); return; }
+  const n = reminders.snooze(due.id, c, s);
+  saveSnoozes(c.mission_day, n);
+  lastActionKey = "";
+  note(`Snoozed: ${due.label}, back in 30 minutes (${reminders.MAX_SNOOZES - n[due.id].count} snooze${reminders.MAX_SNOOZES - n[due.id].count === 1 ? "" : "s"} left).`);
+}
+ctx.snoozeDue = snoozeDue;
 function nextRoutine() {
   const c = view.aux?.clock;
   if (!c) return null;
@@ -1069,6 +1092,11 @@ async function routineTick() {
   const due = dueRoutine();
   if (due) {
     const k = `${c.mission_day}:${due.id}`;
+    const sz = snoozesFor(c.mission_day);
+    if (reminders.shouldEscalate(due, c, routineDone(c.mission_day), sz, escalated)) {
+      escalated[due.id] = true;
+      say(`Gentle reminder: your ${due.label} is still open. It takes about a minute; want to do it now?`, { source: "local", append: true });
+    }
     if (!nudged.has(k)) { nudged.add(k); emit("reminder.due", { type: due.id === "vitals" || due.id === "log" ? "checkin" : "measurement", crewId: view.crewId, label: due.label }); cue.nudge(); note(`Due now: ${due.label}.`); lastActionKey = ""; }
   }
 }

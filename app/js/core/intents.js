@@ -180,6 +180,9 @@ export function matchIntent(text, ctx = {}) {
   const t = norm(text);
   if (t.trim() === "") return null;
 
+  if (/^ (snooze( it| that| the reminder)?|remind me later|later|not now|in a bit) $/.test(t) || / (snooze|remind me later|remind me in) /.test(t)) {
+    return { intent: "snooze", local: "snooze", commands: [] };
+  }
   // mission operations: the digest, rest, the link, EVA readiness (Product Document sections 12, 13, 21)
   if (/ (send|queue|prepare|make) (a |the |my )?(digest|report|summary|update)( to| for)? (ground|the ground|the flight surgeon|the surgeon|mission control|houston|earth) / .test(t) || / (tell|update|message) (ground|the flight surgeon|mission control|houston) /.test(t)) {
     return { intent: "digest", action: "escalate", target: "ground", local: "digest", commands: [] };
