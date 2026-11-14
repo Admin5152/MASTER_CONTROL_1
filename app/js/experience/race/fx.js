@@ -137,8 +137,8 @@ function fbm3(x, y, z) {
   for (let i = 0; i < 4; i++) { s += a * (Math.sin(x * 1.7 + y * 2.3) * Math.cos(y * 1.3 - z * 2.1) * Math.sin(z * 1.9 + x * 0.7)); x *= 2.1; y *= 2.1; z *= 2.1; a *= 0.5; }
   return s;
 }
-export function makeAsteroid(seed, rockMat) {
-  const g = mergeVertices(new THREE.IcosahedronGeometry(1, 4));   // shared vertices: smooth shading, no facets
+export function makeAsteroid(seed, rockMat, detail = 3) {
+  const g = mergeVertices(new THREE.IcosahedronGeometry(1, detail));   // shared vertices: smooth shading, no facets
   const P = g.attributes.position, v = new THREE.Vector3();
   const sx = 0.8 + ((seed * 13) % 7) / 12, sy = 0.65 + ((seed * 7) % 5) / 10;
   for (let i = 0; i < P.count; i++) {

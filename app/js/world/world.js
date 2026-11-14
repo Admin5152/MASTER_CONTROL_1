@@ -34,6 +34,9 @@ void main() {
 export function createWorld(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTablet, alpha: false, powerPreference: "high-performance" });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // Shader error checks read each program's status synchronously, which blocks on every link and defeats
+  // parallel compilation (3.6 s of a 5.8 s stall opening Red Harvest). Errors still show with ?debug.
+  renderer.debug.checkShaderErrors = /[?&]debug/.test(location.search);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); canvas.classList.add("is-lost"); });
@@ -88,9 +91,25 @@ export function createWorld(canvas) {
   const stats = { frames: 0, since: performance.now(), fps: 0, ms: [], msAvg: 0 };
   const hooks = new Set();
 
+  // Automatic resolution: when frames run slow for 1.5 s the render resolution steps down; after 8 s of
+  // headroom it steps back up. If stepping up made it slow again, that level becomes the ceiling.
+  let quality = 1, qCap = 1, qSlow = 0, qFast = 0, qEma = 16.7, qLastRaf = 0, qRaised = false;
+  function autoQuality(now) {
+    const d = now - qLastRaf; qLastRaf = now;
+    if (d <= 0 || d > 250) { qSlow = qFast = 0; return; }           // tab was hidden or a one-off stall
+    qEma = qEma * 0.9 + d * 0.1;
+    if (qEma > 23) { qSlow += d; qFast = 0; } else if (qEma < 17.6) { qFast += d; qSlow = 0; } else { qSlow = qFast = 0; }
+    if (qSlow > 1500 && quality > 0.56) {
+      if (qRaised) qCap = Math.max(0.55, quality - 0.15);
+      quality = Math.max(0.55, quality - 0.15); qSlow = 0; qRaised = false; qEma = 16.7; resize();
+    } else if (qFast > 8000 && quality < qCap - 0.01) {
+      quality = Math.min(qCap, quality + 0.15); qFast = 0; qRaised = true; qEma = 16.7; resize();
+    }
+  }
+
   function resize() {
     W = Math.max(1, window.innerWidth); H = Math.max(1, window.innerHeight);
-    const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+    const dpr = Math.max(0.5, Math.min(window.devicePixelRatio || 1, maxDpr) * quality);
     renderer.setPixelRatio(dpr); renderer.setSize(W, H, false);
     composer.setPixelRatio(dpr); composer.setSize(W, H);
     bloom.resolution.set(W * dpr * (isTablet ? 0.5 : 0.75), H * dpr * (isTablet ? 0.5 : 0.75));
@@ -113,7 +132,8 @@ export function createWorld(canvas) {
 
   function frame(now) {
     requestAnimationFrame(frame);
-    if (paused || document.hidden || !active) { last = now; return; }
+    if (paused || document.hidden || !active) { last = now; qLastRaf = 0; return; }
+    autoQuality(now);
     if (now - lastRender < 1000 / fpsCap - 2) return;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now; lastRender = now;
@@ -172,7 +192,17 @@ export function createWorld(canvas) {
       return new Promise((r) => g.to(orbPlace, { ...to, duration: seconds, ease, overwrite: true, onComplete: r, onInterrupt: r }));
     },
     get orbPlace() { return { ...orbPlace }; },
-    setBloom(strength) { bloom.strength = strength; },
+    /** Compile a scene's shaders in the background, exactly as the composer will draw it (into its offscreen
+     *  target: a different target changes the shader and wastes the compile). Resolves when ready. */
+    async compileAsync(scene, camera) {
+      const prev = renderer.getRenderTarget();
+      renderer.setRenderTarget(composer.readBuffer);
+      let job;
+      try { job = renderer.compileAsync ? renderer.compileAsync(scene, camera) : Promise.resolve(renderer.compile(scene, camera)); }
+      finally { renderer.setRenderTarget(prev); }
+      return job;
+    },
+    setBloom(strength) { bloom.strength = strength; bloom.enabled = strength > 0.001; },   // a zero-strength bloom is skipped, not drawn
     get bloomBase() { return skyU.uLight.value > 0.5 ? 0 : 0.85; },
     /** 1 = the full sky, 0 = black: the X-ray reads on near-black (refs 09-11). Set every frame by the body. */
     setSkyFade(v) { skyU.uFade.value = v; },
@@ -186,7 +216,7 @@ export function createWorld(canvas) {
     get theme() { return skyU.uLight.value > 0.5 ? "light" : "dark"; },
     pause(p) { paused = !!p; },
     onFrame(fn) { hooks.add(fn); return () => hooks.delete(fn); },
-    stats: () => ({ fps: Math.round(stats.fps * 10) / 10, msAvg: Math.round(stats.msAvg * 100) / 100, cap: fpsCap, dpr: renderer.getPixelRatio(), active }),
+    stats: () => ({ fps: Math.round(stats.fps * 10) / 10, msAvg: Math.round(stats.msAvg * 100) / 100, cap: fpsCap, dpr: renderer.getPixelRatio(), quality, active }),
     /** Mean brightness (0-255) of a 9x9 grid of the next frame, to prove the world is not black. */
     probe() {
       const gl = renderer.getContext();

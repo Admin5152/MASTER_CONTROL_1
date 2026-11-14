@@ -6,7 +6,6 @@
 // antenna. Drag to turn, pinch or scroll to zoom, tap a tray. Rendered by the shared world.
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { MAX_PODS, podStatus, tankSize } from "./farm.js";
 
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -49,10 +48,12 @@ function noiseTex(size, scale, palette, { speckle = 0 } = {}) {
 }
 const mix = (a, b, k) => a + (b - a) * k;
 let TEX = null;
+/** Build the generated textures (call early, in idle time, so opening the game never stalls). */
+export function warmMarsTextures(tablet) { textures(tablet); }
 function textures(tablet) {
   if (TEX) return TEX;
-  const S = tablet ? 256 : 512;
-  const regolith = noiseTex(S, 2.2, (n) => { const k = Math.max(0, Math.min(1, (n - 0.25) * 1.6)); return [mix(92, 170, k), mix(44, 92, k), mix(26, 56, k)]; }, { speckle: 0.004 });
+  const S = 128;
+  const regolith = noiseTex(64, 2.2, (n) => { const k = Math.max(0, Math.min(1, (n - 0.25) * 1.6)); return [mix(92, 170, k), mix(44, 92, k), mix(26, 56, k)]; }, { speckle: 0.004 });
   const pad = noiseTex(S, 3.5, (n, x, y) => {
     const seam = (x % (S / 4) < 2 || y % (S / 4) < 2) ? 0.72 : 1;
     const k = Math.max(0, Math.min(1, n)); return [mix(118, 160, k) * seam, mix(92, 124, k) * seam, mix(74, 98, k) * seam];
@@ -143,7 +144,7 @@ export function buildCrop(crop, g, dry) {
   else if (crop === "mizuna") grp.add(rosette(g, droop, 24, 1.15, 0.2, cols, 1.0, LEAF_FLAT));
   else if (crop === "radish") {
     grp.add(rosette(g, droop, 9, 0.85, 0.36, cols, 1.05, LEAF));
-    if (g > 0.5) { const b = new THREE.Mesh(BALL, new THREE.MeshPhysicalMaterial({ color: 0xc21a3e, roughness: 0.3, clearcoat: 0.6 })); const r = 0.1 + 0.2 * (g - 0.5) / 0.5; b.scale.set(r, r * 0.9, r); b.position.y = r * 0.3; grp.add(b); }
+    if (g > 0.5) { const b = new THREE.Mesh(BALL, new THREE.MeshStandardMaterial({ color: 0xc21a3e, roughness: 0.3 })); const r = 0.1 + 0.2 * (g - 0.5) / 0.5; b.scale.set(r, r * 0.9, r); b.position.y = r * 0.3; grp.add(b); }
   } else if (crop === "zinnia") {
     const h = 0.3 + 1.4 * g;
     grp.add(stem(h));
@@ -165,7 +166,7 @@ export function buildCrop(crop, g, dry) {
     for (let i = 0; i < levels; i++) { const l = leaf(LEAF, 0.48, 0.24, cols[i % 2], i * 2.399, 0.45 - droop); l.position.y = h * (0.2 + 0.8 * (i / levels)); grp.add(l); }
     if (g > 0.6) {
       const ripe = g > 0.9, k = Math.min(1, (g - 0.6) / 0.4);
-      const fm = new THREE.MeshPhysicalMaterial({ color: ripe ? 0xb8141a : 0x3f8a2a, roughness: 0.22, clearcoat: 0.8 });
+      const fm = new THREE.MeshStandardMaterial({ color: ripe ? 0xb8141a : 0x3f8a2a, roughness: 0.22 });
       for (let i = 0; i < 3; i++) {
         const f = new THREE.Mesh(BALL, fm); f.scale.set(0.07 * k + 0.02, 0.2 * k + 0.04, 0.07 * k + 0.02);
         const a = i * 2.1; f.position.set(Math.cos(a) * 0.28, h * (0.45 + i * 0.12), Math.sin(a) * 0.28); f.rotation.z = 0.2; grp.add(f);
@@ -182,15 +183,8 @@ export function createMarsBase(world) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.5, 1200);
 
-  let envRT = null;     // a soft studio environment for reflections (glass, metal, solar cells)
-  const makeEnv = () => {
-    if (envRT) return;
-    const pm = new THREE.PMREMGenerator(world.renderer);
-    envRT = pm.fromScene(new RoomEnvironment(), 0.04);
-    pm.dispose();
-    scene.environment = envRT.texture;
-    scene.environmentIntensity = 0.28;
-  };
+  const makeEnv = () => {};   // no reflection map: building one froze the page for seconds on open
+  const envRT = null;
 
   // sky: butterscotch haze, brighter toward the horizon; a small sun with a blue-white glow (Mars forward scattering)
   const skyU = { top: { value: new THREE.Color(0x8a5a3c) }, hor: { value: new THREE.Color(0xd2a07a) }, sunDir: { value: new THREE.Vector3(0.4, 0.6, -0.3).normalize() }, sunCol: { value: new THREE.Color(0xfff6ea) } };
@@ -210,7 +204,7 @@ export function createMarsBase(world) {
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff0e0, 2.1);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(tablet ? 1024 : 2048, tablet ? 1024 : 2048);
+  sun.shadow.mapSize.set(tablet ? 1024 : 1536, tablet ? 1024 : 1536);
   Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 200 });
   sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03; sun.shadow.radius = 3;
   scene.add(sun, sun.target);
@@ -218,7 +212,7 @@ export function createMarsBase(world) {
   const shade = (m, cast = true, receive = true) => { m.traverse((o) => { if (o.isMesh) { o.castShadow = cast; o.receiveShadow = receive; } }); return m; };
 
   // terrain: smooth dunes with regolith texture and bump
-  const seg = tablet ? 140 : 220;
+  const seg = tablet ? 110 : 150;
   const tg = new THREE.PlaneGeometry(700, 700, seg, seg);
   tg.rotateX(-Math.PI / 2);
   { const P = tg.attributes.position; for (let i = 0; i < P.count; i++) { const x = P.getX(i), z = P.getZ(i), r = Math.hypot(x, z); const k = THREE.MathUtils.smoothstep(r, 24, 70); P.setY(i, k * (fbm(x * 0.012 + 3, z * 0.012) * 16 - 6 + fbm(x * 0.06, z * 0.06) * 1.6) - 0.05 + (1 - k) * fbm(x * 0.2, z * 0.2) * 0.12); } tg.computeVertexNormals(); }
@@ -227,7 +221,7 @@ export function createMarsBase(world) {
   const groundMat = new THREE.MeshStandardMaterial({ map: T.regolith.map, bumpMap: T.regolith.bump, bumpScale: 2.2, roughness: 0.96, metalness: 0 });
   groundMat.map.repeat.set(36, 36);
   const photo = (n, srgb) => new Promise((res) => world.loader.load(`assets/mars/${n}`, (t) => { if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, world.renderer.capabilities.getMaxAnisotropy()); res(t); }, undefined, () => res(null)));
-  Promise.all([photo("ground_diff.jpg", true), photo("ground_nor_gl.jpg"), photo("ground_rough.jpg")]).then(([d, n, r]) => {
+  const texReady = Promise.all([photo("ground_diff.jpg", true), photo("ground_nor_gl.jpg"), photo("ground_rough.jpg")]).then(([d, n, r]) => {
     if (!d) return;
     const rep_ = 46;
     for (const t of [d, n, r]) t?.repeat.set(rep_, rep_);
@@ -263,13 +257,13 @@ export function createMarsBase(world) {
 
   // ---- greenhouse ----
   const gh = new THREE.Group(); gh.position.y = 0.5; scene.add(gh);
-  const metal = new THREE.MeshStandardMaterial({ color: 0xd6d9de, roughness: 0.32, metalness: 0.85 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0xd6d9de, roughness: 0.4, metalness: 0.3 });
   const white = new THREE.MeshStandardMaterial({ color: 0xd8d8d4, roughness: 0.55, metalness: 0.05 });
   const ring = shade(new THREE.Mesh(new THREE.CylinderGeometry(DOME_R + 0.25, DOME_R + 0.45, 0.8, 64), white)); ring.position.y = 0.4; gh.add(ring);
   const floorMap = T.pad.map.clone(), floorBump = T.pad.bump.clone(); floorMap.repeat.set(5, 5); floorBump.repeat.set(5, 5); floorMap.needsUpdate = floorBump.needsUpdate = true;
   const floor = shade(new THREE.Mesh(new THREE.CylinderGeometry(DOME_R, DOME_R, 0.1, 64), new THREE.MeshStandardMaterial({ map: floorMap, bumpMap: floorBump, bumpScale: 0.4, color: 0xd9d4cc, roughness: 0.7, metalness: 0.05 })), false); floor.position.y = 0.82; gh.add(floor);
   const glass = new THREE.Mesh(new THREE.SphereGeometry(DOME_R, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2),
-    new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.045, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.1, depthWrite: false, side: THREE.DoubleSide }));
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.045, depthWrite: false, side: THREE.DoubleSide }));
   glass.position.y = 0.8; glass.renderOrder = 3; gh.add(glass);
   const ribMat = metal.clone(); ribMat.transparent = true;    // the dome frame fades as the camera comes in close
   for (let k = 0; k < 12; k++) {   // thin geodesic ribs
@@ -297,7 +291,7 @@ export function createMarsBase(world) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const l = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8), metal)); l.position.set(sx * 1.25, 0.25, sz * 1.25); legs.add(l); }
     const box = shade(new THREE.Mesh(TRAY, trayOwned)); box.position.y = 0.75; g.add(box);
     const soil = shade(new THREE.Mesh(SOIL, mediumMat), false); soil.position.y = 1.03; g.add(soil);
-    const water = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshPhysicalMaterial({ color: 0x9fd8ff, roughness: 0.05, transparent: true, opacity: 0, clearcoat: 1 }));
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshStandardMaterial({ color: 0x9fd8ff, roughness: 0.05, transparent: true, opacity: 0 }));
     water.rotation.x = -Math.PI / 2; water.position.y = 1.08; g.add(water);
     const arch = new THREE.Group(); g.add(arch);
     for (const s of [-1, 1]) { const post = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 2.3, 8), metal)); post.position.set(s * 1.3, 2.15, -1.3); arch.add(post); }
@@ -315,7 +309,7 @@ export function createMarsBase(world) {
 
   // ---- solar array ----
   const solar = new THREE.Group(); solar.position.set(-16, 0.5, -6); solar.rotation.y = 0.55; scene.add(solar);
-  const cellMat = new THREE.MeshPhysicalMaterial({ map: T.cells, color: 0xffffff, roughness: 0.18, metalness: 0.4, clearcoat: 1, clearcoatRoughness: 0.05 });
+  const cellMat = new THREE.MeshStandardMaterial({ map: T.cells, color: 0xffffff, roughness: 0.18, metalness: 0.4 });
   const dustMat = new THREE.MeshStandardMaterial({ color: 0xb98060, roughness: 1, transparent: true, opacity: 0 });
   const solarHits = [];
   for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) {
@@ -337,7 +331,7 @@ export function createMarsBase(world) {
   const hab = new THREE.Group(); hab.position.set(DOME_R + 8.6, 2.4, 0); scene.add(hab);
   const habBody = shade(new THREE.Mesh(new THREE.CapsuleGeometry(2.5, 7, 12, 40), white)); habBody.rotation.x = Math.PI / 2; hab.add(habBody);
   for (const z of [-2.6, 0, 2.6]) { const bnd = new THREE.Mesh(new THREE.TorusGeometry(2.51, 0.06, 8, 64), metal); bnd.position.z = z; hab.add(bnd); }
-  const winMat = new THREE.MeshPhysicalMaterial({ color: 0x1a2230, emissive: 0xffc98a, emissiveIntensity: 0.15, roughness: 0.05, clearcoat: 1 });
+  const winMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, emissive: 0xffc98a, emissiveIntensity: 0.15, roughness: 0.05 });
   for (const z of [-1.3, 1.3]) { const w = new THREE.Mesh(new THREE.CircleGeometry(0.5, 32), winMat); w.position.set(2.51, 0.5, z); w.rotation.y = Math.PI / 2; hab.add(w); }
   for (const z of [-3, 3]) for (const x of [-1.3, 1.3]) { const leg = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 2.2, 10), metal)); leg.position.set(x, -2.0, z); hab.add(leg); }
   // ---- antenna ----
@@ -351,17 +345,17 @@ export function createMarsBase(world) {
   const rover = new THREE.Group(); rover.position.set(9, 0.02, 17); rover.rotation.y = -0.9; scene.add(rover);
   const rWhite = new THREE.MeshStandardMaterial({ color: 0xcfcac2, roughness: 0.6, metalness: 0.15 });
   const rDark = new THREE.MeshStandardMaterial({ color: 0x2a2a2c, roughness: 0.7, metalness: 0.4 });
-  const rGold = new THREE.MeshStandardMaterial({ color: 0xb8923a, roughness: 0.35, metalness: 0.9 });
+  const rGold = new THREE.MeshStandardMaterial({ color: 0xc9a244, roughness: 0.45, metalness: 0.3 });
   const chassis = shade(new THREE.Mesh(new RoundedBoxGeometry(3.0, 0.9, 2.0, 2, 0.08), rWhite)); chassis.position.y = 1.45; rover.add(chassis);
   const deck = shade(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 1.5), rGold)); deck.position.set(-1.0, 2.1, 0); rover.add(deck);
   const rtg = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.0, 16), rDark)); rtg.rotation.z = 1.1; rtg.position.set(-1.8, 1.8, 0); rover.add(rtg);
   const mastR = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.8, 10), rWhite)); mastR.position.set(1.1, 2.8, 0.6); rover.add(mastR);
   const head = shade(new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.32, 0.4, 2, 0.05), rWhite)); head.position.set(1.15, 3.75, 0.6); rover.add(head);
-  for (const z of [0.5, 0.7]) { const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.06, 16), new THREE.MeshPhysicalMaterial({ color: 0x0a0c10, roughness: 0.05, clearcoat: 1 })); lens.rotation.z = Math.PI / 2; lens.position.set(1.51, 3.75, z); rover.add(lens); }
+  for (const z of [0.5, 0.7]) { const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.06, 16), new THREE.MeshStandardMaterial({ color: 0x0a0c10, roughness: 0.05 })); lens.rotation.z = Math.PI / 2; lens.position.set(1.51, 3.75, z); rover.add(lens); }
   const arm = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.6, 8), rWhite)); arm.rotation.z = 1.2; arm.position.set(2.1, 1.3, -0.5); rover.add(arm);
   const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.38, 24);
   for (const x of [-1.2, 0, 1.2]) for (const z of [-1.2, 1.2]) {
-    const w = shade(new THREE.Mesh(wheelGeo, new THREE.MeshStandardMaterial({ color: 0x8c8a86, roughness: 0.45, metalness: 0.7 }))); w.rotation.x = Math.PI / 2; w.position.set(x, 0.42, z); rover.add(w);
+    const w = shade(new THREE.Mesh(wheelGeo, new THREE.MeshStandardMaterial({ color: 0x8c8a86, roughness: 0.55, metalness: 0.3 }))); w.rotation.x = Math.PI / 2; w.position.set(x, 0.42, z); rover.add(w);
     const strut = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), rDark); strut.position.set(x, 0.95, z * 0.88); rover.add(strut);
   }
   { // wheel tracks: two darker, slightly flattened bands curving away across the regolith
@@ -387,10 +381,10 @@ export function createMarsBase(world) {
   { const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.55, 6, 16), suitW); torso.position.y = 1.85; astro.add(torso);
     const pack = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.6, 0.25, 2, 0.06), suitW); pack.position.set(0, 1.95, -0.3); astro.add(pack);
     const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.27, 24, 16), suitW); helmet.position.y = 2.55; astro.add(helmet);
-    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.2, 24, 12, -Math.PI * 0.45, Math.PI * 0.9, Math.PI * 0.3, Math.PI * 0.35), new THREE.MeshPhysicalMaterial({ color: 0xc8962e, metalness: 1, roughness: 0.1, clearcoat: 1 })); visor.position.set(0, 2.56, 0.1); astro.add(visor);
+    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.2, 24, 12, -Math.PI * 0.45, Math.PI * 0.9, Math.PI * 0.3, Math.PI * 0.35), new THREE.MeshStandardMaterial({ color: 0xc8962e, metalness: 0.3, roughness: 0.15, emissive: 0x3a2a08 })); visor.position.set(0, 2.56, 0.1); astro.add(visor);
     for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.6, 4, 10), suitW); leg.position.set(sx * 0.15, 1.05, 0); leg.name = sx < 0 ? "legL" : "legR"; astro.add(leg);
       const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.5, 4, 10), suitW); arm.position.set(sx * 0.42, 1.85, 0); arm.name = sx < 0 ? "armL" : "armR"; astro.add(arm); }
-    astro.traverse((o) => { if (o.isMesh) o.castShadow = true; }); }
+    astro.traverse((o) => { if (o.isMesh) o.castShadow = false; }); }   // moving things cast no shadow: the shadow map is drawn once, not every frame
   const walkPts = [[-5.4, -5.4], [5.4, -5.4], [5.4, 5.4], [-5.4, 5.4]].map(([x, z]) => new THREE.Vector3(x, 0.82, z));
   const walk = new THREE.CatmullRomCurve3(walkPts, true, "centripetal");
   // ---- the helper drone ----
@@ -475,12 +469,14 @@ export function createMarsBase(world) {
     onShow() {
       this._theme = world.theme;
       world.setTheme("dark", 0);
-      world.setBloom(0.22);
+      world.setBloom(0);                                   // the trays' own glow pools replace the bloom pass
       world.renderer.shadowMap.enabled = true;
-      world.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      world.renderer.shadowMap.type = THREE.PCFShadowMap;
+      world.renderer.shadowMap.autoUpdate = false;         // static scene: redraw shadows only when something changes
+      world.renderer.shadowMap.needsUpdate = true;
       makeEnv();
     },
-    onHide() { world.setTheme(this._theme || "dark", 0); },
+    onHide() { world.setTheme(this._theme || "dark", 0); world.renderer.shadowMap.autoUpdate = true; world.setBloom(world.bloomBase); },
     dispose() { envRT?.dispose(); scene.traverse((o) => { if ((o.isMesh || o.isPoints) && !SHARED.has(o.geometry)) o.geometry?.dispose?.(); }); },
   };
 
@@ -514,6 +510,7 @@ export function createMarsBase(world) {
         if (v.plant) v.plantHolder.add(v.plant);
         if (v.key && key && v.key.split("|")[0] === key.split("|")[0]) v.pop = 1;
         v.key = key;
+        world.renderer.shadowMap.needsUpdate = true;
       }
       const lit = owned && p.crop && p.growth < 1 && st !== "dim";
       const boost = lit && now < f.sunlampUntil;
@@ -560,5 +557,18 @@ export function createMarsBase(world) {
   function home() { Object.assign(cam, { tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist }); cam.target.copy(HOME.target); }
 
   placeCamera(1);
-  return { def, setSky, setFarm, pick, podScreen, solarScreen, select, burst, orbit, zoom, home, setInsets, setStation, droneTo, get cam() { return { ...cam, pos: camera.position.toArray().map((v) => +v.toFixed(1)), fov: camera.fov, view: camera.view && { ...camera.view } }; } };
+  /** Compile every shader off the main thread before the scene is shown (parallel compile where supported),
+   *  with the same renderer state the scene will use, so opening never stalls on a shader link. */
+  async function prepare() {
+    makeEnv();
+    // textures first: a texture arriving after the compile changes the shader and forces a blocking recompile
+    await Promise.race([texReady, new Promise((res) => setTimeout(res, 5000))]);
+    const anyMesh = []; scene.traverse((o) => { if (o.isMesh) anyMesh.push(o); });
+    const r = world.renderer, prev = r.shadowMap.enabled, prevType = r.shadowMap.type;
+    r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFShadowMap;   // exactly the state the scene renders with
+    const job = world.compileAsync(scene, camera);
+    r.shadowMap.enabled = prev; r.shadowMap.type = prevType;
+    await Promise.race([job.catch(() => {}), new Promise((res) => setTimeout(res, 6000))]);
+  }
+  return { prepare, def, setSky, setFarm, pick, podScreen, solarScreen, select, burst, orbit, zoom, home, setInsets, setStation, droneTo, get cam() { return { ...cam, pos: camera.position.toArray().map((v) => +v.toFixed(1)), fov: camera.fov, view: camera.view && { ...camera.view } }; } };
 }

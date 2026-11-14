@@ -50,8 +50,8 @@
   --ink-3: rgba(238, 242, 248, 0.42);
   --rule: rgba(255, 255, 255, 0.09);
   --rule-2: rgba(255, 255, 255, 0.16);
-  --surface: rgba(10, 16, 30, 0.52);
-  --surface-strong: rgba(10, 16, 30, 0.82);
+  --surface: rgba(12, 19, 34, 0.84);
+  --surface-strong: rgba(12, 19, 34, 0.95);
   --surface-solid: #0c1424;
   --surface-sunk: rgba(255, 255, 255, 0.05);
   --assist: var(--c-cyan);

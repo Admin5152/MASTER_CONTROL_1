@@ -3,6 +3,7 @@
 // The research sits behind "Why it works"; the crew member's own logged results sit on each card.
 import { evidenceHTML, loadScience, personalStat, scienceDrawer } from "./science.js";
 import { prefetchRace } from "./race/race.js";
+import { warmMarsTextures } from "./mars/base3d.js";
 import { rankTools } from "./support.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -105,7 +106,10 @@ export function renderWellbeing(el, ctx) {
     window.gsap.fromTo(el.querySelectorAll(".wb2-more button"), { opacity: 0 }, { opacity: 1, duration: 0.6, stagger: 0.04, delay: 0.6 });
   }
 
-  setTimeout(() => prefetchRace(ctx.world), 600);   // the course is usually ready before Play is pressed
+  // warm the games in idle moments after the entrance animation, so nothing stalls a frame now or on Play
+  const idle = (fn, wait) => setTimeout(() => (window.requestIdleCallback || ((f) => setTimeout(f, 1)))(fn, { timeout: 2000 }), wait);
+  idle(() => prefetchRace(ctx.world), 1800);
+  idle(() => warmMarsTextures(ctx.world?.isTablet), 2600);
   let alive = true;
   rankTools(crewId).then((rank) => {
     const best = rank[0];

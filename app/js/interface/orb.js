@@ -132,6 +132,9 @@ export function createOrb() {
     dir.set([v.x, v.y, v.z], i * 3);
     seed.set([Math.pow(Math.random(), 1.8), Math.random(), Math.random(), Math.random()], i * 4);
   }
+  // shuffle the order so any prefix (fewer particles when docked small) still covers the whole sphere
+  for (let i = N - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));
+    for (let k = 0; k < 3; k++) { const t = dir[i * 3 + k]; dir[i * 3 + k] = dir[j * 3 + k]; dir[j * 3 + k] = t; } }
   geo.setAttribute("aDir", new THREE.InstancedBufferAttribute(dir, 3));
   geo.setAttribute("aSeed", new THREE.InstancedBufferAttribute(seed, 4));
   geo.instanceCount = N;
@@ -200,6 +203,7 @@ export function createOrb() {
     const sz = world?.orbPlace?.size ?? 300;
     pU.uSmall.value += (Math.max(0, Math.min(1, (190 - sz) / 110)) - pU.uSmall.value) * Math.min(1, dt * 4);
     ped.visible = pU.uSmall.value < 0.6;
+    geo.instanceCount = pU.uSmall.value > 0.6 ? Math.round(N * 0.35) : N;   // docked small: a third of the particles is plenty
     pU.uBreath.value = p.breath; pU.uFrag.value = p.frag; pU.uGlow.value = p.glow;
     pU.uPulse.value = 0.94 + 0.06 * form + 0.008 * Math.sin(t * 1.2);
     pU.uTint.value.setHSL(p.hue / 360, p.sat, 0.6);

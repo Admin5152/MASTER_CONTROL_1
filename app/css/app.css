@@ -72,7 +72,7 @@ body.offline .stages { filter: grayscale(0.85) opacity(0.8); }
 /* ---------- intro ---------- */
 .intro { position: fixed; inset: 0; z-index: var(--z-start); display: grid; place-items: end center; padding: 0 var(--gutter) max(var(--s-6), env(safe-area-inset-bottom)); cursor: pointer; }
 .intro-copy { position: absolute; left: 50%; top: 62vh; transform: translateX(-50%); width: min(520px, calc(100vw - 2 * var(--gutter))); display: grid; justify-items: center; gap: clamp(18px, 3vh, 28px); text-align: center; opacity: 0; visibility: hidden; cursor: auto; }
-.intro-hello .ch { display: inline-block; will-change: transform, filter, opacity; }
+.intro-hello .ch { display: inline-block; }
 /* Begin: a soft halo that breathes and a light sweep across the pill */
 #start-btn { position: relative; overflow: hidden; }
 #start-btn.is-live { animation: begin-breathe 3.2s ease-in-out infinite; }
@@ -504,3 +504,8 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 .menu-key { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; margin: 0; padding-top: var(--s-3); border-top: 1px solid var(--rule); font-size: var(--fs-xs); color: var(--ink-3); }
 .menu-key > span { display: inline-flex; align-items: center; gap: 6px; }
 .home-caption .suggest { justify-self: start; width: var(--row-w); min-width: var(--row-w); max-width: none; margin-left: calc(50% - var(--row-w) / 2); margin-right: 0; }   /* exactly the input row: same width, same centre */
+
+/* Smoothness: a backdrop blur re-blurs the moving 3D world behind every panel on every frame (it halved the
+   frame rate on Vitals). Panels use solid tints with a faint top highlight instead; same look, near-zero cost. */
+*, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.card, .panel, .sheet, .callout, .menu, .convo, .askbar, .suggest, .sys-rail, .insights, .mcard { background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 40%); }

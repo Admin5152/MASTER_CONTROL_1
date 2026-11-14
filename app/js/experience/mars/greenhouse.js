@@ -94,7 +94,8 @@ export function renderGreenhouse(el, ctx) {
   const base = createMarsBase(world);
   world.add("mars", base.def);
   ctx.farmDebug = base; ctx.farm = f;   // for the browser test harness
-  world.show("mars", { fade: false });
+  // shaders compile in the background while the mood question is up; the base appears once it is ready
+  base.prepare().then(() => { if (alive) world.show("mars", { fade: false }); });
   base.setSky(14.5, false);
   base.setStation(f.active);   // golden Martian afternoon; the real Mars time shows in the header tooltip
   // centre the base in the space the HUD leaves free
@@ -161,16 +162,19 @@ export function renderGreenhouse(el, ctx) {
   // ---------- HUD ----------
   const tags = [...el.querySelectorAll("[data-tag]")];
   const sizes = new Array(tags.length).fill(null);
+  let panelRects = [];      // HUD panel rects, measured off the frame loop (reading layout every frame cost ~30 ms)
+  const measurePanels = () => { panelRects = [".farm-climate", ".farm-orders", ".farm-store", ".farm-top"].map((q) => $(q)?.getBoundingClientRect()).filter(Boolean); sizes.fill(null); };
+  requestAnimationFrame(measurePanels); addEventListener("resize", measurePanels);
   base.def.onFrame = () => {
     // project each marker, then push colliding ones up so markers never overlap
-    const pos = tags.map((t, i) => { const s = base.podScreen(i, 3.9); if (!sizes[i] || t.dataset.sz !== t.dataset.st + t.textContent.length) { sizes[i] = { w: t.offsetWidth, h: t.offsetHeight }; t.dataset.sz = t.dataset.st + t.textContent.length; } return { i, x: s.x, y: s.y, w: sizes[i].w, h: sizes[i].h, on: !t.hidden }; });
+    const pos = tags.map((t, i) => { const s = base.podScreen(i, 3.9); if (!sizes[i]) sizes[i] = { w: t.offsetWidth || 40, h: t.offsetHeight || 34 }; return { i, x: s.x, y: s.y, w: sizes[i].w, h: sizes[i].h, on: !t.hidden }; });
     const order = pos.filter((p) => p.on).sort((a, b) => b.y - a.y);
     for (let k = 0; k < order.length; k++) for (let j = 0; j < k; j++) {
       const a = order[k], o = order[j];
       if (Math.abs(a.x - o.x) < (a.w + o.w) / 2 + 4 && a.y > o.y - o.h - 4 && a.y - a.h < o.y + 4) a.y = o.y - o.h - 6;
     }
     // a marker that would sit under a HUD panel is hidden (the panels always win)
-    const panels = [".farm-climate", ".farm-orders", ".farm-store", ".farm-top"].map((q) => $(q)?.getBoundingClientRect()).filter(Boolean);
+    const panels = panelRects;
     for (const p of pos) {
       const under = panels.some((r) => p.x + p.w / 2 > r.left && p.x - p.w / 2 < r.right && p.y > r.top && p.y - p.h < r.bottom);
       tags[p.i].style.visibility = under ? "hidden" : "";
@@ -257,7 +261,7 @@ export function renderGreenhouse(el, ctx) {
     $("[data-clnote]").textContent = load ? `The climate system is using ${load} of your power slot${load > 1 ? "s" : ""}${f.climate.heat > F.passiveTemp(f, ms) ? " (heating the dome)" : ""}${f.climate.co2 > 800 ? " (CO₂ compressor)" : ""}.` : tf < 0.8 ? "Crops grow best near 22 °C." : f.climate.co2 <= 400 ? "Enrich the CO₂: crops grow up to 30% faster at 1,200 ppm." : "Free: the dome holds this temperature on its own.";
   }
 
-  function drawAll() { const now = nowS(); base.setFarm(f, now); drawTop(now); drawTags(now); drawOrders(); drawStore(); drawSeedbar(); }
+  function drawAll() { sizes.fill(null); const now = nowS(); base.setFarm(f, now); drawTop(now); drawTags(now); drawOrders(); drawStore(); drawSeedbar(); }
 
   // ---------- actions ----------
   function tapPod(i, sx, sy) {
@@ -507,7 +511,7 @@ export function renderGreenhouse(el, ctx) {
   return () => {
     alive = false; clearInterval(iv); clearTimeout(toastT); save(id, f);
     root.removeEventListener("wheel", onWheel);
-    removeEventListener("resize", fitView);
+    removeEventListener("resize", fitView); removeEventListener("resize", measurePanels);
     const back = prevScene && prevScene !== "mars" ? prevScene : "space";
     if (world.active === "mars") world.show(back, { fade: false }).then(() => world.remove("mars"));
     else world.remove("mars");

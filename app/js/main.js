@@ -78,7 +78,7 @@ async function boot() {
     const g = window.gsap;
     if (!g || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { copy.style.opacity = 1; btn.classList.add("is-live"); return; }
     g.set(copy, { opacity: 1 });
-    g.fromTo(h.querySelectorAll(".ch"), { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.9, stagger: 0.035, ease: "expo.out" });
+    g.fromTo(h.querySelectorAll(".ch"), { opacity: 0, y: 26, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, stagger: 0.035, ease: "expo.out" });
     g.fromTo(btn, { opacity: 0, y: 18, scale: 0.86 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, delay: 0.55, ease: "back.out(1.7)", onComplete: () => btn.classList.add("is-live") });
   };
   const form = () => {

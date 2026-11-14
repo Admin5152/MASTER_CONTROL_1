@@ -389,7 +389,7 @@
    Layout (no overlaps by construction): stats top-left, actions top-right, orders in a right column
    (a bottom row on portrait), store along the bottom, toasts top-centre under the stats, markers in the
    world only. Colour carries meaning only: gold = coins, blue = water, yellow = power, green = ready. */
-.farm { --g-bg: rgba(12, 14, 20, 0.58); --g-bg-2: rgba(255, 255, 255, 0.06); --g-line: rgba(255, 255, 255, 0.12); --g-blur: blur(16px) saturate(140%);
+.farm { --g-bg: rgba(16, 14, 20, 0.84); --g-bg-2: rgba(255, 255, 255, 0.06); --g-line: rgba(255, 255, 255, 0.12); --g-blur: blur(16px) saturate(140%);
   --gold: #f4c84a; --water: #6fc3ff; --power: #ffd84a; --ready: #8fe37a; --boost: #ff86d9; --txt: #f3f5f8; --txt-2: rgba(243, 245, 248, 0.66); --txt-3: rgba(243, 245, 248, 0.42);
   font-family: var(--font); color: var(--txt); }
 .farm svg { flex: none; }
