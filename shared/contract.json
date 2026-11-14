@@ -112,7 +112,19 @@
       "career_limit_msv": 600,
       "storm_level": 0,
       "sheltered": false,
-      "source": "model"
+      "source": "model",
+      "label": "SIM",
+      "confidence": 1,
+      "event_level": "quiet",
+      "shelter_status": false,
+      "dose_rate_usv_h": 0.0,
+      "shielding_factor": 1.0,
+      "location": {
+        "latitude": null,
+        "longitude": null,
+        "source": "unknown",
+        "updated": ""
+      }
     },
     "wellbeing": {
       "mood_before": null,
@@ -189,6 +201,14 @@
       "whole_body",
       "cabin"
     ],
+    "radiation.event_level": [
+      "quiet",
+      "elevated",
+      "storm"
+    ],
+    "radiation.label": [
+      "SIM"
+    ],
     "radiation.mission_profile": [
       "iss",
       "lunar",
@@ -218,6 +238,12 @@
       "today",
       "yesterday",
       "days"
+    ],
+    "radiation.location.source": [
+      "unknown",
+      "manual",
+      "telemetry",
+      "sim"
     ]
   },
   "vitals_sources_keys": [

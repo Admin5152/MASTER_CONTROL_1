@@ -58,6 +58,7 @@ class Store:
     def __init__(self, persist: bool = True, fresh: bool = False):
         self.lock = threading.RLock()
         self.persist = persist
+        self.radiation_events = []
         self.thresholds = load_thresholds()
         self.kit = load_kit()
         self.flag_storm_level = int(self.thresholds["radiation"]["flag_storm_level"]["value"])
@@ -78,6 +79,7 @@ class Store:
 
     def reset(self) -> None:
         with self.lock:
+            self.radiation_events = []
             self.states = {}
             self.history = {}
             self.internal = {}
@@ -145,6 +147,9 @@ class Store:
                     self.states[cid]["body_model"] = models[cid]
                 self.states[cid].setdefault("body_model", models.get(cid, "male"))  # saved before body_model existed
                 _fill_defaults(self.states[cid])   # saved before these fields existed
+                for key, value in {"label": "SIM", "confidence": 1, "event_level": "quiet", "shelter_status": False, "dose_rate_usv_h": 0.0, "shielding_factor": 1.0}.items():
+                    self.states[cid]["radiation"].setdefault(key, value)
+                self.states[cid]["radiation"].setdefault("location", {"latitude": None, "longitude": None, "source": "unknown", "updated": ""})
                 validate_full(self.states[cid])
                 self._recompute(cid)
             return True
@@ -213,7 +218,10 @@ class Store:
 
     def _append(self, cid: str, field: str, value: float, source: str) -> None:
         h = self.history[cid].setdefault(field, [])
-        h.append({"t": time.time(), "v": value, "source": source})
+        point = {"t": time.time(), "v": value, "source": source}
+        if field.startswith("radiation."):
+            point.update(label="SIM", confidence=1)
+        h.append(point)
         if len(h) > HISTORY_CAP:
             del h[: len(h) - HISTORY_CAP]
 
@@ -249,7 +257,9 @@ class Store:
     def add_storm_dose_for(self, cid: str, received: float, avoided: float) -> None:
         with self.lock:
             it = self.internal.setdefault(cid, {"storm_received": 0.0, "storm_avoided": 0.0, "reaction_runs": 0})
-            it["storm_received"] += received
+            if received < 0 or avoided < 0:
+                raise ValueError("dose increments must be nonnegative")
+            it["storm_received"] += received * self.states[cid]["radiation"].get("shielding_factor", 1.0)
             it["storm_avoided"] += avoided
             self._recompute(cid)
 
@@ -290,8 +300,15 @@ class Store:
         th = self.thresholds
         rad = s["radiation"]
         it = self.internal.setdefault(cid, {"storm_received": 0.0, "storm_avoided": 0.0, "reaction_runs": 0})
+        rad["label"] = "SIM"
+        rad["confidence"] = 1
+        rad["event_level"] = "storm" if rad["storm_level"] >= 3 else "elevated" if rad["storm_level"] >= 1 else "quiet"
+        rad["shelter_status"] = rad["storm_level"] >= 3
         rad["dose_rate_msv_day"] = dose_rate(rad["mission_profile"], th)
-        rad["cumulative_msv"] = round(cumulative_dose(rad["mission_profile"], rad["mission_day"], th, it["storm_received"]), 3)
+        extra = float(th["radiation"]["storm_extra_msv_hour"]["by_level"].get(str(rad["storm_level"]), 0))
+        shield = rad.get("shielding_factor", 1.0) * (1 - th["radiation"]["shelter_reduction"]["value"] if rad["sheltered"] else 1)
+        rad["dose_rate_usv_h"] = (rad["dose_rate_msv_day"] / 24 + extra) * 1000 * shield
+        rad["cumulative_msv"] = round(cumulative_dose(rad["mission_profile"], rad["mission_day"], th, it["storm_received"] + it.get("feed_baseline_msv", 0.0)), 6)
         rad["career_limit_msv"] = th["radiation"]["career_limit_msv"]["value"]
         absolute = evaluate_absolute(s, th)
         s["cabin"]["alert"] = any(r["zone"] == "cabin" and r["severity"] == "alert" for r in absolute)
@@ -327,3 +344,39 @@ class Store:
                     "rate_source": self.thresholds["radiation"]["dose_rates_msv_day"][rad["mission_profile"]],
                 },
             }
+
+    def apply_radiation_feed(self, data: dict) -> None:
+        """Record one feed cycle and transition events, including quiet recovery."""
+        with self.lock:
+            for cid in self.states:
+                it = self.internal[cid]
+                now = time.time()
+                elapsed = max(0.0, now - it.get("radiation_last_cycle", now))
+                it["radiation_last_cycle"] = now
+                current = self.states[cid]["radiation"]
+                it["feed_baseline_msv"] = it.get("feed_baseline_msv", 0.0) + current["dose_rate_msv_day"] * current["shielding_factor"] * elapsed / 86400
+                previous = self.states[cid]["radiation"]["event_level"]
+                state = self.patch(cid, {"radiation": {
+                    "storm_level": int(data["level"]),
+                    "source": "live_feed" if data["source"] == "live" else "model",
+                    "label": "SIM", "confidence": 1,
+                }})
+                r = state["radiation"]
+                self._append(cid, "radiation.dose_rate_usv_h", r["dose_rate_usv_h"], "sim")
+                self._append(cid, "radiation.cumulative_msv", r["cumulative_msv"], "sim")
+                payload = {"crewId": cid, "dose_rate": r["dose_rate_usv_h"],
+                           "cumulative": r["cumulative_msv"], "event_level": r["event_level"],
+                           "shelter_status": r["shelter_status"], "label": "SIM", "confidence": 1}
+                self.radiation_events.append({"event": "radiation.updated", "payload": payload})
+                if previous != r["event_level"]:
+                    event = "radiation.resolved" if r["event_level"] == "quiet" else "radiation.alert"
+                    self.radiation_events.append({"event": event, "payload": {
+                        **payload, "previous_level": previous, "shelter_advised": r["shelter_status"]}})
+                    if previous == "storm" and not r["shelter_status"]:
+                        self.radiation_events.append({"event": "shelter.cleared", "payload": payload})
+                    if r["shelter_status"]:
+                        self.radiation_events.append({"event": "shelter.advised", "payload": {
+                            **payload, "reason": "Demo S3 storm threshold crossed",
+                            "checklist": json.loads((SHARED / "radiation_protocol.json").read_text(encoding="utf-8"))["checklist"]}})
+            del self.radiation_events[:-2000]
+            self._save()

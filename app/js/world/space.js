@@ -5,6 +5,7 @@ import * as THREE from "three";
 
 const TEX = "assets/space/";
 const SUN = new THREE.Vector3(-1, 0.35, 0.62).normalize();
+const MOON_POS = new THREE.Vector3(-4, 0, -2);
 const MARS_POS = new THREE.Vector3(2.5, 1.8, -14);   // small and far, up and to the right of Earth: the destination, clear of the text
 
 const VIEWS = {
@@ -12,7 +13,7 @@ const VIEWS = {
   home: { target: "earth", fx: 0.5, fy: 1.62, r: 0.62, az: 0.15, el: 0.42 },
   assistant: { target: "earth", fx: 0.5, fy: 1.62, r: 0.62, az: 0.15, el: 0.42 },
   mission: { target: "earth", fx: 0.64, fy: 0.42, r: 0.27, az: 0.12, el: 0.12 },   // up and right: frames the headline, clear of the cards
-  radiation: { target: "earth", fx: 0.5, fy: 0.52, r: 0.25, az: -0.25, el: 0.06 },
+  radiation: { target: "earth", fx: 0.67, fy: 0.28, r: 0.17, az: -0.25, el: 0.06 },
   calm: { target: "earth", fx: 0.5, fy: 1.75, r: 0.6, az: 0.4, el: 0.3 },
 };
 
@@ -146,6 +147,26 @@ export function createSpace(world, { tablet = false } = {}) {
   marsAtmo.position.copy(MARS_POS);
   scene.add(marsAtmo);
 
+  const lunarGlobe = new THREE.Mesh(new THREE.SphereGeometry(0.7, 64, 32), new THREE.MeshStandardMaterial({ map: tex("moon.jpg"), roughness: 1 }));
+  lunarGlobe.position.copy(MOON_POS);
+  lunarGlobe.visible = false;
+  scene.add(lunarGlobe);
+  const locationPin = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), new THREE.MeshBasicMaterial({ color: 0x57f5db }));
+  locationPin.visible = false;
+  scene.add(locationPin);
+  let crewLocation = null;
+  function locateCrew() {
+    const surface = profile === "lunar" || profile === "mars_surface";
+    const valid = crewLocation && crewLocation.source !== "unknown" && Number.isFinite(crewLocation.latitude) && Number.isFinite(crewLocation.longitude);
+    locationPin.visible = false; // The inline explorer owns radiation location markers.
+    if (!locationPin.visible) return;
+    const body = profile === "lunar" ? lunarGlobe : mars;
+    const radius = profile === "lunar" ? 0.7 : 0.53;
+    const lat = THREE.MathUtils.degToRad(crewLocation.latitude), lon = THREE.MathUtils.degToRad(crewLocation.longitude);
+    locationPin.position.set(Math.cos(lat) * Math.cos(lon), Math.sin(lat), -Math.cos(lat) * Math.sin(lon)).multiplyScalar(radius * 1.035).applyQuaternion(body.quaternion).add(body.position);
+    locationPin.scale.setScalar(radius);
+  }
+
   // solar particle stream: flows along -SUN, deflects around the planet limb
   const NP = tablet ? 600 : 1400;
   const pPos = new Float32Array(NP * 3), pLife = new Float32Array(NP), pSpeed = new Float32Array(NP);
@@ -184,15 +205,23 @@ export function createSpace(world, { tablet = false } = {}) {
   function setView(name, { instant = false } = {}) {
     const def = { ...(VIEWS[name] || VIEWS.assistant) };
     if (name === "radiation" && profile.startsWith("mars")) def.target = "mars";
+    if (name === "radiation" && profile === "lunar") def.target = "moon";
+    lunarGlobe.visible = false;
+    earth.visible = atmo.visible = name !== "radiation";
+    moonPivot.visible = name !== "radiation";
     currentView = name;
     streamOn = name === "radiation";
     moonPivot.children[1].visible = outer.visible = false;   // orbit lines cut through the headline text
-    mars.visible = marsAtmo.visible = profile.startsWith("mars") && (name === "mission" || name === "radiation");
-    const tp = def.target === "mars" ? MARS_POS : new THREE.Vector3();
+    mars.visible = marsAtmo.visible = profile.startsWith("mars") && name === "mission";
+    const tp = def.target === "mars" ? MARS_POS : def.target === "moon" ? MOON_POS : new THREE.Vector3();
     center.copy(tp);
     const r = def.target === "mars" ? def.r : def.r;
+    if (name === "radiation" && crewLocation && (profile === "lunar" || profile === "mars_surface")) {
+      def.az = Math.PI / 2 + THREE.MathUtils.degToRad(crewLocation.longitude);
+      def.el = THREE.MathUtils.degToRad(crewLocation.latitude);
+    }
     const to = { tx: tp.x, ty: tp.y, tz: tp.z, fx: def.fx, fy: def.fy, r: def.target === "mars" ? r * (1 / 0.53) * 0.53 : r, az: def.az, el: def.el };
-    to.radius = def.target === "mars" ? 0.53 : 1;
+    to.radius = def.target === "mars" ? 0.53 : def.target === "moon" ? 0.7 : 1;
     v.radius = v.radius ?? 1;
     const g = window.gsap;
     if (instant || !g || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) Object.assign(v, to);
@@ -208,8 +237,9 @@ export function createSpace(world, { tablet = false } = {}) {
     clouds.rotation.y += dt * 0.008;
     moonPivot.rotation.y += dt * 0.045;
     moon.rotation.y += dt * 0.02;
-    mars.rotation.y += dt * 0.02;
-    atmo.visible = world.theme !== "light";   // an additive glow reads as a grey disc on the pale sky
+    if (currentView !== "radiation") mars.rotation.y += dt * 0.02;
+    locateCrew();
+    atmo.visible = earth.visible && world.theme !== "light";   // an additive glow reads as a grey disc on the pale sky
     // camera: distance from the planet's screen size, plus a slow drift
     const radius = v.radius ?? 1;
     const dist = radius / (2 * v.r * half);
@@ -260,6 +290,12 @@ export function createSpace(world, { tablet = false } = {}) {
       const changed = p !== profile;
       profile = p || profile;
       if (changed && currentView === "radiation") setView("radiation");
+    },
+    setLocation(location) {
+      const changed = JSON.stringify(crewLocation) !== JSON.stringify(location);
+      crewLocation = location;
+      if (changed && currentView === "radiation") setView("radiation");
+      locateCrew();
     },
     hiRes: useHi,
     gpu: gpuName,

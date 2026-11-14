@@ -556,15 +556,17 @@
       ]
     },
     "flag_storm_level": {
-      "value": 2,
+      "demoDefault": true,
+      "value": 3,
       "kind": "demo_placeholder",
-      "note": "Sentinel raises the shelter alert at S2 or above, as this spec requires. Operational shelter rules are set by mission flight rules, not by this app.",
+      "note": "Demo S3 shelter trigger from RAD-3/RAD-4. Reviewed MRIDs describe monitoring and contingency operations but do not establish this threshold.",
       "source": {
         "title": "Sentinel build spec",
         "url": ""
       }
     },
     "shelter_reduction": {
+      "demoDefault": true,
       "value": 0.5,
       "kind": "nasa",
       "note": "Aluminium and polyethylene provide an average 50% reduction in dose from SPE radiation (GCR only about 7%). Used as the shelter factor for storm dose only.",
@@ -574,6 +576,7 @@
       }
     },
     "storm_extra_msv_hour": {
+      "demoDefault": true,
       "kind": "demo_placeholder",
       "note": "Extra dose per hour unsheltered during a storm, by S level. Illustrative only; real SPE dose depends on spectrum, location and shielding.",
       "source": {
@@ -588,6 +591,26 @@
         "4": 5.0,
         "5": 20.0
       }
+    },
+    "monitoring_evidence": {
+      "demoDefault": false,
+      "source": {
+        "title": "MR005L p4 and MR092L p4, supplied JSC28913 MRIDs",
+        "url": ""
+      },
+      "telemetry_interval_seconds": 60,
+      "note": "MR092L describes minute-by-minute cyclic data; the NOAA polling interval is not onboard dosimetry."
+    },
+    "biodosimetry_review_trigger": {
+      "value": 100,
+      "unit": "mSv",
+      "demoDefault": false,
+      "kind": "nasa",
+      "source": {
+        "title": "MEDB N3.04 Biodosimetry, p1, JSC28913",
+        "url": ""
+      },
+      "note": "Predicted effective dose exceeding 10 rem (100 mSv) is a biodosimetry applicability trigger, NOT a dose safety limit or shelter threshold."
     }
   },
   "speaker_id": {

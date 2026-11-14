@@ -124,6 +124,24 @@ def validate_patch(patch: Any) -> None:
         raise ContractError("", "patch must be an object")
     if "crew_id" in patch:
         raise ContractError("crew_id", "crew_id cannot be patched")
+    rad = patch.get("radiation", {})
+    if not isinstance(rad, dict):
+        raise ContractError("radiation", "expected an object")
+    _check_obj("", TEMPLATE, patch)
+    loc = rad.get("location", {})
+    for key, limit in (("latitude", 90), ("longitude", 180)):
+        value = loc.get(key)
+        if value is not None and (not _is_number(value) or not -limit <= value <= limit):
+            raise ContractError("radiation.location." + key, "invalid coordinate")
+    readings = {"dose_rate_usv_h", "dose_rate_msv_day", "cumulative_msv", "event_level", "shelter_status"}
+    if readings.intersection(rad) and (rad.get("label") != "SIM" or rad.get("confidence") != 1):
+        raise ContractError("radiation", 'readings require label SIM and confidence 1')
+    if "label" in rad and rad["label"] != "SIM":
+        raise ContractError("radiation.label", "must be SIM")
+    if "confidence" in rad and (isinstance(rad["confidence"], bool) or rad["confidence"] != 1):
+        raise ContractError("radiation.confidence", "must be 1")
+    if "shielding_factor" in rad and not 0 <= rad["shielding_factor"] <= 1:
+        raise ContractError("radiation.shielding_factor", "must be between 0 and 1")
     _check_obj("", TEMPLATE, patch)
 
 
@@ -133,6 +151,7 @@ def validate_full(obj: dict) -> None:
     missing = _missing("", TEMPLATE, obj)
     if missing:
         raise ContractError(missing[0], "missing field")
+    validate_patch({"radiation": obj["radiation"]})
 
 
 def _missing(path: str, tmpl: dict, obj: dict) -> list[str]:
