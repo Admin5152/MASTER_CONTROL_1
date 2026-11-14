@@ -393,7 +393,7 @@
   --gold: #f4c84a; --water: #6fc3ff; --power: #ffd84a; --ready: #8fe37a; --boost: #ff86d9; --txt: #f3f5f8; --txt-2: rgba(243, 245, 248, 0.66); --txt-3: rgba(243, 245, 248, 0.42);
   font-family: var(--font); color: var(--txt); }
 .farm svg { flex: none; }
-.farm .glass, .farm-top > *, .farm-orders, .farm-store, .farm-seed, .fm-card { background: var(--g-bg); backdrop-filter: var(--g-blur); -webkit-backdrop-filter: var(--g-blur); border: 1px solid var(--g-line); }
+.farm .glass, .farm-top > *, .farm-orders, .farm-store, .farm-seed, .farm-climate, .fm-card { background: var(--g-bg); backdrop-filter: var(--g-blur); -webkit-backdrop-filter: var(--g-blur); border: 1px solid var(--g-line); }
 .farm-top > .farm-sp, .farm-store > .farm-sp { flex: 1; background: none !important; border: 0 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
 /* top: stats left, actions right */
@@ -603,3 +603,39 @@
 .wb2-tilt { display: flex; flex-direction: column; }
 .wb2-body { flex: 1; display: flex; flex-direction: column; }
 .wb2-actions { margin-top: auto; padding-top: 6px; }
+
+/* ---------- Red Harvest: climate panel, stations ---------- */
+.farm-climate { position: absolute; z-index: 5; left: var(--gutter); top: calc(120px + env(safe-area-inset-top)); width: 236px; display: grid; gap: 8px; padding: 14px; border-radius: 20px; }
+.cl-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 6px; font-size: 13px; color: var(--txt-2); }
+.cl-row b { font-size: 14px; font-weight: 600; color: var(--txt); font-variant-numeric: tabular-nums; min-width: 64px; text-align: center; }
+.cl-row:first-of-type { grid-template-columns: 1fr auto; }
+.cl-row small { grid-column: 1 / -1; font-size: 11px; color: var(--txt-3); margin-top: -4px; }
+.cl-row button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--g-line); background: rgba(255, 255, 255, 0.06); color: var(--txt); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
+.cl-row button:hover { background: rgba(255, 255, 255, 0.14); }
+.cl-growth { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; padding-top: 8px; border-top: 1px solid var(--g-line); font-size: 13px; color: var(--txt-2); }
+.cl-growth b { font-size: 18px; font-weight: 600; color: var(--txt); font-variant-numeric: tabular-nums; }
+.cl-growth b.is-good { color: var(--ready); } .cl-growth b.is-bad { color: #ff9a6b; }
+.cl-growth i { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.cl-growth em { display: block; height: 100%; background: linear-gradient(90deg, #ff9a6b, var(--power), var(--ready)); transition: width 400ms; }
+.cl-note { font-size: 11.5px; line-height: 1.4; color: var(--txt-3); margin: 0; }
+.farm-btn.is-station { background: var(--g-bg); } .farm-btn.is-station svg { stroke: #ff9a6b; }
+.fm-stations .fm-shop-row { align-items: flex-start; }
+.fm-shop-row.is-here { border-color: rgba(143, 227, 122, 0.45); background: rgba(143, 227, 122, 0.06); }
+.st-fact { display: block; margin-top: 4px; color: var(--txt-2) !important; line-height: 1.4; }
+.st-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .st-tags em { font-style: normal; font-size: 11px; padding: 2px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.07); color: var(--txt-2); }
+.st-here { font-size: 12px; font-weight: 600; color: var(--ready); white-space: nowrap; align-self: center; }
+.gh.is-travel::after { content: ""; position: absolute; inset: 0; z-index: 40; pointer-events: none; background: radial-gradient(circle, rgba(255, 220, 190, 0.9), rgba(255, 140, 80, 0.5) 40%, transparent 75%); animation: fx-warp 900ms ease-out forwards; }
+@media (max-width: 900px), (orientation: portrait) {
+  .farm-climate { top: calc(172px + env(safe-area-inset-top)); right: var(--gutter); width: auto; display: flex; flex-wrap: wrap; gap: 8px 10px; padding: 10px 12px; }
+  .farm-climate .farm-h, .farm-climate .cl-growth, .farm-climate .cl-note { flex: 0 0 100%; }
+  .farm-climate .cl-row { flex: 1 1 28%; min-width: 0; grid-template-columns: auto 1fr auto; row-gap: 2px; }
+  .farm-climate .cl-row > span { grid-column: 1 / -1; font-size: 11.5px; }
+  .farm-climate .cl-row:first-of-type { grid-template-columns: 1fr; }
+  .farm-climate .cl-row:first-of-type b { text-align: left; }
+  .farm-climate .cl-row small { display: none; }
+  .farm-climate .cl-row b { min-width: 0; font-size: 13px; }
+  .farm-climate .cl-growth { grid-template-columns: auto 1fr auto; } .farm-climate .cl-growth i { grid-column: 2; grid-row: 1; }
+  .farm .gh-toast { top: calc(340px + env(safe-area-inset-top)); }
+  .farm-seed { top: calc(400px + env(safe-area-inset-top)); }
+}
+

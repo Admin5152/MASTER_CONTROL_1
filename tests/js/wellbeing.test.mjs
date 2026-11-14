@@ -104,7 +104,56 @@ test("farm: save and load round-trip; old saves start fresh", () => {
   F.plant(f, 1, "lettuce");
   const g = F.loadFarm(JSON.parse(JSON.stringify(f)), 0);
   assert.equal(g.pods[1].crop, "lettuce");
-  assert.equal(F.loadFarm({ v: 1, pods: [] }, 0).v, 2);
+  assert.equal(F.loadFarm({ v: 1, pods: [] }, 0).v, 3);
+  const old = { ...JSON.parse(JSON.stringify(f)), v: 2 }; delete old.active; delete old.stations; delete old.climate;
+  const m = F.loadFarm(old, 0);
+  assert.equal(m.v, 3); assert.equal(m.active, "jezero"); assert.equal(m.pods[1].crop, "lettuce");
+});
+
+test("climate: real plant-science response curves", () => {
+  assert.equal(F.tempFactor(22), 1);
+  assert.equal(F.tempFactor(2), 0); assert.equal(F.tempFactor(34), 0);
+  assert.ok(F.tempFactor(15) > 0.6 && F.tempFactor(15) < 1);
+  assert.ok(F.tempFactor(30) < F.tempFactor(22));
+  assert.equal(F.co2Factor(400), 1);
+  assert.ok(Math.abs(F.co2Factor(1200) - 1.3) < 1e-9);
+  assert.equal(F.co2Factor(1500), F.co2Factor(1200));
+});
+
+test("climate: heating at night and CO2 enrichment cost power; setpoints are clamped", () => {
+  const f = F.createFarm(0);
+  const ms = Date.UTC(2026, 10, 14);
+  let night = null, day = null;
+  for (let h = 0; h < 25 && (night == null || day == null); h += 0.5) {
+    const t = ms + h * 3600e3 * 1.0275;
+    const lh = F.localHour(f, t);
+    if (night == null && lh > 3 && lh < 5) night = t;
+    if (day == null && lh > 13 && lh < 15) day = t;
+  }
+  assert.ok(F.outsideTemp(f, night) < F.outsideTemp(f, day));
+  F.setClimate(f, { heat: 30, co2: 400 });
+  assert.ok(F.climateLoad(f, night) >= 1);
+  F.setClimate(f, { heat: 10 });
+  assert.ok(F.climateLoad(f, night) <= F.climateLoad({ ...f, climate: { heat: 30, co2: 400 } }, night));
+  F.setClimate(f, { co2: 1200 });
+  assert.ok(F.climateLoad(f, day) >= 1);
+  F.setClimate(f, { heat: 99, co2: 5000 });
+  assert.equal(f.climate.heat, 32); assert.equal(f.climate.co2, 1500);
+});
+
+test("stations: build a second site, switch, each keeps its own trays; sites differ", () => {
+  const f = F.createFarm(0);
+  assert.equal(F.buildStation(f, "gale"), false);           // locked by level
+  f.level = 3; f.coins = 500;
+  assert.ok(F.buildStation(f, "gale", 0));
+  F.plant(f, 0, "radish");
+  F.switchStation(f, "gale", 10);
+  assert.equal(f.active, "gale"); assert.equal(f.pods[0].crop, null);
+  F.switchStation(f, "jezero", 20);
+  assert.equal(f.pods[0].crop, "radish");
+  assert.deepEqual(F.builtStations(f), ["jezero", "gale"]);
+  assert.ok(F.STATIONS.utopia.water > F.STATIONS.gale.water);
+  assert.ok(F.STATIONS.gale.solar > F.STATIONS.utopia.solar);
 });
 
 test("farm: Mars time is sane", () => {

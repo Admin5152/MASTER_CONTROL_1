@@ -58,9 +58,18 @@ export function renderGreenhouse(el, ctx) {
       <div class="farm-chip is-water">${SVG.drop}<b data-water></b></div>
       <div class="farm-chip is-power" data-power-chip>${SVG.bolt}<b data-power></b></div>
       <span class="farm-sp"></span>
+      <button type="button" class="farm-btn is-station" data-station><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg><small data-station-name></small></button>
       <button type="button" class="farm-btn is-lamp" data-lamp>${SVG.sun}<b data-lamps></b><small>Sunlamp</small></button>
       <button type="button" class="farm-btn is-shop" data-shop>${SVG.shop}<small>Shop</small></button>
     </header>
+    <aside class="farm-climate" data-climate>
+      <p class="farm-h">Climate · <span data-site></span></p>
+      <div class="cl-row"><span>Outside</span><b data-out></b><small data-lh></small></div>
+      <div class="cl-row"><span>Dome heat</span><button type="button" data-cl="heat:-1" aria-label="Cooler">−</button><b data-heat></b><button type="button" data-cl="heat:1" aria-label="Warmer">+</button></div>
+      <div class="cl-row"><span>CO₂</span><button type="button" data-cl="co2:-1" aria-label="Less CO2">−</button><b data-co2></b><button type="button" data-cl="co2:1" aria-label="More CO2">+</button></div>
+      <div class="cl-growth"><span>Growth rate</span><b data-gr></b><i><em data-grbar></em></i></div>
+      <p class="cl-note" data-clnote></p>
+    </aside>
     <aside class="farm-orders"><p class="farm-h">Crew orders</p><div data-orders></div></aside>
     <div class="farm-seed" data-seedbar hidden></div>
     <footer class="farm-store"><span class="farm-h">Store</span><div class="farm-store-items" data-store></div>
@@ -83,14 +92,16 @@ export function renderGreenhouse(el, ctx) {
 
   const base = createMarsBase(world);
   world.add("mars", base.def);
-  ctx.farmDebug = base;   // for the browser test harness
+  ctx.farmDebug = base; ctx.farm = f;   // for the browser test harness
   world.show("mars", { fade: false });
-  base.setSky(14.5, false);   // golden Martian afternoon; the real Mars time shows in the header tooltip
+  base.setSky(14.5, false);
+  base.setStation(f.active);   // golden Martian afternoon; the real Mars time shows in the header tooltip
   // centre the base in the space the HUD leaves free
   const fitView = () => {
     const W = innerWidth, H = innerHeight, o = $(".farm-orders").getBoundingClientRect(), top = $(".farm-top").getBoundingClientRect().bottom, st = $(".farm-store").getBoundingClientRect();
     const side = o.left > W * 0.5;
-    base.setInsets({ right: side ? W - o.left + 12 : 0, bottom: side ? H - st.top : H - o.top, top });
+    const cl = $(".farm-climate").getBoundingClientRect();
+    base.setInsets({ left: side ? cl.right : 0, right: side ? W - o.left + 12 : 0, bottom: side ? H - st.top : H - o.top, top: side ? top : cl.bottom });
   };
   requestAnimationFrame(fitView);
   addEventListener("resize", fitView);
@@ -157,7 +168,13 @@ export function renderGreenhouse(el, ctx) {
       const a = order[k], o = order[j];
       if (Math.abs(a.x - o.x) < (a.w + o.w) / 2 + 4 && a.y > o.y - o.h - 4 && a.y - a.h < o.y + 4) a.y = o.y - o.h - 6;
     }
-    for (const p of pos) tags[p.i].style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -100%)`;
+    // a marker that would sit under a HUD panel is hidden (the panels always win)
+    const panels = [".farm-climate", ".farm-orders", ".farm-store", ".farm-top"].map((q) => $(q)?.getBoundingClientRect()).filter(Boolean);
+    for (const p of pos) {
+      const under = panels.some((r) => p.x + p.w / 2 > r.left && p.x - p.w / 2 < r.right && p.y > r.top && p.y - p.h < r.bottom);
+      tags[p.i].style.visibility = under ? "hidden" : "";
+      tags[p.i].style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -100%)`;
+    }
     const ss = base.solarScreen();
     $("[data-solar]").style.transform = `translate(${ss.x.toFixed(1)}px, ${ss.y.toFixed(1)}px) translate(-50%, -100%)`;
   };
@@ -221,6 +238,22 @@ export function renderGreenhouse(el, ctx) {
     const mt = F.marsTime(Date.now());
     $("[data-lv]").parentElement.title = `Sol ${mt.sol.toLocaleString()} · ${mt.label} Mars Coordinated Time`;
     $("[data-dust]").hidden = !f.storm;
+    drawClimate();
+  }
+  function drawClimate() {
+    const ms = Date.now(), st = F.station(f);
+    const out = F.outsideTemp(f, ms), lh = F.localHour(f, ms), load = F.climateLoad(f, ms);
+    const tf = F.tempFactor(F.insideTemp(f, ms)), cf = F.co2Factor(f.climate.co2), gr = Math.round(tf * cf * 100);
+    $("[data-site]").textContent = st.name;
+    $("[data-station-name]").textContent = st.name;
+    $("[data-out]").textContent = `${Math.round(out)} °C`;
+    $("[data-lh]").textContent = `${String(Math.floor(lh)).padStart(2, "0")}:${String(Math.floor((lh % 1) * 60)).padStart(2, "0")} local · ${F.daylight(lh) > 0 ? "day" : "night"}`;
+    $("[data-heat]").textContent = `${f.climate.heat} °C`;
+    $("[data-co2]").textContent = `${f.climate.co2} ppm`;
+    $("[data-gr]").textContent = `${gr}%`;
+    $("[data-grbar]").style.width = `${Math.min(100, gr / 1.3)}%`;
+    $("[data-gr]").className = gr >= 110 ? "is-good" : gr < 60 ? "is-bad" : "";
+    $("[data-clnote]").textContent = load ? `The climate system is using ${load} of your power slot${load > 1 ? "s" : ""}${f.climate.heat > F.passiveTemp(f, ms) ? " (heating the dome)" : ""}${f.climate.co2 > 800 ? " (CO₂ compressor)" : ""}.` : tf < 0.8 ? "Crops grow best near 22 °C." : f.climate.co2 <= 400 ? "Enrich the CO₂: crops grow up to 30% faster at 1,200 ppm." : "Free: the dome holds this temperature on its own.";
   }
 
   function drawAll() { const now = nowS(); base.setFarm(f, now); drawTop(now); drawTags(now); drawOrders(); drawStore(); drawSeedbar(); }
@@ -370,6 +403,36 @@ export function renderGreenhouse(el, ctx) {
   root.addEventListener("pointerup", onUp); root.addEventListener("pointercancel", onUp);
   root.addEventListener("wheel", onWheel, { passive: false });
   $("[data-shop]").addEventListener("click", () => openShop());
+  el.querySelectorAll("[data-cl]").forEach((b) => b.addEventListener("click", () => {
+    const [k, d] = b.dataset.cl.split(":");
+    F.setClimate(f, k === "heat" ? { heat: f.climate.heat + Number(d) } : { co2: f.climate.co2 + Number(d) * 100 });
+    cue.tick(); save(id, f); drawAll();
+  }));
+  $("[data-station]").addEventListener("click", () => openStations());
+  function openStations() {
+    const m = $("[data-modal]");
+    const draw = () => {
+      const built = F.builtStations(f);
+      m.innerHTML = `<div class="fm-card fm-stations"><h2>Your stations on Mars</h2><p>Three real landing sites, each with its own weather, sunlight and water.</p>
+        ${F.STATION_IDS.map((k) => { const st = F.STATIONS[k], here = k === f.active, has = built.includes(k);
+          return `<div class="fm-shop-row${here ? " is-here" : ""}"><div><b>${esc(st.name)}</b><small>${esc(st.where)}</small><small class="st-fact">${esc(st.fact)}</small>
+            <span class="st-tags"><em>${st.tAvg - st.tAmp} to ${st.tAvg + st.tAmp} °C</em><em>sun ×${st.solar}</em><em>water ×${st.water}</em></span></div>
+            ${here ? `<span class="st-here">You are here</span>` : has ? `<button type="button" class="farm-cta" data-go-st="${k}">Go</button>`
+              : `<button type="button" class="farm-cta${F.canBuildStation(f, k) ? "" : " is-off"}" data-build-st="${k}" ${F.canBuildStation(f, k) ? "" : "disabled"}>${f.level < st.lvl ? `Level ${st.lvl}` : `${SVG.coin}${st.cost}`}</button>`}</div>`; }).join("")}
+        <button type="button" class="farm-link" data-close-m>Close</button></div>`;
+      m.querySelectorAll("[data-build-st]").forEach((b) => b.addEventListener("click", () => { if (F.buildStation(f, b.dataset.buildSt, nowS())) { cue.done(); confetti(); toast(`${F.STATIONS[b.dataset.buildSt].name} station built.`, "is-good"); save(id, f); draw(); drawAll(); } }));
+      m.querySelectorAll("[data-go-st]").forEach((b) => b.addEventListener("click", () => {
+        const evs = F.switchStation(f, b.dataset.goSt, nowS()) || [];
+        base.setStation(f.active); flashWarp(); m.hidden = true; save(id, f); drawAll();
+        const ready = evs.filter((e) => e.type === "ready").length;
+        toast(`${F.station(f).name}${ready ? `: ${ready} crop${ready > 1 ? "s" : ""} ripened while you were away` : ""}.`, "is-good");
+      }));
+      m.querySelector("[data-close-m]").addEventListener("click", () => { m.hidden = true; });
+    };
+    draw(); m.hidden = false;
+    window.gsap?.fromTo(m.querySelector(".fm-card"), { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "back.out(1.5)" });
+  }
+  function flashWarp() { const r = $(".gh"); r.classList.remove("is-travel"); void r.offsetWidth; r.classList.add("is-travel"); }
   $("[data-why]").addEventListener("click", () => drawer.open());
   $("[data-lamp]").addEventListener("click", () => { if (F.useSunlamp(f, nowS())) { cue.wake(); toast(`Sunlamp on: crops grow twice as fast for ${F.SUNLAMP_S} seconds.`, "is-od"); save(id, f); drawAll(); } });
 

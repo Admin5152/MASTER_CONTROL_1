@@ -423,8 +423,8 @@ export function createMarsBase(world) {
   // ---- camera ----
   const HOME = { yaw: 1.0, pitch: 0.95, dist: 31, target: new THREE.Vector3(0, 1.4, 0) };
   const cam = { yaw: HOME.yaw, pitch: HOME.pitch, dist: HOME.dist, tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist, target: HOME.target.clone() };
-  let W = 1, H = 1, t = 0, storm = false, inset = { right: 0, bottom: 0, top: 0 };
-  const applyView = () => { camera.setViewOffset(W, H, inset.right / 2, (inset.bottom - inset.top) / 2, W, H); camera.updateProjectionMatrix(); };
+  let W = 1, H = 1, t = 0, storm = false, inset = { left: 0, right: 0, bottom: 0, top: 0 };
+  const applyView = () => { camera.setViewOffset(W, H, (inset.right - inset.left) / 2, (inset.bottom - inset.top) / 2, W, H); camera.updateProjectionMatrix(); };
   function placeCamera(k) {
     cam.yaw += (cam.tYaw - cam.yaw) * k; cam.pitch += (cam.tPitch - cam.pitch) * k; cam.dist += (cam.tDist - cam.dist) * k;
     camera.position.set(cam.target.x + Math.cos(cam.yaw) * Math.cos(cam.pitch) * cam.dist, cam.target.y + Math.sin(cam.pitch) * cam.dist, cam.target.z + Math.sin(cam.yaw) * Math.cos(cam.pitch) * cam.dist);
@@ -550,9 +550,15 @@ export function createMarsBase(world) {
   function orbit(dx, dy) { cam.tYaw += dx * 0.006; cam.tPitch = Math.max(0.4, Math.min(1.25, cam.tPitch + dy * 0.004)); }
   function zoom(f) { cam.tDist = Math.max(18, Math.min(110, cam.tDist * f)); }
   /** Screen space taken by the HUD (px): the base centres itself in what is left. */
-  function setInsets(v) { inset = { right: 0, bottom: 0, top: 0, ...v }; applyView(); }
+  function setInsets(v) { inset = { left: 0, right: 0, bottom: 0, top: 0, ...v }; applyView(); }
+  /** Each site looks different: Gale's paler dust, Utopia's cold frosted ground, Jezero's red delta. */
+  const SITE_LOOK = { jezero: { ground: 0xffffff, fog: 0xc99a74, sky: [0x8a5a3c, 0xd2a07a] }, gale: { ground: 0xf3dcc4, fog: 0xd6ad86, sky: [0x9a6a48, 0xe0b48a] }, utopia: { ground: 0xd9cfd0, fog: 0xb9a49a, sky: [0x6e5a52, 0xc4ab9c] } };
+  function setStation(id) {
+    const L = SITE_LOOK[id] || SITE_LOOK.jezero;
+    groundMat.color.set(L.ground); scene.fog.color.set(L.fog); skyU.top.value.set(L.sky[0]); skyU.hor.value.set(L.sky[1]);
+  }
   function home() { Object.assign(cam, { tYaw: HOME.yaw, tPitch: HOME.pitch, tDist: HOME.dist }); cam.target.copy(HOME.target); }
 
   placeCamera(1);
-  return { def, setSky, setFarm, pick, podScreen, solarScreen, select, burst, orbit, zoom, home, setInsets, droneTo, get cam() { return { ...cam, pos: camera.position.toArray().map((v) => +v.toFixed(1)), fov: camera.fov, view: camera.view && { ...camera.view } }; } };
+  return { def, setSky, setFarm, pick, podScreen, solarScreen, select, burst, orbit, zoom, home, setInsets, setStation, droneTo, get cam() { return { ...cam, pos: camera.position.toArray().map((v) => +v.toFixed(1)), fov: camera.fov, view: camera.view && { ...camera.view } }; } };
 }

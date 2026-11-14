@@ -46,6 +46,69 @@ const DISHES = [["salad", 2], ["stir-fry", 3], ["soup", 3], ["tacos", 2], ["snac
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
 const emptyPod = () => ({ crop: null, growth: 0, thirsty: false, watered: false });
 
+// ---------------- stations: three real sites, each with its own climate ----------------
+/** Real landing sites. lon/lat in degrees (east positive); temperatures are an approximate typical sol
+ *  (from the rover/lander weather stations); solar, water and dust are game multipliers based on each site's
+ *  real situation. */
+export const STATIONS = {
+  jezero: { name: "Jezero Crater", where: "18.4° N, 77.5° E · Perseverance", lat: 18.4, lon: 77.5, tAvg: -50, tAmp: 30, solar: 1.0, water: 1.0, dust: 1.0, cost: 0, lvl: 1,
+    fact: "An ancient lake delta. Perseverance's MOXIE made oxygen from the Martian CO₂ air here (2021 to 2023)." },
+  gale: { name: "Gale Crater", where: "4.6° S, 137.4° E · Curiosity", lat: -4.6, lon: 137.4, tAvg: -45, tAmp: 45, solar: 1.15, water: 0.7, dust: 1.2, cost: 120, lvl: 3,
+    fact: "Near the equator: the most sunlight, but very dry. Curiosity's REMS station has logged its weather since 2012." },
+  utopia: { name: "Utopia Planitia", where: "47.6° N, 134.3° E · Viking 2", lat: 47.6, lon: 134.3, tAvg: -75, tAmp: 30, solar: 0.8, water: 2.0, dust: 0.8, cost: 260, lvl: 5,
+    fact: "Cold and far north, with less sunlight, but radar on NASA's MRO found buried ice here holding about as much water as Lake Superior." },
+};
+export const STATION_IDS = Object.keys(STATIONS);
+const STATION_FIELDS = ["pods", "owned", "up", "reserve", "dust", "storm", "climate", "last"];
+const freshStation = (now) => ({ pods: Array.from({ length: MAX_PODS }, () => ({ crop: null, growth: 0, thirsty: false, watered: false })), owned: START_PODS, up: { led: 0, tank: 0, solar: 0 }, reserve: 6, dust: 0, storm: null, climate: { heat: 20, co2: 400 }, last: now });
+export const station = (f) => STATIONS[f.active] || STATIONS.jezero;
+
+export function canBuildStation(f, id) { const st = STATIONS[id]; return !!st && !f.stations[id] && id !== f.active && f.level >= st.lvl && f.coins >= st.cost; }
+export function buildStation(f, id, now = 0) {
+  if (!canBuildStation(f, id)) return false;
+  f.coins -= STATIONS[id].cost;
+  f.stations[id] = freshStation(now);
+  return true;
+}
+/** Move to another built station: park this one, load that one and catch it up on the time away. */
+export function switchStation(f, id, now = 0) {
+  if (id === f.active || !f.stations[id]) return null;
+  const park = {}; for (const k of STATION_FIELDS) park[k] = f[k];
+  f.stations[f.active] = park;
+  Object.assign(f, f.stations[id]); delete f.stations[id];
+  f.active = id;
+  return catchUp(f, now);
+}
+export function builtStations(f) { return [f.active, ...Object.keys(f.stations)].sort((a, b) => STATION_IDS.indexOf(a) - STATION_IDS.indexOf(b)); }
+
+// ---------------- climate: real plant science ----------------
+/** Local hour at the station (Mars local mean solar time = MTC + east longitude / 15). */
+export function localHour(f, ms) { return ((marsTime(ms).hours + station(f).lon / 15) % 24 + 24) % 24; }
+/** Outside air temperature now (°C): coldest just before dawn, warmest early afternoon. */
+export function outsideTemp(f, ms) { const st = station(f), h = localHour(f, ms); return st.tAvg + st.tAmp * Math.cos((2 * Math.PI * (h - 14)) / 24); }
+/** The pressurised dome holds heat and gains it from the sun: what it reaches with no heater. */
+export function passiveTemp(f, ms) { return outsideTemp(f, ms) + 80 + 14 * daylight(localHour(f, ms)); }
+/** Inside temperature: the heater lifts it to the setpoint; vents cool it down to the setpoint. */
+export function insideTemp(f, ms) { return f.climate.heat; }
+/** Power slots the climate system takes: heating (one per 20 °C lifted) and the CO₂ compressor. */
+export function climateLoad(f, ms) {
+  const lift = Math.max(0, f.climate.heat - passiveTemp(f, ms));
+  return Math.ceil(lift / 20 - 1e-9) + (f.climate.co2 > 800 ? 1 : 0);
+}
+/** Cardinal-temperature growth response (Yan & Hunt 1999 beta function): 0 at 2 °C and 34 °C, 1 at 22 °C. */
+export function tempFactor(T, Tmin = 2, Topt = 22, Tmax = 34) {
+  if (T <= Tmin || T >= Tmax) return 0;
+  return ((T - Tmin) / (Topt - Tmin)) * Math.pow((Tmax - T) / (Tmax - Topt), (Tmax - Topt) / (Topt - Tmin));
+}
+/** CO₂ enrichment: C3 crops grow up to about 30 % faster at 1000 to 1200 ppm than at 400 ppm (FACE and
+ *  greenhouse studies); no further gain above 1200. Mars air is 95 % CO₂, so enrichment is cheap there. */
+export function co2Factor(ppm) { return 1 + 0.3 * Math.max(0, Math.min(1, (ppm - 400) / 800)); }
+export function climateFactor(f, ms) { return tempFactor(insideTemp(f, ms)) * co2Factor(f.climate.co2); }
+export function setClimate(f, { heat, co2 }) {
+  if (heat != null) f.climate.heat = Math.max(5, Math.min(32, Math.round(heat)));
+  if (co2 != null) f.climate.co2 = Math.max(400, Math.min(1500, Math.round(co2 / 50) * 50));
+}
+
 export function xpForLevel(level) { return Math.round(16 * Math.pow(level, 1.45)); }
 
 export function unlockedCrops(f) { return CROP_IDS.filter((k) => CROPS[k].lvl <= f.level); }
@@ -55,7 +118,8 @@ export function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (s * 166
 
 export function createFarm(now = 0, seed = 7) {
   const f = {
-    v: 2, last: now, seed, level: 1, xp: 0, coins: 20, pods: Array.from({ length: MAX_PODS }, emptyPod), owned: START_PODS,
+    v: 3, active: "jezero", stations: {}, climate: { heat: 20, co2: 400 },
+    last: now, seed, level: 1, xp: 0, coins: 20, pods: Array.from({ length: MAX_PODS }, emptyPod), owned: START_PODS,
     up: { led: 0, tank: 0, solar: 0 }, reserve: 6, dust: 0, storm: null, sunlampUntil: -1, sunlamps: 1, sunlampSeen: 0,
     store: {}, orders: [], ordersDone: 0, harvests: 0, firsts: [], nextOrderAt: 0,
   };
@@ -64,11 +128,15 @@ export function createFarm(now = 0, seed = 7) {
 }
 
 export function loadFarm(data, now = 0) {
-  if (!data || data.v !== 2 || !Array.isArray(data.pods) || data.pods.length !== MAX_PODS) return createFarm(now, (now | 0) || 7);
+  if (data && data.v === 2) data = { ...data, v: 3, active: "jezero", stations: {}, climate: { heat: 20, co2: 400 } };   // older saves become the Jezero station
+  if (!data || data.v !== 3 || !Array.isArray(data.pods) || data.pods.length !== MAX_PODS) return createFarm(now, (now | 0) || 7);
   const f = { ...createFarm(now), ...data };
   f.pods = data.pods.map((p) => ({ ...emptyPod(), ...p, crop: CROPS[p?.crop] ? p.crop : null }));
   f.up = { led: 0, tank: 0, solar: 0, ...data.up };
   f.store = { ...data.store };
+  f.climate = { heat: 20, co2: 400, ...data.climate };
+  f.stations = { ...data.stations };
+  if (!STATIONS[f.active]) f.active = "jezero";
   return f;
 }
 
@@ -76,7 +144,8 @@ export function tankSize(f) { return UPGRADES.tank.effect(f.up.tank); }
 export function growMul(f, now) { return UPGRADES.led.effect(f.up.led) * (now < f.sunlampUntil ? 2 : 1); }
 /** How many planters the solar array can light right now (dust and storms cut it). */
 export function poweredSlots(f) {
-  let n = UPGRADES.solar.effect(f.up.solar);
+  let n = Math.round(UPGRADES.solar.effect(f.up.solar) * station(f).solar);
+  n -= climateLoad(f, (f.last || 0) * 1000);
   n -= f.dust >= 0.9 ? 2 : f.dust >= 0.5 ? 1 : 0;      // dust costs a slot at 50 %, another at 90 %
   if (f.storm) n = Math.ceil(n / 2);
   return Math.max(1, n);
@@ -205,11 +274,11 @@ export function step(f, dt, now) {
   if (dt <= 0) return [];
   const ev = [];
   if (f.storm && now >= f.storm.until) { f.storm = null; ev.push({ type: "storm_end" }); }
-  f.reserve = Math.min(tankSize(f), f.reserve + RECOVER_PER_S * dt);
+  f.reserve = Math.min(tankSize(f), f.reserve + RECOVER_PER_S * station(f).water * dt);
   const dust0 = f.dust;
-  f.dust = clamp01(f.dust + DUST_PER_S * dt * (f.storm ? 4 : 1));
+  f.dust = clamp01(f.dust + DUST_PER_S * station(f).dust * dt * (f.storm ? 4 : 1));
   if (dust0 < 0.5 && f.dust >= 0.5) ev.push({ type: "dusty" });
-  const mul = growMul(f, now);
+  const mul = growMul(f, now) * climateFactor(f, now * 1000);
   f.pods.forEach((p, i) => {
     if (i >= f.owned || !p.crop || p.growth >= 1 || p.thirsty) return;
     const rate = (isPowered(f, i) ? 1 : 0.2) * mul / CROPS[p.crop].grow;
@@ -243,7 +312,9 @@ export function podStatus(f, i) {
 export function secondsLeft(f, i, now) {
   const p = f.pods[i];
   if (!p?.crop || p.growth >= 1) return 0;
-  return Math.ceil(((1 - p.growth) * CROPS[p.crop].grow) / growMul(f, now) / (isPowered(f, i) ? 1 : 0.2));
+  const cf = climateFactor(f, now * 1000);
+  if (cf <= 0) return Infinity;
+  return Math.ceil(((1 - p.growth) * CROPS[p.crop].grow) / (growMul(f, now) * cf) / (isPowered(f, i) ? 1 : 0.2));
 }
 
 // ---------------- Mars time ----------------
