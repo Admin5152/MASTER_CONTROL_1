@@ -566,7 +566,8 @@ function onState(v) {
   renderFindings($("findings"), $("findings-status"), v, (z) => director.run([{ cmd: "check_zone", zones: [z] }]));
   renderBodyPanels();
   if (stages.current === "vitals") renderVitals(v);
-  if (!ctx.skinChips) ctx.body3d?.setChips(ctx.body3d.style === "real" ? {} : Object.fromEntries(["heart", "lungs", "head"].map((z) => [z, chipText(z, v)]).filter(([, c]) => c)));
+  // chips: in an organ view only that organ's chip; otherwise heart, lungs and sleep (Sentinel Skin sets its own)
+  if (!ctx.skinChips) ctx.body3d?.setChips(ctx.organZone ? Object.fromEntries([[ctx.organZone, chipText(ctx.organZone, v)]].filter(([, c]) => c)) : Object.fromEntries(["heart", "lungs", "head"].map((z) => [z, chipText(z, v)]).filter(([, c]) => c)));
   space.setProfile(s.radiation.mission_profile);
   const sev = s.action?.severity || "none";
   orb.setSeverity(["flag_cabin", "flag_radiation", "flag_ground"].includes(s.action?.type) ? "alert" : sev === "watch" ? "watch" : "none");

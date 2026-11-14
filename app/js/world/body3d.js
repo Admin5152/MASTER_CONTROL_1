@@ -28,7 +28,7 @@ const COL = {
   intestines: "#ffb877", pancreas_spleen: "#d9826a", kidneys: "#d65a4c", arteries: "#ff2a40", veins: "#2f63ff",
 };
 const REAL = {
-  heart: "#9a1824", lungs: "#7fa9e6", airway: "#cf9393", brain: "#d6a7ad", eyes: "#e9eef2", liver: "#6f2119", stomach: "#d88a7c",
+  heart: "#861822", lungs: "#7fa9e6", airway: "#cf9393", brain: "#d6a7ad", eyes: "#e9eef2", liver: "#6f2119", stomach: "#d88a7c",
   intestines: "#e3a58c", pancreas_spleen: "#b26464", kidneys: "#8c302b", arteries: "#c4212f", veins: "#2b52c4", bone: "#e8dec6",
 };
 const NAMED = { front: 0, left: -Math.PI / 2, right: Math.PI / 2, back: Math.PI };
@@ -198,8 +198,21 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     nodes[n] = { mesh: m, xm: m.material, u: m.material.uniforms, t: { c: new THREE.Color(), p: 1.4, b: 0.1, k: 0.45, vis: 1, add: bone } };
     // "realistic" look for organ views (brief section 10 item 3): lit PBR with a soft sheen for a tissue rim
     const rc = REAL[n] || (bone ? REAL.bone : "#c98a80");
-    nodes[n].rm = new THREE.MeshPhysicalMaterial({ color: rc, roughness: bone ? 0.62 : 0.42, metalness: 0, sheen: bone ? 0.1 : 0.6,
-      sheenColor: new THREE.Color(rc).lerp(new THREE.Color(1, 1, 1), 0.35), sheenRoughness: 0.5, clearcoat: bone ? 0.05 : 0.3, clearcoatRoughness: 0.45 });
+    const rm = new THREE.MeshPhysicalMaterial({ color: rc, roughness: bone ? 0.62 : 0.46, metalness: 0, sheen: bone ? 0.1 : 0.55,
+      sheenColor: new THREE.Color(rc).lerp(new THREE.Color(1, 1, 1), 0.35), sheenRoughness: 0.5, clearcoat: bone ? 0.05 : 0.35, clearcoatRoughness: 0.4 });
+    // tissue depth: a soft fresnel rim (light scattering at grazing angles), and on the heart the great
+    // vessels (the top of the organ) in a lighter vessel colour, as in ref 13
+    rm.userData.u = { uRim: { value: new THREE.Color(rc).lerp(new THREE.Color(1, 0.85, 0.85), 0.55).multiplyScalar(bone ? 0.15 : 0.45) },
+      uTopY: { value: 0 }, uSpan: { value: 1 }, uVessel: { value: new THREE.Color("#c4636a") }, uVesselAmt: { value: n === "heart" ? 1 : 0 } };
+    rm.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, rm.userData.u);
+      sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying float vWY2;")
+        .replace("#include <worldpos_vertex>", "#include <worldpos_vertex>\nvWY2 = (modelMatrix * vec4(transformed, 1.0)).y;");
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying float vWY2; uniform vec3 uRim; uniform float uTopY; uniform float uSpan; uniform vec3 uVessel; uniform float uVesselAmt;")
+        .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb = mix(diffuseColor.rgb, uVessel, uVesselAmt * smoothstep(uTopY - uSpan * 0.42, uTopY - uSpan * 0.12, vWY2));")
+        .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  float rimF = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 2.6);\n  totalEmissiveRadiance += uRim * rimF;");
+    };
+    nodes[n].rm = rm;
   }
 
   // ---- measurement rings (ref 04), placed from slices of the loaded body ----
@@ -234,7 +247,10 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
   function applyModel(m) {
     clay.geometry = skin.geometry = radShell.geometry = m.geom;
     wire.geometry = m.wire;
-    for (const n of NODES) { nodes[n].mesh.geometry = m.parts[n] || new THREE.BufferGeometry(); nodes[n].mesh.visible = !!m.parts[n]; }
+    for (const n of NODES) {
+      nodes[n].mesh.geometry = m.parts[n] || new THREE.BufferGeometry(); nodes[n].mesh.visible = !!m.parts[n];
+      if (m.parts[n]) { m.parts[n].computeBoundingBox(); const bb = m.parts[n].boundingBox; nodes[n].rm.userData.u.uTopY.value = bb.max.y; nodes[n].rm.userData.u.uSpan.value = bb.max.y - bb.min.y; }
+    }
     m.geom.computeBoundingBox();
     const bb = m.geom.boundingBox, h = bb.max.y - bb.min.y;
     const P = (n, keep) => (m.parts[n] ? stats(m.parts[n], keep) : { box: new THREE.Box3(new THREE.Vector3(0, h * 0.5, 0), new THREE.Vector3(0, h * 0.5, 0)), c: new THREE.Vector3(0, h * 0.5, 0.05), n: 0 });
@@ -300,7 +316,9 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
   let homeDist = 4.4;
   // the body is framed in the free area between the panels (#body-host), inside the full-screen world
   let hostR = { left: 0, top: 0, width: 1, height: 1 };
+  let frameRect = null;   // an override: the free 3D area when a sheet covers part of the host (organ view)
   function readHost() {
+    if (frameRect) { hostR = frameRect; return; }
     const r = host.getBoundingClientRect();
     if (r.width > 10 && r.height > 10) hostR = r;
   }
@@ -378,8 +396,16 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
       const p = project(z);
       const el = hot[z];
       el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px)`;
-      const vis = U.uFade.value > 0.5 && facing(z) && p.x > -20 && p.x < W + 20 && p.y > -20 && p.y < H + 20;
+      // only inside the visible 3D area: never under the rail, a sheet or the screen edge
+      const m = 10, L = hostR.left + m, R = hostR.left + hostR.width - m, T = hostR.top + m, B = hostR.top + hostR.height - m;
+      const vis = U.uFade.value > 0.5 && facing(z) && p.x > L && p.x < R && p.y > T && p.y < B;
       el.classList.toggle("is-hidden", !vis);
+      // the chip goes on the side with room (about 150 px); prefer the outer side of the body
+      if (el.classList.contains("has-chip")) {
+        const outerLeft = (anchors[z]?.[0] ?? 0) < -0.02;
+        const roomL = p.x - L, roomR = R - p.x;
+        el.classList.toggle("chip-left", roomR < 150 ? true : roomL < 150 ? false : outerLeft);
+      }
     }
   }
 
@@ -408,6 +434,8 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     const radio = style === "radiograph";
     skinMat.uniforms.c.value.set(radio ? "#9fb9d6" : "#4f9dff");
     skinMat.uniforms.vis.value = real ? 0.35 : 1;
+    // a softer key and a warmer fill for the lit organ views; the studio set-up otherwise
+    key.intensity = real ? 1.05 : 1.7; fill.intensity = real ? 0.95 : 0.5; rimL.intensity = real ? 1.6 : 2.4;
   }
   retarget();
 
@@ -496,9 +524,11 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
         c.hidden = !v;
         if (v) c.innerHTML = `${v.text}<em>${v.badge}</em>`;
         hot[z].classList.toggle("has-chip", !!v);
-        hot[z].classList.toggle("chip-left", (anchors[z]?.[0] ?? 0) < -0.02);   // chips sit on the outer side of their dot
+        // side is chosen every frame in updateHotspots (outer side of the body, or wherever there is room)
       }
     },
+    /** Frame inside this screen rect {left, top, width, height} (px) instead of the host; null restores. */
+    setFrameRect(rect) { frameRect = rect && rect.width > 40 && rect.height > 40 ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : null; readHost(); frameOffset(); if (!rect) controls.minDistance = 0.45; },
     zoomBy(f, seconds = 0.5) { readCam(); return moveCam({ az: cam.az, dist: Math.min(controls.maxDistance, Math.max(controls.minDistance, cam.dist * f)), y: cam.ty, x: cam.tx, z: cam.tz, el: cam.el }, seconds); },
     showRadiation(on) { radOn = !!on; radShell.visible = radOn; if (!on) radMat.uniforms.uAmt.value = 0; },
     get radiationOn() { return radOn; },
@@ -533,8 +563,15 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
       for (const n of names) { const g = current.parts[n]; if (g) { g.computeBoundingBox(); box.union(g.boundingBox); } }
       const c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
       const real = style === "real";
-      const dist = Math.max(distFor(Math.max(s.y * (real ? 2.6 : 1.25), M.height * (real ? 0.2 : 0.12)), Math.max(s.x * (real ? 2.4 : 1.3), 0.2)), controls.minDistance);
-      await Promise.all([api.setXray(true, reduced() ? 0 : 0.8), moveCam({ az: 0, dist: Math.min(dist, homeDist), y: c.y, x: c.x * 0.5, z: 0, el: 0.04 }, reduced() ? 0 : seconds)]);
+      let dist, tx = c.x * 0.5, tz = 0;
+      if (real) {
+        // organ view: fit the bounding sphere in the free area with about 15% margin, centred on the organ
+        const r = s.length() / 2;
+        dist = distFor(2 * r * 1.3, 2 * r * 1.3) + r * 0.5;
+        tx = c.x; tz = c.z;
+        controls.minDistance = Math.min(0.45, dist * 0.5);
+      } else dist = Math.max(distFor(Math.max(s.y * 1.25, M.height * 0.12), Math.max(s.x * 1.3, 0.2)), controls.minDistance);
+      await Promise.all([api.setXray(true, reduced() ? 0 : 0.8), moveCam({ az: 0, dist: Math.min(dist, homeDist), y: c.y, x: tx, z: tz, el: 0.04 }, reduced() ? 0 : seconds)]);
     },
     /** Start a mesh scan from `top` (metres). The band then moves with sweepTo(). */
     beginScan(top) {

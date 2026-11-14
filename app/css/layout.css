@@ -210,3 +210,10 @@ body.is-pointing .zone .zchip { opacity: 0; }
   .statusline .brand { font-size: 0; letter-spacing: 0; }
   .statusline #sb-identity, .statusline .sb-cabin .badge { display: none; }
 }
+
+/* scrolling columns: no native scrollbar; a soft fade at the bottom says there is more (coordinator review) */
+.sys-panel, .stage-vitals, .sheet-body, .menu, .convo .transcript { scrollbar-width: none; }
+.sys-panel::-webkit-scrollbar, .stage-vitals::-webkit-scrollbar, .sheet-body::-webkit-scrollbar, .menu::-webkit-scrollbar, .convo .transcript::-webkit-scrollbar { display: none; }
+.sys-panel, .sheet-body { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); padding-bottom: 36px; }
+.stage-vitals { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); padding-bottom: 28px; }
+.sheet.is-full .sheet-body, .sheet.is-orb .sheet-body { -webkit-mask-image: none; mask-image: none; padding-bottom: 0; }

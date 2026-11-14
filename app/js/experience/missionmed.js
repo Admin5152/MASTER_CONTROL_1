@@ -244,6 +244,12 @@ function renderOrgan(el, ctx, zone = "heart") {
     for (let k = 0; k < 40 && !ctx.body3d; k++) await new Promise((r) => setTimeout(r, 150));
     const b = ctx.body3d;
     if (!b) return;
+    // the organ sits in the 3D area left of this sheet, never under it
+    await new Promise((r) => setTimeout(r, 80));
+    const host = document.getElementById("body-host").getBoundingClientRect();
+    const sheetLeft = document.getElementById("sheet").getBoundingClientRect().left;
+    b.setFrameRect({ left: host.left, top: host.top, width: Math.max(200, Math.min(host.right, sheetLeft - 16) - host.left), height: host.height });
+    ctx.organZone = zone;
     b.setStyle("real");
     await b.isolate(part);
   })();
@@ -252,6 +258,7 @@ function renderOrgan(el, ctx, zone = "heart") {
   return () => {
     clearInterval(t);
     const b = ctx.body3d;
-    if (b) { b.setStyle("radiograph"); b.focus(null); b.setStyle("radiograph"); b.setXray(false, 0.8); b.zoomReset(1.0); }
+    ctx.organZone = null;
+    if (b) { b.setFrameRect(null); b.setStyle("radiograph"); b.focus(null); b.setStyle("radiograph"); b.setXray(false, 0.8); b.zoomReset(1.0); }
   };
 }
