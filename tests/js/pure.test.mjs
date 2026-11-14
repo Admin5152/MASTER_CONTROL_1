@@ -139,7 +139,7 @@ test("intent matcher maps 24 phrases to the right commands", () => {
     ["log my health", [{ cmd: "open_screen", name: "health_log" }]],
     ["go back", [{ cmd: "close" }]],
     ["start orb calm", [{ cmd: "open_screen", name: "orb_calm" }]],
-    ["show me the hardware", [{ cmd: "open_screen", name: "hardware" }]],
+    ["show me the hardware", [{ cmd: "wearable", action: "open" }]], ["open the hardware screen", [{ cmd: "open_screen", name: "hardware" }]],
     ["let me see you", [{ cmd: "open_screen", name: "vision" }, { cmd: "start_scan" }]],
     ["start the cognitive check", [{ cmd: "open_screen", name: "cognitive" }]],
     ["play aurora run", [{ cmd: "open_screen", name: "race" }]],
@@ -489,4 +489,20 @@ test("anatomy fit: a trunk wider than the body is scaled into it; organs stay in
   assert.ok(report.ribcage.fitted > 0 && report.heart.fitted > 0, "the heart moves with the ribs");
   const h = parts.heart.pos;
   for (let i = 0; i < h.length; i += 3) assert.ok(Math.abs(h[i]) < maxX && h[i + 2] < maxZ, "heart still inside the ribs");
+});
+
+test("SpaceWear by voice: open, pick a device, explode, zoom, turn; the body keeps its own words", async () => {
+  const { matchIntent } = await import("../../app/js/core/intents.js");
+  const c = (t, open = false) => matchIntent(t, { wearOpen: open })?.commands?.[0];
+  assert.deepEqual(c("show the hardware module"), { cmd: "wearable", action: "open" });
+  assert.deepEqual(c("show me the watch"), { cmd: "wearable", action: "open", part: "wrist" });
+  assert.deepEqual(c("explode it", true), { cmd: "wearable", action: "explode" });
+  assert.deepEqual(c("put it back together", true), { cmd: "wearable", action: "assemble" });
+  assert.deepEqual(c("zoom in", true), { cmd: "wearable", action: "zoom_in" });
+  assert.deepEqual(c("turn it around", true), { cmd: "wearable", action: "turn", direction: "back" });
+  assert.deepEqual(c("zoom in on my heart", true), { cmd: "zoom_body", zone: "heart" });
+  assert.deepEqual(c("rotate the body to the back", true), { cmd: "rotate_body", view: "back" });
+  assert.deepEqual(c("show vitals", true), { cmd: "open_screen", name: "vitals" });
+  assert.equal(c("what does the watch measure"), undefined);
+  assert.equal(c("explode it"), undefined);   // nothing open, nothing named
 });

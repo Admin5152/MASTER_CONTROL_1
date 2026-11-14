@@ -35,13 +35,18 @@ export const SCREEN_WORDS = {
   health_log: ["health log", "manual log", "log my health", "log health", "health form"],
   trends: ["trends", "charts", "trend"],
   cognitive: ["cognitive check", "cognitive test", "reaction test", "reaction game", "cognitive"],
-  orb_calm: ["orb calm", "breathing exercise", "calm session"],
+  orb_calm: ["stillpoint", "still point", "orb calm", "breathing exercise", "breathing session", "calm session"],
   race: ["slipstream", "slip stream", "space race", "racing game", "race", "racer", "the game", "a game", "aurora run", "aurora"],
   grounding: ["grounding", "ground me", "5 4 3 2 1", "five four three", "panic", "anxious", "anxiety"],
   greenhouse: ["red harvest", "the farm", "mars farm", "greenhouse", "my plant", "the plant"],
-  hardware: ["hardware", "wearable", "the device", "sentinel skin", "the suit"],
+  hardware: ["hardware screen", "hardware status", "sensor status"],
   crew: ["crew list", "crew", "who is on board", "enrol", "enroll"],
   vision: ["camera", "vision", "face scan"],
+  vitals: ["vitals", "vital signs", "my vitals", "the vitals", "vital"],
+  wellbeing: ["wellbeing", "well being", "wellness", "the games", "games"],
+  settings: ["settings", "preferences"],
+  about: ["credits", "sources", "about sentinel"],
+  interventions: ["what helps me", "what helps"],
   mission: ["mission", "dashboard", "earth"],
   body: ["body model", "my body", "body screen", "the body"],
   cabin: ["cabin screen", "cabin air screen"],
@@ -94,9 +99,39 @@ export function crewFromSpeech(text, crew, { bare = false } = {}) {
   return null;
 }
 
-export function matchIntent(text) {
+// SpaceWear: the 3D hardware prototypes (chest hub, watch, patch) in the drawer beside the body
+const WEAR_WORDS = / (hardware|wearables?|spacewear|space wear|prototypes?|the devices?|devices|sentinel skin|the suit|chest (hub|module|unit|strap|harness)|harness|watch|wrist (module|unit|band)|smart ?watch|patch( sensor)?|sensor patch) /;
+const WEAR_PART = (t) => (/ (chest|harness|hub) /.test(t) ? "chest" : / (watch|wrist) /.test(t) ? "wrist" : / patch /.test(t) ? "patch" : null);
+/** A SpaceWear command, or null. `open` says the drawer is already showing, so bare verbs ("explode it") apply to it. */
+export function wearIntent(text, { open = false } = {}) {
+  const t = norm(text);
+  if (/ (hardware|sensor) (screen|status|list|page) /.test(t)) return null;   // the hardware status screen, not the 3D models
+  const named = WEAR_WORDS.test(t);
+  if (!named && !open) return null;
+  if (!named && / (body|me|my|skeleton|organs) /.test(t)) return null;   // "turn the body", "zoom in on my heart": the body, not the device
+  const part = WEAR_PART(t);
+  const c = { cmd: "wearable", action: "open" };
+  if (part) c.part = part;
+  if (/ (explode|exploded|blow (it )?apart|take (it )?apart|break (it )?(apart|down|open)|pull (it )?apart|open (it )?up|separate|show (me )?(the )?(inside|insides|internals|parts|layers|components)|tear ?down) /.test(t)) c.action = "explode";
+  else if (/ (assemble|put (it )?(back )?together|put it back|collapse|reassemble|close (it )?up|unexplode) /.test(t)) c.action = "assemble";
+  else if (/ (zoom (in|closer)|closer|bigger|enlarge|magnify|get close) /.test(t)) c.action = "zoom_in";
+  else if (/ (zoom (out|back)|further|smaller|back up|whole thing) /.test(t)) c.action = "zoom_out";
+  else if (/ (turn|rotate|spin|flip|twist|show (me )?(the )?(back|side|other side)) /.test(t)) {
+    c.action = "turn";
+    c.direction = / (back|around|over|flip|other side) /.test(t) ? "back" : / left /.test(t) ? "left" : / right /.test(t) ? "right" : / (front|face) /.test(t) ? "front" : "right";
+  } else if (/ (reset|normal view|default view|start over) /.test(t)) c.action = "reset";
+  else if (/ (close|hide|put away|dismiss|done with) /.test(t) && named) c.action = "close";
+  else if (!named && !part) return null;      // drawer open, but nothing here is about it
+  if (c.action === "open" && /^ (what|how|why|does|do|is|are|can|tell me|explain) /.test(t)) return null;   // a question about it: the brain answers (and can open it)
+  return { intent: `wear_${c.action}`, action: "control_wearable", target: c.part || "wearable", commands: [c] };
+}
+
+export function matchIntent(text, ctx = {}) {
   const t = norm(text);
   if (t.trim() === "") return null;
+
+  const wear = wearIntent(text, { open: !!ctx.wearOpen });
+  if (wear) return wear;
 
   // stop / back
   if (/^ (stop|cancel|be quiet|quiet|shush|stop talking) $/.test(t) || has(t, "stop talking")) return { intent: "stop", action: "stop", local: "stop", commands: [] };
@@ -122,7 +157,7 @@ export function matchIntent(text) {
   // body: turn / rotate
   const deg = t.match(/ (rotate|turn) (?:it |me |the body )?(?:by )?(-?\d{1,3}) degrees? /);
   if (deg) return { intent: "rotate", action: "control_body", target: deg[2], commands: [{ cmd: "rotate_body", angle: Number(deg[2]) }] };
-  if (/ (turn around|spin around|show (me )?my back|from (the )?back|back view|rear view) /.test(t)) return { intent: "rotate", action: "control_body", target: "back", commands: [{ cmd: "rotate_body", view: "back" }] };
+  if (/ (turn around|spin around|show (me )?my back|from (the )?back|back view|rear view|(turn|rotate) (me |the body |it )?(to )?(the )?back) /.test(t)) return { intent: "rotate", action: "control_body", target: "back", commands: [{ cmd: "rotate_body", view: "back" }] };
   if (/ (turn|rotate) (me |the body |it )?(to the )?left /.test(t) || has(t, "left side") || has(t, "left view")) return { intent: "rotate", action: "control_body", target: "left", commands: [{ cmd: "rotate_body", view: "left" }] };
   if (/ (turn|rotate) (me |the body |it )?(to the )?right /.test(t) || has(t, "right side") || has(t, "right view")) return { intent: "rotate", action: "control_body", target: "right", commands: [{ cmd: "rotate_body", view: "right" }] };
   if (/ (face me|front view|from the front|turn (me |the body |it )?(to the )?front) /.test(t)) return { intent: "rotate", action: "control_body", target: "front", commands: [{ cmd: "rotate_body", view: "front" }] };

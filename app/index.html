@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#05070d">
-  <title>Sentinel</title>
-  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <title>COSMOcare · Sentinel</title>
+  <link rel="icon" href="assets/brand/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/brand/icon-192.png">
   <link rel="preload" href="assets/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/michroma-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/tokens.css">
@@ -25,6 +26,7 @@
 
   <!-- intro: plays on load; a tap skips it; Begin unlocks audio, camera and microphone -->
   <section id="start-screen" class="intro" aria-label="Sentinel">
+    <div class="intro-logo" aria-label="COSMOcare"><img class="logo-dark" src="assets/brand/cosmocare-light.png" alt="COSMOcare"><img class="logo-light" src="assets/brand/cosmocare.png" alt=""></div>
     <div class="intro-copy">
       <h1 id="intro-hello" class="intro-hello">Hello. I'm Sentinel.</h1>
       <button id="start-btn" class="pill pill-light pill-xl" type="button">Begin</button>
@@ -35,7 +37,7 @@
   <div id="app" class="app" hidden>
     <!-- the quiet status line -->
     <header id="statusbar" class="statusline">
-      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>Sentinel</span>
+      <span class="brand" aria-label="COSMOcare Sentinel"><img class="brand-logo logo-dark" src="assets/brand/mark-light.png" alt=""><img class="brand-logo logo-light" src="assets/brand/mark.png" alt=""><img class="brand-word logo-dark" src="assets/brand/word-light.png" alt="COSMOcare"><img class="brand-word logo-light" src="assets/brand/word.png" alt=""><span class="brand-sub">Sentinel</span></span>
       <span class="sl-item"><button id="sb-crew-name" class="sl-crew" type="button" aria-label="Choose crew member">—</button><span id="sb-identity" class="badge badge-sim">manual</span></span>
       <span class="sl-item"><span id="sb-clock" class="num">Day —</span></span>
       <nav class="topnav" id="topnav" aria-label="Main">

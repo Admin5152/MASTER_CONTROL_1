@@ -606,7 +606,7 @@ async function handleCommand(text, meta = {}) {
   }
   // conversation: after Sentinel answers a spoken request, the next thing said needs no wake phrase
   const followUp = () => { if (meta.via === "voice" && settings.get("listen") !== "ptt") voiceMod.expectReply(9000); };
-  const m = matchIntent(text);
+  const m = matchIntent(text, { wearOpen: !!document.querySelector("#wearable-host.is-open") && stages.current === "body" });
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
     if (m.local === "cabin") {
@@ -616,6 +616,22 @@ async function handleCommand(text, meta = {}) {
       return;
     }
     if (m.intent === "vision") say("Let me see you.", { source: "local" });
+    else if (m.commands?.[0]?.cmd === "wearable") {
+      const w = m.commands[0], P = { chest: "the chest hub", wrist: "the watch", patch: "the patch" };
+      const line = { open: `Here's ${P[w.part] || "the SpaceWear hardware"}.`, explode: "Exploded view.", assemble: "Back together.", zoom_in: "Closer.",
+        zoom_out: "Zooming out.", turn: w.direction === "back" ? "Turning it around." : `Turning it ${w.direction || "right"}.`, reset: "Reset.", close: "Hardware closed." }[w.action];
+      if (line) say(line, { source: "local" });
+    }
+    else if (m.commands?.[0]?.cmd === "open_screen") {
+      // a short spoken confirmation, so a voice command never happens in silence (cached after the first time)
+      const NAMES = { vitals: "your vitals", mission: "the mission", body: "your body", radiation: "radiation watch", wellbeing: "wellbeing",
+        orb_calm: "Stillpoint", race: "Slipstream", greenhouse: "Red Harvest", grounding: "grounding", settings: "settings", about: "the credits",
+        trends: "your trends", health_log: "the health log", cognitive: "the reaction test", symptom: "the symptom map", crew: "the crew",
+        hardware: "the hardware", vision: "the camera", cabin: "the cabin", interventions: "what helps you", exam: "the health exam",
+        measures: "weekly measures", ground: "messages to ground" };
+      const n = m.commands[0].name;
+      if (NAMES[n]) say(`${["race", "greenhouse", "orb_calm", "grounding", "cognitive", "exam"].includes(n) ? "Starting" : "Opening"} ${NAMES[n]}.`, { source: "local" });
+    }
     director.run(m.commands);
     followUp();
     return;

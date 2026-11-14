@@ -1,6 +1,7 @@
 // A clearly simulated 3D concept model of Sentinel Skin, shown beside the reference body.
 // This is illustrative geometry only: it is not connected hardware or a sensor reading.
 import * as THREE from "three";
+import { on } from "../core/bus.js";
 
 function roundedPanel(width, height, radius, depth, material) {
   const x = -width / 2, y = -height / 2;
@@ -31,9 +32,9 @@ function shieldPanel(width, height, depth, material) {
 function wovenTexture(repeatX, repeatY) {
   const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128;
   const g = canvas.getContext("2d");
-  g.fillStyle = "#181d25"; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = "#7d8a99"; g.fillRect(0, 0, 128, 128);
   for (let i = 0; i < 128; i += 4) {
-    g.fillStyle = i % 8 === 0 ? "rgba(220,230,245,.055)" : "rgba(0,0,0,.13)";
+    g.fillStyle = i % 8 === 0 ? "rgba(235,242,250,.16)" : "rgba(0,0,0,.22)";
     g.fillRect(i, 0, 1, 128); g.fillRect(0, i, 128, 1);
     g.fillStyle = "rgba(255,255,255,.025)"; g.fillRect(i + 1, 1, 1, 126);
   }
@@ -51,7 +52,7 @@ function makeWatch(parent) {
   figure.rotation.x = -0.08;
   figure.rotation.y = -0.22; // Start with the glass face and crown visible.
 
-  const strapMat = new THREE.MeshStandardMaterial({ color: 0x42647a, map: wovenTexture(1.5, 7), roughness: 0.82, metalness: 0.02 });
+  const strapMat = new THREE.MeshStandardMaterial({ color: 0x3a4d5e, map: wovenTexture(1.5, 7), roughness: 0.82, metalness: 0.02 });
   const edgeMat = new THREE.MeshStandardMaterial({ color: 0xb4c4cf, roughness: 0.24, metalness: 0.72 });
   const caseMat = new THREE.MeshStandardMaterial({ color: 0x263340, roughness: 0.25, metalness: 0.62 });
   const blackCeramic = new THREE.MeshStandardMaterial({ color: 0x080c11, roughness: 0.22, metalness: 0.28 });
@@ -70,7 +71,7 @@ function makeWatch(parent) {
   // Adjustment slots on the lower section of the band.
   const slotMat = new THREE.MeshBasicMaterial({ color: 0x05080b });
   for (const [y, z] of [[-0.43, 0.235], [-0.55, 0.19], [-0.67, 0.135], [-0.78, 0.075]]) {
-    const slot = new THREE.Mesh(roundedPanel(0.09, 0.042, 0.02, 0.008, slotMat));
+    const slot = new THREE.Mesh(roundedPanel(0.09, 0.042, 0.02, 0.008), slotMat);
     slot.position.set(0, y, z); figure.add(slot);
   }
 
@@ -90,22 +91,22 @@ function makeWatch(parent) {
   const glassMat = new THREE.MeshBasicMaterial({ map: display, transparent: true, toneMapped: false });
 
   // Rounded polished housing, fine bezel, and inset touchscreen glass.
-  const housing = new THREE.Mesh(roundedPanel(0.66, 0.8, 0.15, 0.15, caseMat));
+  const housing = new THREE.Mesh(roundedPanel(0.66, 0.8, 0.15, 0.15), caseMat);
   housing.position.set(0, 0.02, 0.28); figure.add(housing);
-  const rearPlate = new THREE.Mesh(roundedPanel(0.59, 0.72, 0.13, 0.012, blackCeramic));
+  const rearPlate = new THREE.Mesh(roundedPanel(0.59, 0.72, 0.13, 0.012), blackCeramic);
   rearPlate.rotation.y = Math.PI; rearPlate.position.set(0, 0.02, 0.265); figure.add(rearPlate);
-  const bezel = new THREE.Mesh(roundedPanel(0.6, 0.74, 0.125, 0.024, edgeMat));
+  const bezel = new THREE.Mesh(roundedPanel(0.6, 0.74, 0.125, 0.024), edgeMat);
   bezel.position.set(0, 0.02, 0.432); figure.add(bezel);
   const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.65), glassMat);
-  glass.position.set(0, 0.02, 0.46); figure.add(glass);
+  glass.position.set(0, 0.02, 0.474); figure.add(glass);
   const reflection = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.65), new THREE.MeshPhysicalMaterial({
     color: 0xb9e9ff, transparent: true, opacity: 0.055, roughness: 0.12, metalness: 0.18,
     clearcoat: 1, clearcoatRoughness: 0.08, depthWrite: false,
   }));
-  reflection.position.set(0, 0.02, 0.461); figure.add(reflection);
+  reflection.position.set(0, 0.02, 0.475); figure.add(reflection);
 
   for (const y of [-0.47, 0.47]) {
-    const lug = new THREE.Mesh(roundedPanel(0.35, 0.105, 0.045, 0.105, edgeMat));
+    const lug = new THREE.Mesh(roundedPanel(0.35, 0.105, 0.045, 0.105), edgeMat);
     lug.position.set(0, y, 0.30); figure.add(lug);
   }
 
@@ -137,30 +138,30 @@ function makeChestHub(parent) {
   const groove = new THREE.MeshBasicMaterial({ color: 0x080b12 });
   const stitch = new THREE.MeshStandardMaterial({ color: 0x7790a0, roughness: 0.9 });
   const violet = new THREE.MeshStandardMaterial({ color: 0x70e9e3, emissive: 0x0b9d9b, emissiveIntensity: 1.45, roughness: 0.22, metalness: 0.26 });
-  const strapL = new THREE.Mesh(roundedPanel(0.16, 0.78, 0.075, 0.055, fabric));
+  const strapL = new THREE.Mesh(roundedPanel(0.16, 0.78, 0.075, 0.055), fabric);
   strapL.rotation.z = -0.29; strapL.position.set(-0.22, 0.1, -0.08); unit.add(strapL);
   const strapR = strapL.clone(); strapR.rotation.z = 0.29; strapR.position.x = 0.22; unit.add(strapR);
-  const diagL = new THREE.Mesh(roundedPanel(0.125, 0.73, 0.055, 0.04, fabric));
+  const diagL = new THREE.Mesh(roundedPanel(0.125, 0.73, 0.055, 0.04), fabric);
   diagL.rotation.z = -0.72; diagL.position.set(-0.25, -0.12, 0.015); unit.add(diagL);
   const diagR = diagL.clone(); diagR.rotation.z = 0.72; diagR.position.x = 0.25; unit.add(diagR);
-  const cross = new THREE.Mesh(roundedPanel(0.72, 0.14, 0.065, 0.07, fabric));
+  const cross = new THREE.Mesh(roundedPanel(0.72, 0.14, 0.065, 0.07), fabric);
   cross.position.set(0, -0.23, -0.025); unit.add(cross);
   // Compact adjusters and short stitch marks make the webbing read as a sewn harness.
   for (const x of [-0.25, 0.25]) {
-    const buckle = new THREE.Mesh(roundedPanel(0.2, 0.095, 0.03, 0.045, trim));
+    const buckle = new THREE.Mesh(roundedPanel(0.2, 0.095, 0.03, 0.045), trim);
     buckle.position.set(x, 0.37, 0.01); unit.add(buckle);
-    const bar = new THREE.Mesh(roundedPanel(0.025, 0.07, 0.01, 0.012, shell));
+    const bar = new THREE.Mesh(roundedPanel(0.025, 0.07, 0.01, 0.012), shell);
     bar.position.set(x, 0.37, 0.062); unit.add(bar);
     for (const y of [-0.18, 0, 0.18, 0.52]) {
-      const seam = new THREE.Mesh(roundedPanel(0.012, 0.045, 0.005, 0.005, stitch));
+      const seam = new THREE.Mesh(roundedPanel(0.012, 0.045, 0.005, 0.005), stitch);
       seam.position.set(x + (x < 0 ? -0.045 : 0.045), y, 0.022); unit.add(seam);
     }
   }
-  const rim = new THREE.Mesh(shieldPanel(0.76, 0.72, 0.11, trim));
+  const rim = new THREE.Mesh(shieldPanel(0.76, 0.72, 0.11), trim);
   rim.position.z = 0.01; unit.add(rim);
-  const hub = new THREE.Mesh(shieldPanel(0.68, 0.65, 0.12, shell));
+  const hub = new THREE.Mesh(shieldPanel(0.68, 0.65, 0.12), shell);
   hub.position.set(0, 0.015, 0.12); unit.add(hub);
-  const inset = new THREE.Mesh(roundedPanel(0.45, 0.29, 0.09, 0.012, new THREE.MeshBasicMaterial({ color: 0x090c14 })));
+  const inset = new THREE.Mesh(roundedPanel(0.45, 0.29, 0.09, 0.012), new THREE.MeshBasicMaterial({ color: 0x090c14 }));
   inset.position.set(0, 0.095, 0.245); unit.add(inset);
   const labelCanvas = document.createElement("canvas"); labelCanvas.width = 384; labelCanvas.height = 96;
   const labelCtx = labelCanvas.getContext("2d");
@@ -169,13 +170,13 @@ function makeChestHub(parent) {
   const label = new THREE.Mesh(new THREE.PlaneGeometry(0.31, 0.075), new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true, toneMapped: false }));
   label.position.set(0, 0.17, 0.259); unit.add(label);
   for (const x of [-0.17, 0.17]) {
-    const light = new THREE.Mesh(roundedPanel(0.028, 0.15, 0.012, 0.012, violet));
+    const light = new THREE.Mesh(roundedPanel(0.028, 0.15, 0.012, 0.012), violet);
     light.position.set(x, -0.015, 0.26); unit.add(light);
   }
   const status = new THREE.Mesh(new THREE.SphereGeometry(0.026, 14, 10), violet);
   status.position.set(0, 0.23, 0.26); unit.add(status);
   for (const x of [-0.22, -0.11, 0, 0.11, 0.22]) {
-    const vent = new THREE.Mesh(roundedPanel(0.065, 0.009, 0.004, 0.004, groove));
+    const vent = new THREE.Mesh(roundedPanel(0.065, 0.009, 0.004, 0.004), groove);
     vent.position.set(x, -0.17, 0.26); unit.add(vent);
   }
   for (const x of [-0.28, 0.28]) for (const y of [-0.23, 0.27]) {
@@ -338,176 +339,193 @@ function paintDashboard(g, state, time, steps, calories, connected) {
   g.restore();
 }
 
+// What each device measures, and where the number on screen comes from.
+const DEVICES = {
+  chest: { name: "Chest hub", title: "SpaceWear chest hub", copy: "Harness-mounted biometric hub: ECG-grade heart rhythm, breathing from chest movement, skin temperature.",
+    rows: (s) => [["Heart rate", s.vitals?.heart_rate, "bpm", s.vitals?.sources?.heart_rate], ["Breathing", s.vitals?.breathing_rate, "/min", s.vitals?.sources?.breathing_rate], ["Skin temp", s.manual?.temp_c, "°C", s.manual?.temp_c != null ? "manual" : null]] },
+  wrist: { name: "Watch", title: "SpaceWear watch", copy: "The crew member's own display: optical pulse and SpO₂, activity, and Sentinel's alerts on the wrist.",
+    rows: (s) => [["SpO₂", s.vitals?.spo2, "%", s.vitals?.sources?.spo2], ["Heart rate", s.vitals?.heart_rate, "bpm", s.vitals?.sources?.heart_rate], ["Sleep", s.manual?.sleep_hours, "h", s.manual?.sleep_hours != null ? "manual" : null]] },
+  patch: { name: "Patch", title: "SpaceWear patch", copy: "Skin-contact sensor for sweat and hydration. A concept: no patch is connected in this build.",
+    rows: (s) => [["Hydration", s.manual?.hydration_ml, "ml", s.manual?.hydration_ml != null ? "manual" : null], ["Skin temp", s.manual?.temp_c, "°C", s.manual?.temp_c != null ? "manual" : null]] },
+};
+const fmt = (v) => (v == null || !Number.isFinite(Number(v)) ? "—" : Number(v) >= 100 ? String(Math.round(v)) : String(Math.round(Number(v) * 10) / 10));
+const srcBadge = (v, src) => (v == null ? `<span class="badge badge-designed">NO SENSOR</span>` : src === "manual" || src === "user" ? `<span class="badge badge-sim">MANUAL</span>` : src && src !== "sim" ? `<span class="badge badge-live">LIVE</span>` : `<span class="badge badge-sim">SIM</span>`);
+
 export function mountWearableFigure(host, body3d, world, ctx) {
   const panel = host.querySelector("#wearable-host");
   if (!panel) return () => {};
-  panel.innerHTML = `<header class="wearable-head"><div><span class="wearable-kicker">SPACEWEAR</span><small class="wearable-subhead">CREW HEALTH SYSTEMS</small></div><span class="badge badge-designed">CONCEPT</span></header>
-    <div class="wearable-viewer"><canvas aria-label="Three rotatable SpaceWear product models: chest module, health watch, and biometric patch"></canvas>
-      <button class="wearable-part-label chest-label" data-part="chest" type="button" aria-label="Open chest module details"><b>01</b><span>CHEST MODULE</span><small>Biometric hub / harness</small></button>
-      <button class="wearable-part-label wrist-label" data-part="wrist" type="button" aria-label="Open wrist module details"><b>02</b><span>WRIST MODULE</span><small>Health display / controls</small></button>
-      <button class="wearable-part-label patch-label" data-part="patch" type="button" aria-label="Open patch sensor details"><b>03</b><span>PATCH SENSOR</span><small>Contact / hydration node</small></button>
-      <div class="wearable-detail-head" hidden><button class="wearable-back" type="button" data-back>← All wearables</button><strong data-detail-title></strong><small data-detail-copy></small></div>
-      <span class="wearable-hint">Drag a module to inspect</span></div>
-    <div class="wearable-copy"><strong>SpaceWear monitoring suite</strong><small>Concept hardware · SIM values are identified on the watch display.</small></div>`;
+  panel.innerHTML = `<header class="wear-head"><div><span class="wear-kicker">SpaceWear</span><small>Crew health hardware</small></div>
+      <span class="badge badge-designed">Concept</span><button class="wear-x" type="button" data-wear-close aria-label="Close SpaceWear">×</button></header>
+    <div class="wear-tabs" role="tablist">${Object.entries(DEVICES).map(([id, d]) => `<button type="button" role="tab" data-part="${id}">${d.name}</button>`).join("")}</div>
+    <div class="wear-viewer"><canvas aria-label="SpaceWear device model: drag to turn"></canvas><span class="wear-hint">Drag to turn</span></div>
+    <div class="wear-info"><strong data-title></strong><p data-copy></p><ul class="wear-rows" data-rows></ul></div>`;
+  const toggle = document.createElement("button");
+  toggle.type = "button"; toggle.className = "pill pill-ghost wear-toggle"; toggle.id = "btn-wear"; toggle.setAttribute("aria-pressed", "false");
+  toggle.innerHTML = `<span class="wear-dot"></span>SpaceWear`;
+  host.querySelector(".body-tools")?.appendChild(toggle);
+
   const canvas = panel.querySelector("canvas");
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "low-power" });
   } catch (error) {
     console.warn("wearable model could not start", error);
-    panel.classList.add("wearable-unavailable");
+    toggle.remove();
     return () => {};
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.2;
   renderer.setClearColor(0x050912, 0);
   const scene = new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xb9d8ff, 0x10131d, 1.35));
-  const key = new THREE.DirectionalLight(0xfff5e8, 3.0); key.position.set(2.4, 3.0, 4.0); scene.add(key);
-  const fill = new THREE.DirectionalLight(0x91a9ca, 1.4); fill.position.set(-3, 1.0, 2.0); scene.add(fill);
-  const rim = new THREE.DirectionalLight(0x8956ff, 2.1); rim.position.set(-2.2, 2.0, -2.5); scene.add(rim);
+  scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x1a1f2c, 1.6));
+  const key = new THREE.DirectionalLight(0xfff5e8, 3.2); key.position.set(2.4, 3.0, 4.0); scene.add(key);
+  const fill = new THREE.DirectionalLight(0x9fb6d6, 1.5); fill.position.set(-3, 1.0, 2.0); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0x7fd8ff, 2.4); rim.position.set(-2.2, 2.0, -2.5); scene.add(rim);
   const sceneRoot = new THREE.Group(); scene.add(sceneRoot);
   const chest = makeChestHub(sceneRoot);
   const { figure: wrist, face, display } = makeWatch(sceneRoot);
   const patchSensor = makePatchSensor(sceneRoot);
   const parts = [
-    { id: "chest", object: chest, camera: new THREE.PerspectiveCamera(30, 1, 0.05, 30), top: 0, height: 0.34 },
-    { id: "wrist", object: wrist, camera: new THREE.PerspectiveCamera(30, 1, 0.05, 30), top: 0.34, height: 0.47 },
-    { id: "patch", object: patchSensor, camera: new THREE.PerspectiveCamera(30, 1, 0.05, 30), top: 0.81, height: 0.19 },
+    { id: "chest", object: chest, camera: new THREE.PerspectiveCamera(30, 1, 0.05, 30), base: chest.rotation.y },
+    { id: "wrist", object: wrist, camera: new THREE.PerspectiveCamera(30, 1, 0.05, 30), base: wrist.rotation.y },
+    { id: "patch", object: patchSensor, camera: new THREE.PerspectiveCamera(30, 1, 0.05, 30), base: patchSensor.rotation.y },
   ];
-  for (const part of parts) part.object.visible = false;
-  let drag = null, selectedPart = null;
-  const viewer = panel.querySelector(".wearable-viewer");
-  const detailHead = viewer.querySelector(".wearable-detail-head");
-  const hint = viewer.querySelector(".wearable-hint");
-  const partDetails = {
-    chest: ["SPACEWEAR CHEST MODULE", "Harness-mounted biometric hub · CONCEPT"],
-    wrist: ["SPACEWEAR WRIST MODULE", "Interactive health display · sensor sources labeled on screen"],
-    patch: ["SPACEWEAR PATCH SENSOR", "Skin-contact sensor concept · readings not connected"],
+  for (const part of parts) {
+    part.object.visible = false;
+    const box = new THREE.Box3();
+    part.object.children.forEach((ch) => box.expandByPoint(ch.position));
+    const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+    const spread = Math.max(size.x, size.y, 0.3);
+    part.pieces = part.object.children.map((ch) => {
+      const d = ch.position.clone().sub(c);
+      // apart in the plane, and much further apart in depth so the layers (glass, bezel, case, sensor) separate
+      const off = new THREE.Vector3(d.x * 0.3, d.y * 0.3, d.z * 5.5);
+      if (off.length() < spread * 0.08) off.z += (d.z >= 0 ? 1 : -1) * spread * 0.18;
+      return { obj: ch, base: ch.position.clone(), off };
+    });
+  }
+  let open = false, current = parts[1], drag = null, spinT = 0, idleAt = 0;
+  let explode = 0, explodeTo = 0, zoom = 1, zoomTo = 1, turnTo = null, tiltTo = 0;
+
+  const info = panel.querySelector(".wear-info");
+  const renderInfo = () => {
+    const d = DEVICES[current.id], st = ctx?.view?.state || {};
+    info.querySelector("[data-title]").textContent = d.title;
+    info.querySelector("[data-copy]").textContent = d.copy;
+    info.querySelector("[data-rows]").innerHTML = d.rows(st).map(([label, v, unit, src]) =>
+      `<li><span>${label}</span><b>${fmt(v)}<small>${v == null ? "" : unit}</small></b>${srcBadge(v, src)}</li>`).join("");
   };
-  const showPart = (id = null) => {
-    selectedPart = id;
-    panel.classList.toggle("is-device-detail", !!id);
-    viewer.querySelectorAll("[data-part]").forEach((b) => { b.hidden = !!id; });
-    detailHead.hidden = !id;
-    hint.textContent = id ? "Drag to rotate · click back to return" : "Click a device for details · drag to rotate";
-    if (id) {
-      detailHead.querySelector("[data-detail-title]").textContent = partDetails[id][0];
-      detailHead.querySelector("[data-detail-copy]").textContent = partDetails[id][1];
-    }
-    resize();
+  const select = (id) => {
+    current = parts.find((p) => p.id === id) || parts[1];
+    panel.querySelectorAll("[data-part]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.part === current.id)));
+    current.object.rotation.y = current.base; spinT = 0; turnTo = null;
+    for (const p of parts) for (const pc of p.pieces) pc.obj.position.copy(pc.base);
+    explode = explodeTo = 0; zoom = zoomTo = 1; tiltTo = 0;
+    renderInfo(); resize(); paint();
+    window.gsap?.fromTo(canvas, { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.45, ease: "power2.out" });
   };
-  viewer.querySelectorAll("[data-part]").forEach((b) => b.addEventListener("click", () => showPart(b.dataset.part)));
-  const backButton = viewer.querySelector("[data-back]");
-  const restoreAllWearables = (event) => {
-    event?.preventDefault();
-    event?.stopPropagation();
-    showPart(null);
-    // Repaint immediately so the full lineup returns even if the animation loop is paused.
-    renderParts();
+  panel.querySelectorAll("[data-part]").forEach((b) => b.addEventListener("click", () => select(b.dataset.part)));
+
+  const frameBody = () => {
+    const hostRect = host.getBoundingClientRect(), r = panel.getBoundingClientRect();
+    body3d.setFrameRect(open ? { left: hostRect.left, top: hostRect.top, width: Math.max(160, r.left - hostRect.left - 12), height: hostRect.height } : null);
+    const w = world.size; body3d.resize(w.W, w.H);
   };
-  backButton.addEventListener("pointerdown", restoreAllWearables);
-  backButton.addEventListener("click", (event) => {
-    // Pointer activation is handled on pointerdown; preserve keyboard activation too.
-    if (event.detail === 0) restoreAllWearables(event);
-  });
   const resize = () => {
+    if (!open) return;
     const r = canvas.getBoundingClientRect();
     if (r.width < 10 || r.height < 10) return;
     renderer.setSize(r.width, r.height, false);
-    for (const part of parts) fitPartCamera(part, r.width / Math.max(40, r.height * (selectedPart ? 1 : part.height)));
-    const w = world.size;
-    const hostRect = host.getBoundingClientRect();
-    const bodyRect = { left: hostRect.left, top: hostRect.top, width: Math.max(120, r.left - hostRect.left - 12), height: hostRect.height };
-    body3d.setFrameRect(bodyRect);
-    body3d.resize(w.W, w.H);
+    fitPartCamera(current, r.width / r.height);
+    frameBody();
   };
-  const ro = new ResizeObserver(resize); ro.observe(panel); resize();
+  const setOpen = (v) => {
+    open = !!v;
+    host.classList.toggle("is-wear-open", open);
+    panel.classList.toggle("is-open", open);
+    toggle.setAttribute("aria-pressed", String(open));
+    try { localStorage.setItem("sentinel:wear", open ? "1" : "0"); } catch { /* private mode */ }
+    if (open) { requestAnimationFrame(() => { resize(); renderInfo(); paint(); }); window.gsap?.fromTo(panel, { opacity: 0, x: 24 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }); }
+    else frameBody();
+  };
+  toggle.addEventListener("click", () => setOpen(!open));
+  panel.querySelector("[data-wear-close]").addEventListener("click", () => setOpen(false));
+
+  const ro = new ResizeObserver(resize); ro.observe(panel);
   const stopBodyDrag = (e) => e.stopPropagation();
   ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel"].forEach((name) => canvas.addEventListener(name, stopBodyDrag, { passive: name === "wheel" }));
-  canvas.addEventListener("pointerdown", (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const y = (e.clientY - rect.top) / rect.height;
-    const part = selectedPart ? parts.find((p) => p.id === selectedPart) : parts.find((p) => y >= p.top && y < p.top + p.height) || parts[1];
-    drag = { x: e.clientX, y: e.clientY, az: part.object.rotation.y, part, moved: false };
-    canvas.setPointerCapture(e.pointerId);
-  });
-  canvas.addEventListener("pointermove", (e) => {
-    if (!drag) return;
-    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 5) drag.moved = true;
-    if (!drag.moved) return;
-    drag.part.object.rotation.y = clamp(drag.az + (e.clientX - drag.x) * 0.008, -0.86, 0.86);
-  });
-  const finish = (e) => {
-    if (drag && !drag.moved && !selectedPart) showPart(drag.part.id);
-    drag = null;
-  };
+  canvas.addEventListener("pointerdown", (e) => { turnTo = null; drag = { x: e.clientX, az: current.object.rotation.y }; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener("pointermove", (e) => { if (drag) current.object.rotation.y = drag.az + (e.clientX - drag.x) * 0.01; });
+  const finish = () => { if (drag) { drag = null; idleAt = performance.now(); spinT = Math.asin(clamp((current.object.rotation.y - current.base) / 0.55, -1, 1)) / 0.5; } };
   canvas.addEventListener("pointerup", finish); canvas.addEventListener("pointercancel", finish);
 
   const startDay = new Date().setHours(0, 0, 0, 0);
-  let raf = 0, lastPaint = 0, activitySteps = 6482, activityCalories = 286;
-  // Paint once immediately; previously the first texture update waited for the animation loop.
-  try {
-    paintDashboard(face.getContext("2d"), ctx?.view?.state, 0, activitySteps, activityCalories, !!ctx?.view?.online);
-  } catch (error) {
-    console.warn("watch dashboard could not draw on startup", error);
-    const g = face.getContext("2d");
-    g.setTransform(2, 0, 0, 2, 0, 0); g.fillStyle = "#050a11"; g.fillRect(0, 0, 256, 320);
-    g.fillStyle = "#f5fbff"; g.font = "700 13px system-ui"; g.fillText("SENTINEL WATCH", 22, 42);
-    g.fillStyle = "#ffbd65"; g.font = "600 9px system-ui"; g.fillText("SIMULATED READINGS", 22, 62);
-  }
-  display.needsUpdate = true;
-  const renderParts = () => {
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width < 10 || rect.height < 10) return;
-    renderer.setScissorTest(true);
-    const visibleParts = selectedPart ? parts.filter((part) => part.id === selectedPart) : parts;
-    for (const part of visibleParts) {
-      const top = selectedPart ? 0 : part.top;
-      const sectionHeight = selectedPart ? 1 : part.height;
-      const yTop = rect.height * top;
-      const height = rect.height * sectionHeight;
-      const yBottom = rect.height - yTop - height;
-      renderer.setViewport(0, yBottom, rect.width, height);
-      renderer.setScissor(0, yBottom, rect.width, height);
-      renderer.clear(true, true, true);
-      for (const p of parts) p.object.visible = p === part;
-      renderer.render(scene, part.camera);
+  let raf = 0, lastPaint = 0, lastInfo = 0, last = performance.now(), activitySteps = 6482, activityCalories = 286;
+  const paintFace = (now) => {
+    try {
+      paintDashboard(face.getContext("2d"), ctx?.view?.state, now, activitySteps, activityCalories, !!ctx?.view?.online);
+    } catch (error) {
+      console.warn("watch dashboard could not draw", error);
+      const g = face.getContext("2d");
+      g.setTransform(2, 0, 0, 2, 0, 0); g.fillStyle = "#050a11"; g.fillRect(0, 0, 256, 320);
+      g.fillStyle = "#f5fbff"; g.font = "700 13px system-ui"; g.fillText("SENTINEL WATCH", 22, 42);
     }
-    renderer.setScissorTest(false);
-    for (const p of parts) p.object.visible = false;
+    display.needsUpdate = true;
   };
-  renderParts();
+  paintFace(0);
+  const paint = () => {
+    const rect = canvas.getBoundingClientRect();
+    if (!open || rect.width < 10 || rect.height < 10) return;
+    for (const p of parts) p.object.visible = p === current;
+    renderer.render(scene, current.camera);
+  };
   const draw = (now) => {
     raf = requestAnimationFrame(draw);
-    const active = document.body.dataset.stage === "body" && !document.hidden;
-    if (!active) return;
-    if (now - lastPaint > 120) {
-      // Activity values are an adapter seam: replace these fallbacks with API, socket, or sensor fields later.
-      const elapsedMinutes = Math.max(0, (Date.now() - startDay) / 60000);
-      const stepTarget = Math.min(12000, 6482 + Math.floor(elapsedMinutes * 2.1));
-      const calorieTarget = Math.min(900, 286 + Math.floor(elapsedMinutes * 0.28));
-      activitySteps += (stepTarget - activitySteps) * 0.2;
-      activityCalories += (calorieTarget - activityCalories) * 0.2;
-      try {
-        paintDashboard(face.getContext("2d"), ctx?.view?.state, now, activitySteps, activityCalories, !!ctx?.view?.online);
-      } catch (error) {
-        console.warn("watch dashboard could not draw", error);
-        const g = face.getContext("2d");
-        g.setTransform(2, 0, 0, 2, 0, 0); g.fillStyle = "#050a11"; g.fillRect(0, 0, 256, 320);
-        g.fillStyle = "#f5fbff"; g.font = "700 13px system-ui"; g.fillText("SENTINEL WATCH", 22, 42);
-        g.fillStyle = "#ffbd65"; g.font = "600 9px system-ui"; g.fillText("SIMULATED READINGS", 22, 62);
-      }
-      display.needsUpdate = true;
-      lastPaint = now;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (!open || document.body.dataset.stage !== "body" || document.hidden) return;
+    // a slow turntable sway, paused while dragged and for two seconds after
+    const k = 1 - Math.exp(-dt * 7);
+    explode += (explodeTo - explode) * k; zoom += (zoomTo - zoom) * k;
+    for (const pc of current.pieces) pc.obj.position.copy(pc.base).addScaledVector(pc.off, explode);
+    if (current.fit) current.camera.position.set(current.fit.c.x + 0.04, current.fit.c.y + 0.025, current.fit.c.z + current.fit.d * zoom);
+    if (current.tilt0 == null) current.tilt0 = current.object.rotation.x;
+    current.object.rotation.x += (current.tilt0 + tiltTo - current.object.rotation.x) * k;
+    if (turnTo != null && !drag) { current.object.rotation.y += (turnTo - current.object.rotation.y) * k; idleAt = now; }
+    if (!drag && turnTo == null && now - idleAt > 2000 && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      spinT += dt; current.object.rotation.y = current.base + Math.sin(spinT * 0.5) * 0.55;
     }
-    renderParts();
+    if (current.id === "wrist" && now - lastPaint > 120) {
+      const elapsedMinutes = Math.max(0, (Date.now() - startDay) / 60000);
+      activitySteps += (Math.min(12000, 6482 + Math.floor(elapsedMinutes * 2.1)) - activitySteps) * 0.2;
+      activityCalories += (Math.min(900, 286 + Math.floor(elapsedMinutes * 0.28)) - activityCalories) * 0.2;
+      paintFace(now); lastPaint = now;
+    }
+    if (now - lastInfo > 2000) { renderInfo(); lastInfo = now; }
+    paint();
   };
   raf = requestAnimationFrame(draw);
+  const offCmd = on("wear:cmd", (c) => {
+    if (c.action === "close") { setOpen(false); return; }
+    if (!open) setOpen(true);
+    if (c.part && c.part !== current.id) select(c.part);
+    const y = current.object.rotation.y;
+    switch (c.action) {
+      case "explode": explodeTo = 1; zoomTo = Math.max(zoomTo, 1.3); turnTo = current.base + 1.05; tiltTo = -0.32; break;
+      case "assemble": explodeTo = 0; zoomTo = 1; turnTo = current.base; tiltTo = 0; break;
+      case "zoom_in": zoomTo = Math.max(0.42, zoomTo * 0.7); break;
+      case "zoom_out": zoomTo = Math.min(2.2, zoomTo * 1.4); break;
+      case "turn": turnTo = c.direction === "back" ? y + Math.PI : c.direction === "front" ? current.base : c.direction === "left" ? y - Math.PI / 3 : y + Math.PI / 3; break;
+      case "reset": explodeTo = 0; zoomTo = 1; turnTo = current.base; tiltTo = 0; break;
+      default: break;
+    }
+  });
+  select("wrist");
+  let saved = null; try { saved = localStorage.getItem("sentinel:wear"); } catch { /* private mode */ }
+  setOpen(saved === "1");
   return () => {
-    cancelAnimationFrame(raf); ro.disconnect();
+    cancelAnimationFrame(raf); ro.disconnect(); toggle.remove(); offCmd?.();
     ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel"].forEach((name) => canvas.removeEventListener(name, stopBodyDrag));
     renderer.dispose();
     const textures = new Set();
@@ -520,7 +538,7 @@ export function mountWearableFigure(host, body3d, world, ctx) {
       });
     });
     textures.forEach((t) => t.dispose());
-    panel.innerHTML = "";
+    panel.innerHTML = ""; host.classList.remove("is-wear-open");
     body3d.setFrameRect(null);
   };
 }
@@ -536,6 +554,7 @@ function fitPartCamera(part, aspect) {
   const horizontal = 2 * Math.atan(Math.tan(vertical * 0.5) * aspect);
   const distance = radius / Math.sin(Math.min(vertical, horizontal) * 0.5) * 1.18;
   camera.position.set(center.x + 0.04, center.y + 0.025, center.z + distance);
+  part.fit = { c: center.clone(), d: distance };
   camera.lookAt(center);
   camera.updateProjectionMatrix();
 }

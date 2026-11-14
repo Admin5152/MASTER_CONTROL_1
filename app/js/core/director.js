@@ -68,6 +68,11 @@ export function createDirector(deps) {
       case "open_screen": return screens.open(c.name);
       case "show_chart": return screens.chart(c.metric);
       case "start_scan": return fullScan(token);
+      case "wearable": {
+        if (c.action !== "close") await toBody();
+        emit("wear:cmd", c);
+        return;
+      }
       case "check_zone": return checkZones(c.zones, token);
       case "show_radiation": {
         await toBody();

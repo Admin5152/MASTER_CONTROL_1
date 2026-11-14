@@ -94,6 +94,11 @@ Allowed commands (at most 3):
   {"cmd":"xray","on":true,"style":S}     S in radiograph, anatomy
   {"cmd":"isolate","part":P}             P in spine, skull, ribcage, pelvis, brain, heart, lungs, liver, stomach, intestines, kidneys, vessels, skeleton, organs
   {"cmd":"show_radiation","on":true}
+  {"cmd":"wearable","action":A,"part":P,"direction":D}   the SpaceWear hardware prototypes in 3D (the crew's chest hub,
+                                         watch and skin patch). A in open, close, explode (exploded view of its parts),
+                                         assemble, zoom_in, zoom_out, turn, reset; P in chest, wrist, patch (optional);
+                                         D in left, right, back, front (only with turn). Use it for "show the hardware",
+                                         "the watch", "explode it", "zoom in", "turn it around" while the hardware is shown.
   {"cmd":"set_theme","theme":T}          T in dark, light
   {"cmd":"switch_crew","name":NAME}      NAME is a crew display name from STATE.app.crew (when someone else takes over)
   {"cmd":"close"}                        close what is open and go back
@@ -144,6 +149,13 @@ def validate_commands(cmds: Any) -> list[dict]:
             out.append({"cmd": "show_radiation", "on": bool(c.get("on", True))})
         elif name == "close":
             out.append({"cmd": "close"})
+        elif name == "wearable" and c.get("action") in ("open", "close", "explode", "assemble", "zoom_in", "zoom_out", "turn", "reset"):
+            w = {"cmd": "wearable", "action": c["action"]}
+            if c.get("part") in ("chest", "wrist", "patch"):
+                w["part"] = c["part"]
+            if c.get("direction") in ("left", "right", "back", "front"):
+                w["direction"] = c["direction"]
+            out.append(w)
         elif name == "set_theme" and c.get("theme") in ("dark", "light"):
             out.append({"cmd": "set_theme", "theme": c["theme"]})
         elif name == "switch_crew" and isinstance(c.get("name"), str) and re.fullmatch(r"[A-Za-z][A-Za-z .'-]{0,23}", c["name"].strip()):

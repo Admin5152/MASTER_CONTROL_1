@@ -8,6 +8,8 @@ export const METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose",
   "reaction", "talk_time", "pitch", "o2", "co2"];
 export const VIEWS = ["front", "back", "left", "right"];
 export const MAX_COMMANDS = 3;
+export const WEAR_ACTIONS = ["open", "close", "explode", "assemble", "zoom_in", "zoom_out", "turn", "reset"];
+export const WEAR_PARTS = ["chest", "wrist", "patch"];
 export const XRAY_STYLES = ["radiograph", "anatomy"];
 /** Anatomy parts a person or the LLM can isolate: the 18 model nodes plus named groups. */
 export const PARTS = ["skull", "spine", "ribcage", "shoulders", "pelvis", "limbs", "brain", "eyes", "heart", "lungs", "airway",
@@ -26,6 +28,14 @@ export function validateCommands(cmds, max = MAX_COMMANDS) {
       case "start_scan": out.push({ cmd: "start_scan" }); break;
       case "show_radiation": out.push({ cmd: "show_radiation", on: c.on !== false }); break;
       case "close": out.push({ cmd: "close" }); break;
+      case "wearable": {
+        if (!WEAR_ACTIONS.includes(c.action)) break;
+        const w = { cmd: "wearable", action: c.action };
+        if (WEAR_PARTS.includes(c.part)) w.part = c.part;
+        if (["left", "right", "back", "front"].includes(c.direction)) w.direction = c.direction;
+        out.push(w);
+        break;
+      }
       case "rotate_body":
         if (VIEWS.includes(c.view)) out.push({ cmd: "rotate_body", view: c.view });
         else if (typeof c.angle === "number" && Number.isFinite(c.angle) && Math.abs(c.angle) <= 360) out.push({ cmd: "rotate_body", angle: c.angle });
