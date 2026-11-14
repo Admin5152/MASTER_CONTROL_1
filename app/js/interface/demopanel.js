@@ -21,6 +21,8 @@ export function createDemoPanel(ctx) {
       <div class="row">${scenarios.map(([k, l]) => `<button class="pill pill-ghost" type="button" data-scn="${k}">${esc(l)}</button>`).join("")}</div>
       <h3>EVA suit <span class="badge badge-sim">SIM</span></h3>
       <div class="row"><button class="pill pill-ghost" type="button" data-suit="eva">Start EVA</button><button class="pill pill-ghost" type="button" data-suit="leak" data-region="left_glove">Leak: left glove</button><button class="pill pill-ghost" type="button" data-suit="leak" data-region="helmet">Leak: helmet</button><button class="pill pill-ghost" type="button" data-suit="leak" data-region="right_leg" data-size="slow">Slow leak: right leg</button><button class="pill pill-ghost" type="button" data-suit="seal">Seal</button><button class="pill pill-ghost" type="button" data-suit="iva">End EVA</button></div>
+      <h3>Link to ground and mode <span class="badge badge-sim">SIM</span></h3>
+      <div class="row"><button class="pill pill-ghost" type="button" data-blackout="15">Comms blackout 15 min</button><button class="pill pill-ghost" type="button" data-blackout="0">Link back</button><button class="pill pill-ghost" type="button" data-mode="rest">Rest mode</button><button class="pill pill-ghost" type="button" data-mode="routine">Routine</button><button class="pill pill-ghost" type="button" data-mode="contingency">Contingency</button><button class="pill pill-ghost" type="button" data-send-digest>Send digest</button></div>
       <h3>Cabin oxygen <span class="num" data-o2v></span>%</h3>
       <input type="range" min="15" max="23" step="0.1" data-o2>
       <h3>Cabin CO2 <span class="num" data-co2v></span> ppm</h3>
@@ -53,6 +55,9 @@ export function createDemoPanel(ctx) {
     el.querySelector("[data-hrrelease]").addEventListener("click", () => { ctx.view.hrOverride = false; });
     el.querySelector("[data-close]").addEventListener("click", toggle);
     el.querySelector("[data-crew]").addEventListener("change", (e) => ctx.setCrew(e.target.value, "manual"));
+    el.querySelectorAll("[data-blackout]").forEach((b) => b.addEventListener("click", () => api.ops(ctx.view.crewId, { blackout_min: Number(b.dataset.blackout) }).catch(() => {})));
+    el.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => ctx.setMode?.(b.dataset.mode)));
+    el.querySelector("[data-send-digest]")?.addEventListener("click", () => ctx.sendDigest?.());
     el.querySelectorAll("[data-suit]").forEach((b) => b.addEventListener("click", () => ctx.suitCommand?.({ action: b.dataset.suit, region: b.dataset.region, size: b.dataset.size })));
     el.querySelectorAll("[data-scn]").forEach((b) => b.addEventListener("click", async () => {
       const name = b.dataset.scn;

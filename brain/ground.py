@@ -15,7 +15,7 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 ONE_WAY_MIN = 12.7          # SIM: a value inside NASA's 4-24 minute Earth-Mars range (shown as SIM)
-KINDS = ("exam", "flag", "note", "measures")
+KINDS = ("exam", "flag", "note", "measures", "digest", "crisis")
 
 
 class Ground:
@@ -39,7 +39,10 @@ class Ground:
 
     def status(self, p: dict, now: float | None = None) -> dict:
         now = self.clock() if now is None else now
-        el = now - p["sent"]
+        depart = p.get("depart", p["sent"])
+        if now < depart:   # held: no link (blackout); urgent items go first when it returns
+            return {**p, "status": "queued (no link)", "eta_s": depart - now + p["one_way_s"], "reply_earliest_s": depart - now + 2 * p["one_way_s"]}
+        el = now - depart
         if el < 2:
             st = "queued"
         elif el < p["one_way_s"]:
@@ -50,15 +53,29 @@ class Ground:
             st = "awaiting reply"
         return {**p, "status": st, "eta_s": max(0.0, p["one_way_s"] - el), "reply_earliest_s": max(0.0, 2 * p["one_way_s"] - el)}
 
-    def send(self, crew_id: str, kind: str, title: str, body: dict) -> dict:
+    def send(self, crew_id: str, kind: str, title: str, body: dict, priority: str = "ROUTINE", hold_until: float | None = None) -> dict:
         if kind not in KINDS:
             raise ValueError(f"kind must be one of {KINDS}")
         p = {"id": uuid.uuid4().hex[:10], "crew_id": crew_id, "kind": kind, "title": str(title)[:120], "body": body,
-             "sent": self.clock(), "one_way_s": self.one_way_s, "transport": "SIM"}
+             "sent": self.clock(), "one_way_s": self.one_way_s, "transport": "SIM", "priority": priority}
+        if hold_until:
+            # urgent first: a held URGENT packet leaves the moment the link returns, others a few seconds later
+            p["depart"] = hold_until + (0 if priority in ("URGENT", "ACT") else 5)
         with self.lock:
             self.packets.append(p)
             self._save()
         return self.status(p)
+
+    def release(self) -> int:
+        """The link is back: every held packet leaves now, urgent and act first, the rest a few seconds later."""
+        now, n = self.clock(), 0
+        with self.lock:
+            for p in self.packets:
+                if p.get("depart", 0) > now:
+                    p["depart"] = now + (0 if p.get("priority") in ("URGENT", "ACT") else 5); n += 1
+            if n:
+                self._save()
+        return n
 
     def list(self, crew_id: str | None = None) -> list[dict]:
         now = self.clock()

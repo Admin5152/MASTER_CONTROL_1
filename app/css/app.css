@@ -781,3 +781,14 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 .suit-alert .fine { margin: 6px 0 0; opacity: .7; font-size: 10.5px; }
 .suit-tag { position: fixed; z-index: 55; left: 0; top: 0; margin: -38px 0 0 14px; padding: 4px 10px; border-radius: 999px; background: #ff2b2b; color: #fff; font-size: 12px; font-weight: 600; pointer-events: none; white-space: nowrap; box-shadow: 0 0 18px rgba(255, 43, 43, .6); }
 #sb-suit:not([hidden]) { border-color: #ff9d3b; color: #ffcf9a; }
+
+/* ---------- the link to ground and the mode ---------- */
+.sb-comms { border: 1px solid var(--line-dim); color: var(--ink-2); }
+.sb-comms.is-live { color: #6fe3a4; border-color: rgba(111, 227, 164, .5); }
+.sb-comms.is-delayed { color: #ffcf7a; border-color: rgba(255, 207, 122, .5); }
+.sb-comms.is-blackout { color: #ff8080; border-color: rgba(255, 90, 90, .6); animation: sa-pulse 1.6s ease-in-out infinite; }
+.sb-mode { border: 1px solid rgba(160, 140, 255, .5); color: #c9bbff; }
+.ground-list .g-prio { margin-left: 6px; font-size: 10px; letter-spacing: .08em; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--line-dim); }
+.ground-list .g-prio.is-URGENT, .ground-list .g-prio.is-ACT { color: #ff8a8a; border-color: rgba(255, 90, 90, .6); }
+.ground-list pre.g-digest { white-space: pre-wrap; margin: 8px 0 0; font: 11.5px/1.5 ui-monospace, Menlo, Consolas, monospace; color: var(--ink-2); }
+.g-status.is-queued-\(no-link\) { color: #ff8a8a; }

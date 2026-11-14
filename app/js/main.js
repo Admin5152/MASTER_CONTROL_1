@@ -654,6 +654,17 @@ async function handleCommand(text, meta = {}) {
   const m = matchIntent(text, { wearOpen: stages.current === "vitals" });
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
+    if (m.local === "digest") { await sendDigest(); followUp(); return; }
+    if (m.local === "mode") { await setMode(m.mode); followUp(); return; }
+    if (m.local === "blackout") {
+      try { const o = await api.ops(view.crewId, { blackout_min: m.minutes }); if (view.aux) view.aux.ops = o; renderOps(o); } catch (e) { showNotice(e.message); }
+      say(m.minutes ? "Simulating a comms blackout for 15 minutes. I'll keep working on board, and anything for ground waits in the queue." : "The link to ground is back. Queued messages are on their way, urgent first.", { source: "local" });
+      followUp(); return;
+    }
+    if (m.local === "readiness") {
+      try { const r = await api.readiness(view.crewId); say(r.summary.replace(/;/g, ",") + ".", { source: "local" }); } catch (e) { showNotice(e.message); }
+      followUp(); return;
+    }
     if (m.local === "fullscreen") {
       const ok = await toggleFullscreen(m.on);
       say(ok ? (m.on ? "Full screen." : "Leaving full screen.") : "Tap the full-screen button at the top right; the browser needs a tap for that.", { source: "local" });
@@ -814,19 +825,50 @@ async function suitCommand(c) {
     const st = await api.suit(view.crewId, { action: c.action, region: c.region, text: c.text, size: c.size });
     if (view.aux) view.aux.suit = st;
     updateSuit(st);
-    if (c.action === "eva") say("EVA started. I'm watching your suit: pressure 4.3 psi, steady.", { source: "local" });
-    if (c.action === "iva") say("EVA ended. Suit stowed.", { source: "local" });
+    if (c.action === "eva") say(`EVA started. ${st.readiness ? st.readiness.summary.replace(/;/g, ",") + "." : ""} I'm watching your suit, and routine reminders are paused.`, { source: "local" });
+    if (c.action === "iva") say("Welcome back. Recovery check: drink some water, log anything that hurts or feels off, and I'll look at your pulse again in ten minutes. Reminders are back on.", { source: "local" });
     if (c.action === "seal") say("Leak sealed. Suit pressure is holding.", { source: "local" });
   } catch (e) { showNotice(`Suit link: ${e.message}`); }
 }
 
 ctx.suitCommand = suitCommand;
 
+// ---------- mission operations: mode, the link to ground, the digest ----------
+let lastComms = "";
+function renderOps(o) {
+  if (!o) return;
+  const el = $("sb-comms"), c = o.comms || {};
+  el.hidden = false;
+  el.className = `badge sb-comms is-${c.status}`;
+  el.textContent = c.status === "blackout" ? `No link · ${Math.ceil(c.minutes_left)} min` : c.status === "delayed" ? `Ground · ${c.one_way_min} min delay` : "Ground · live";
+  el.title = c.note || "Link to ground (SIM)";
+  if (lastComms && lastComms !== c.status) showNotice(c.status === "blackout" ? "Link to ground lost (SIM). Sentinel carries on; messages wait in the queue." : c.status === "live" || c.status === "delayed" ? "Link to ground restored (SIM). Queued messages are on their way." : "");
+  lastComms = c.status;
+  const md = $("sb-mode");
+  md.hidden = o.mode === "routine" || o.mode === "eva";
+  md.textContent = o.mode === "rest" ? "Rest · urgent only" : o.mode === "contingency" ? "Contingency" : o.mode;
+}
+async function setMode(mode) {
+  try { const o = await api.ops(view.crewId, { mode }); if (view.aux) view.aux.ops = o; renderOps(o); } catch (e) { showNotice(e.message); return; }
+  say(mode === "rest" ? "Rest mode. Routine reminders are off; only urgent and cabin alerts will reach you. Sleep well." : mode === "routine" ? "Good morning. Routine mode, reminders are back on." : "Contingency mode. Short steps only; tell me what's happening.", { source: "local" });
+}
+async function sendDigest(note = "") {
+  try {
+    const d = await api.digest(view.crewId, note);
+    const p = d.packet || {};
+    say(p.status === "queued (no link)"
+      ? `Digest ready, priority ${d.priority.toLowerCase()}. There's no link right now, so it's queued and goes out the moment the link returns.`
+      : `Digest sent to the flight surgeon, priority ${d.priority.toLowerCase()}. It arrives in about ${Math.max(1, Math.round((p.eta_s || 0) / 60))} minutes; a reply can't come back for at least ${Math.max(1, Math.round((p.reply_earliest_s || 0) / 60))}.`, { source: "local" });
+  } catch (e) { showNotice(`Digest: ${e.message}`); }
+}
+ctx.sendDigest = sendDigest; ctx.setMode = setMode;
+
 // ---------- every poll ----------
 function onState(v) {
   const s = v.state, aux = v.aux;
   if (!s) return;
   updateSuit(aux?.suit);
+  renderOps(aux?.ops);
   $("sb-crew-name").textContent = s.display_name;
   $("greet-hello").textContent = `Hello ${s.display_name}`;
   const id = $("sb-identity");
@@ -954,6 +996,7 @@ async function onCheckin(kind, entries = {}) {
 }
 let lastDay = null;
 async function routineTick() {
+  if (view.aux?.ops?.reminders_paused) return;   // EVA or rest: routine reminders wait (section 12.2)
   const c = view.aux?.clock;
   if (!c || !view.state) return;
   if (lastDay != null && c.mission_day > lastDay) {

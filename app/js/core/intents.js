@@ -166,6 +166,20 @@ export function matchIntent(text, ctx = {}) {
   const t = norm(text);
   if (t.trim() === "") return null;
 
+  // mission operations: the digest, rest, the link, EVA readiness (Product Document sections 12, 13, 21)
+  if (/ (send|queue|prepare|make) (a |the |my )?(digest|report|summary|update)( to| for)? (ground|the ground|the flight surgeon|the surgeon|mission control|houston|earth) / .test(t) || / (tell|update|message) (ground|the flight surgeon|mission control|houston) /.test(t)) {
+    return { intent: "digest", action: "escalate", target: "ground", local: "digest", commands: [] };
+  }
+  if (/ (rest mode|sleep mode|do not disturb|i m going to sleep|im going to sleep|i am going to sleep|going to bed|good night|goodnight|time for bed) /.test(t)) return { intent: "mode_rest", local: "mode", mode: "rest", commands: [] };
+  if (/^ (i m up|im up|i am up|good morning|routine mode|wake mode|end rest|end rest mode) $/.test(t)) return { intent: "mode_routine", local: "mode", mode: "routine", commands: [] };
+  if (/ (contingency mode|emergency mode) /.test(t)) return { intent: "mode_contingency", local: "mode", mode: "contingency", commands: [] };
+  if (/ (comms|link|communication|radio|signal) (blackout|outage|loss|down) / .test(t) || / (lose|lost|losing) (the )?(link|signal|comms) /.test(t)) {
+    const end = / (end|over|back|restore|restored|clear) /.test(t);
+    return { intent: "blackout", local: "blackout", minutes: end ? 0 : 15, commands: [] };
+  }
+  if (/ (link|comms|signal) is back /.test(t) || / (end|clear) (the )?blackout /.test(t)) return { intent: "blackout", local: "blackout", minutes: 0, commands: [] };
+  if (/ (ready for|readiness for|cleared for|good to go for) (the |an )?(eva|spacewalk) /.test(t) || has(t, "eva readiness")) return { intent: "readiness", local: "readiness", commands: [] };
+
   // suit integrity (SIM): "simulate a suit leak in the left glove", "seal the suit", "start an EVA", "end the EVA"
   const suitWord = / (suit|spacesuit|space suit|glove|helmet|visor|backpack|boot) /.test(t);
   if (suitWord && / (leak|leaking|breach|puncture|punctured|tear|torn|crack|cracked|damage|damaged|hole|losing pressure) /.test(t) && !/ (how|is my|what|status|check) /.test(t)) {

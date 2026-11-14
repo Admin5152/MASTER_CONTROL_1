@@ -144,11 +144,13 @@ function renderGround(el, ctx) {
     el.innerHTML = `<p class="note">On a Mars transit, help is minutes away each way, so findings are packaged on board and reviewed later: store and forward. One-way delay now <strong>${d.one_way_min} min</strong> ${badgeHTML("SIM")}. ${cite("eimo")}</p>
       <ul class="ground-list">${d.packets.length ? d.packets.map((p) => `<li class="card">
         <span class="g-status is-${p.status.replace(/ /g, "-")}">${esc(p.status)}</span>
-        <strong>${esc(p.title)}</strong>
-        <small>${esc(new Date(p.sent * 1000).toLocaleString())} · ${p.status === "in transit" ? `arrives in ${Math.ceil(p.eta_s / 60)} min` : p.reply_earliest_s > 0 ? `reply at the earliest in ${Math.ceil(p.reply_earliest_s / 60)} min` : "reply window open"}</small>
+        <strong>${esc(p.title)}</strong>${p.priority && p.priority !== "ROUTINE" ? `<span class="g-prio is-${esc(p.priority)}">${esc(p.priority)}</span>` : ""}
+        ${p.kind === "digest" && p.body?.text ? `<details><summary class="fine">Read the digest</summary><pre class="g-digest">${esc(p.body.text)}</pre></details>` : ""}
+        <small>${esc(new Date(p.sent * 1000).toLocaleString())} · ${p.status === "queued (no link)" ? "waiting for the link" : p.status === "in transit" ? `arrives in ${Math.ceil(p.eta_s / 60)} min` : p.reply_earliest_s > 0 ? `reply at the earliest in ${Math.ceil(p.reply_earliest_s / 60)} min` : "reply window open"}</small>
         ${badgeHTML("SIM")}</li>`).join("") : `<li class="note">Nothing sent yet. The guided exam builds a packet; a flag from the rules engine can too.</li>`}</ul>
-      <div class="exam-nav"><button class="pill pill-light" type="button" data-exam>Start a guided exam</button></div>`;
+      <div class="exam-nav"><button class="pill pill-light" type="button" data-digest>Send a digest to the flight surgeon</button><button class="pill pill-ghost" type="button" data-exam>Start a guided exam</button></div>`;
     el.querySelector("[data-exam]").addEventListener("click", () => ctx.screens.open("exam"));
+    el.querySelector("[data-digest]").addEventListener("click", async () => { await ctx.sendDigest?.(); draw(); });
   };
   draw();
   const t = setInterval(draw, 5000);

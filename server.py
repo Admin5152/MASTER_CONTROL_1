@@ -28,6 +28,7 @@ for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".
 from brain import llm, speech  # noqa: E402
 from brain.ground import Ground  # noqa: E402
 from brain.suit import Suits, REGIONS as SUIT_REGIONS, region_from_text  # noqa: E402
+from brain.ops import Ops, MODES as OPS_MODES  # noqa: E402
 from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
@@ -40,6 +41,7 @@ from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
 suits = Suits()
+ops = Ops()
 spaceweather = SpaceWeather()
 scenarios = Scenarios(store, spaceweather)
 ground = Ground(persist=os.getenv("SENTINEL_NO_PERSIST") != "1")
@@ -178,7 +180,46 @@ def aux(cid: str):
     _need(cid)
     clock = store.mission_clock()
     return {"assessment": store.assessment(cid), "scenario": scenarios.status, "clock": clock,
-            "skin": skin.aux(cid, store.get(cid), int(clock.get("mission_day", 0))), "suit": suits.status(cid)}
+            "skin": skin.aux(cid, store.get(cid), int(clock.get("mission_day", 0))), "suit": suits.status(cid),
+            "ops": ops.status(cid, store.get(cid))}
+
+
+@app.post("/api/ops/{cid}")
+def ops_set(cid: str, body: dict = Body(default={})):
+    """Mission mode {"mode": routine|eva|rest|contingency} and the SIM link {"blackout_min": n} (0 ends it)."""
+    _need(cid)
+    if "mode" in body:
+        if body["mode"] not in OPS_MODES:
+            raise HTTPException(400, f"mode must be one of {OPS_MODES}")
+        ops.set_mode(cid, body["mode"])
+        if body["mode"] != "eva" and suits.status(cid).get("mode") == "eva":
+            suits.set_mode(cid, "iva")
+    if "blackout_min" in body:
+        ops.blackout(float(body["blackout_min"]))
+        if float(body["blackout_min"]) <= 0:
+            ground.release()   # the link is back: held messages go now, urgent first
+    return ops.status(cid, store.get(cid))
+
+
+@app.get("/api/ops/{cid}/readiness")
+def ops_readiness(cid: str):
+    _need(cid)
+    return ops.readiness(store.get(cid), suits.status(cid))
+
+
+@app.get("/api/digest/{cid}")
+def digest_preview(cid: str, note: str = ""):
+    _need(cid)
+    return ops.digest(cid, store.get(cid), store.assessment(cid), suits.status(cid), note[:200])
+
+
+@app.post("/api/digest/{cid}")
+def digest_send(cid: str, body: dict = Body(default={})):
+    """Build the digest (section 21) and queue it for the flight surgeon; a blackout holds it until the link returns."""
+    _need(cid)
+    d = ops.digest(cid, store.get(cid), store.assessment(cid), suits.status(cid), str(body.get("note", ""))[:200])
+    p = ground.send(cid, "digest", f"Digest: {d['priority']}", {"text": d["text"]}, d["priority"], ops.hold_until())
+    return {**d, "packet": p}
 
 
 @app.post("/api/suit/{cid}")
@@ -187,7 +228,11 @@ def suit_action(cid: str, body: dict = Body(default={})):
     _need(cid)
     a = str(body.get("action", ""))
     if a in ("eva", "iva"):
-        return suits.set_mode(cid, a)
+        ops.set_mode(cid, "eva" if a == "eva" else "routine")   # the EVA overlay: reminders pause, suit watched
+        st = suits.set_mode(cid, a)
+        if a == "eva":
+            st["readiness"] = ops.readiness(store.get(cid), st)
+        return st
     if a == "leak":
         region = body.get("region") or region_from_text(str(body.get("text", "")))
         if region not in SUIT_REGIONS:
@@ -255,6 +300,7 @@ def chat_stream(body: dict = Body(...)):
     state = dict(store.get(cid))
     state["app"] = _app_context(body.get("context"))
     state["suit"] = suits.status(cid)
+    state["ops"] = ops.status(cid, state)
 
     def gen():
         for ev in llm.chat_stream(state, transcript, crew_id=cid):
