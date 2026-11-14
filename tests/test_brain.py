@@ -174,3 +174,15 @@ def test_mock_data_satisfies_contract():
     assert len(data["crew"]) == 6
     for c in data["crew"]:
         validate_full(c)
+
+
+def test_heart_rate_drop_past_threshold_is_not_within_range(client):
+    """A 20% drop against a 15% drift line is a change from baseline (watch), never 'within your usual range'."""
+    base = client.get("/api/state/james").json()["baseline"]["heart_rate"]
+    low = round(base * 0.8)
+    s = client.post("/api/state/james/patch", json={"vitals": {"heart_rate": low}}).json()
+    items = [i for i in s["drift"]["items"] if i["metric"] == "vitals.heart_rate"]
+    assert items and items[0]["severity"] in ("watch", "alert") and items[0]["delta_pct"] < 0
+    assert "below" in s["drift"]["note"] and "baseline" in s["drift"]["note"]
+    zones = client.get("/api/assessment/james").json()["zones"]
+    assert zones["heart"] != "ok"

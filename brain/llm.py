@@ -68,7 +68,8 @@ Allowed commands (at most 3):
   {"cmd":"isolate","part":P}             P in spine, skull, ribcage, pelvis, brain, heart, lungs, liver, stomach, intestines, kidneys, vessels, skeleton, organs
   {"cmd":"show_radiation","on":true}
   {"cmd":"close"}
-Most replies need no commands."""
+Most replies need no commands. But if your reply says you are showing, opening, checking or pointing at
+something, you MUST add the matching COMMANDS line, or nothing will happen on screen."""
 
 # words that make a question about this crew member's health or the mission (the numeric guard applies)
 HEALTH_WORDS = re.compile(

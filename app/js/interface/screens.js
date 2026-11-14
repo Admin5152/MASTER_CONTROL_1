@@ -285,7 +285,7 @@ function renderSettings(el, ctx) {
   el.innerHTML = `
     <h3>Camera</h3><div class="field"><select data-cam><option value="">Default (built-in)</option></select><span class="hint">Used for the face scan and the camera pulse. Remembered in this browser.</span></div>
     <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
-    <h3>Sentinel's voice</h3><div class="field"><select data-voice></select><span class="hint" data-voice-note>Kokoro voices run on this laptop. With an ElevenLabs key, that voice is used instead.</span></div>
+    <h3>Sentinel's voice</h3><div class="field"><select data-voice></select><span class="hint" data-voice-note></span></div>
     <p style="margin-top:var(--s-3)"><button class="pill pill-ghost" type="button" data-test-voice>Play a sample</button></p>
     <h3>Listening</h3>
     <div class="mood-row"><button type="button" data-listen="wake" aria-pressed="${st.get("listen") !== "ptt"}">Wake phrase</button><button type="button" data-listen="ptt" aria-pressed="${st.get("listen") === "ptt"}">Push to talk only</button></div>
@@ -306,13 +306,17 @@ function renderSettings(el, ctx) {
       fill(el.querySelector("[data-mic]"), "audioinput", "mic");
     } catch { /* no device list */ }
     try {
-      const v = await api.json("../api/tts/voices");
+      const v = await api.json("../api/voices");
       const sel = el.querySelector("[data-voice]");
-      sel.innerHTML = (v.voices || []).map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+      const opt = (x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`;
+      sel.innerHTML = (v.elevenlabs.length ? `<optgroup label="ElevenLabs">${v.elevenlabs.map(opt).join("")}</optgroup>` : "") +
+        (v.kokoro.length ? `<optgroup label="On this laptop (Kokoro)">${v.kokoro.map(opt).join("")}</optgroup>` : "");
+      if (!sel.options.length) sel.innerHTML = "<option>Browser voice</option>";
       sel.value = st.get("voice") || v.default;
-      if (v.engine === "elevenlabs") el.querySelector("[data-voice-note]").textContent = "ElevenLabs is active (key set); Kokoro is the fallback.";
-      if (!v.ready) el.querySelector("[data-voice-note]").textContent = v.engine === "none" ? "The local voice model is not available; the browser voice is used." : "The local voice model is still loading.";
-      sel.addEventListener("change", () => st.set("voice", sel.value));
+      el.querySelector("[data-voice-note]").textContent = v.elevenlabs.length
+        ? "ElevenLabs speaks first; Kokoro on this laptop takes over offline; the browser voice is the last resort."
+        : "Kokoro runs on this laptop; the browser voice is the fallback.";
+      sel.addEventListener("change", () => { st.set("voice", sel.value); ctx.setVoice?.(sel.value); });
     } catch { el.querySelector("[data-voice]").innerHTML = `<option>Browser voice</option>`; }
   })();
   el.querySelector("[data-test-voice]").addEventListener("click", () => ctx.say("Hello. This is how I will sound on the mission."));
@@ -323,14 +327,17 @@ function renderAbout(el) {
     <h3>Credits</h3>
     <ul class="credits">
       <li>Planet textures: Solar System Scope (CC BY 4.0), based on NASA imagery.</li>
-      <li>Body model: generated with MakeHuman / MPFB (CC0 base mesh).</li>
-      <li>Voice: Kokoro text-to-speech (Apache 2.0), running on this laptop.</li>
-      <li>Speech recognition: Whisper via faster-whisper (MIT) on this laptop, or Groq when a key is set.</li>
+      <li>Body models: generated with MakeHuman / MPFB (CC0 base mesh).</li>
+      <li>Anatomy: BodyParts3D, (c) The Database Center for Life Science (DBCLS), CC BY 4.0, grouped into 18 systems and fitted to each body.</li>
+      <li>Voice: ElevenLabs (premade voices, flash model); Kokoro text-to-speech (Apache 2.0) on this laptop as the fallback.</li>
+      <li>Speech recognition: Whisper (whisper-large-v3-turbo on Groq; faster-whisper base.en on this laptop offline). Brain: openai/gpt-oss-120b on Groq.</li>
       <li>Space weather: NOAA Space Weather Prediction Center (GOES proton flux, NOAA scales); storm replay from NASA DONKI.</li>
       <li>Health thresholds and facts: NASA-STD-3001, NASA Human Research Program and OCHMO briefs, CDC, AHA, ADA, MedlinePlus (see shared/SOURCES.md).</li>
       <li>Sentinel Skin design draws on CSA Astroskin, MIT's bioadhesive ultrasound patch and NASA ocular health research (sources on the hardware screen).</li>
       <li>Libraries: three.js (MIT), GSAP, Chart.js (MIT), MediaPipe Tasks Vision (Apache 2.0). Fonts: Inter and Michroma (SIL OFL).</li>
     </ul>
+    <h3>About the X-ray</h3>
+    <p class="note">The X-ray is a visualisation of a reference anatomy, not your own scan. It comes from one adult male specimen (BodyParts3D), fitted to both the male and the female body. The dataset has no lung tissue, so the lungs are generated to fit the real ribcage. The readings that drive it keep their own LIVE or SIM badges.</p>
     <h3>Badges</h3>
     <div class="legend" style="color:var(--ink-2)"><span class="badge badge-live">LIVE</span><span>measured or computed now</span><span class="badge badge-sim">SIM</span><span>prepared or simulated on purpose</span><span class="badge badge-designed">DESIGNED</span><span>a design, not running</span></div>`;
 }

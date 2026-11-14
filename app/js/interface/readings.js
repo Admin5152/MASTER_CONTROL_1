@@ -64,11 +64,15 @@ export function zoneReadings(zone, state, aux) {
   const out = [];
   const seen = new Set();
   const abs = aux?.assessment?.absolute || [];
+  // a reading is as serious as the worse of its absolute threshold and its change from baseline,
+  // so "20% below your usual" is never also called "within your usual range"
+  const driftSev = Object.fromEntries((state?.drift?.items || []).map((d) => [d.metric, d.severity]));
+  const worse = (a, b) => ((SEV_RANK[b] || 0) > (SEV_RANK[a] || 0) ? b : a);
   for (const r of abs) {
     if (r.zone !== zone) continue;
     seen.add(r.metric);
     out.push({
-      field: r.metric, label: r.label, value: r.value, unit: r.unit, severity: r.severity,
+      field: r.metric, label: r.label, value: r.value, unit: r.unit, severity: worse(r.severity, driftSev[r.metric]),
       badge: badgeFor(r.metric, state, aux), kind: r.kind, source: r.source, note: r.note, levels: r.levels,
       change: changeText(r.metric, state),
     });

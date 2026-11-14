@@ -257,3 +257,41 @@ test("validator keeps isolate and X-ray style only for known values", () => {
   assert.deepEqual(validateCommands([{ cmd: "isolate", part: "spine" }, { cmd: "isolate", part: "tail" }, { cmd: "xray", on: true, style: "anatomy" }, { cmd: "xray", style: "neon" }]),
     [{ cmd: "isolate", part: "spine" }, { cmd: "xray", on: true, style: "anatomy" }, { cmd: "xray", on: true }]);
 });
+
+// ---------- VAD segmenter (brief section 6) ----------
+import { segment } from "../../app/js/voice/vad.js";
+function synth(parts, rate = 16000, seed = 7) {
+  const r = rng(seed);
+  const total = parts.reduce((a, p) => a + p.s, 0);
+  const x = new Float32Array(Math.round(total * rate));
+  let i = 0;
+  for (const p of parts) {
+    const n = Math.round(p.s * rate);
+    for (let k = 0; k < n; k++, i++) {
+      const t = k / rate;
+      const noise = (r() - 0.5) * 2 * (p.noise ?? 0.002);
+      let v = 0;
+      if (p.kind === "voice") v = p.amp * (0.6 + 0.4 * Math.sin(2 * Math.PI * 4 * t)) * (Math.sin(2 * Math.PI * 180 * t) + 0.5 * Math.sin(2 * Math.PI * 360 * t) + 0.25 * Math.sin(2 * Math.PI * 540 * t)) / 1.75;
+      if (p.kind === "hiss") v = (r() - 0.5) * 2 * p.amp;
+      x[i] = v + noise;
+    }
+  }
+  return x;
+}
+
+test("VAD cuts one utterance from room noise, drops a click and ignores hiss", () => {
+  const rate = 16000;
+  const x = synth([{ s: 1.0 }, { s: 1.2, kind: "voice", amp: 0.2 }, { s: 1.0 }, { s: 0.1, kind: "voice", amp: 0.3 }, { s: 1.0 }, { s: 1.0, kind: "hiss", amp: 0.2 }, { s: 1.0 }], rate);
+  const segs = segment(x, rate);
+  assert.equal(segs.length, 1, JSON.stringify(segs));
+  assert.ok(Math.abs(segs[0].from / rate - 1.0) < 0.12, `start ${segs[0].from / rate}`);
+  assert.ok(Math.abs(segs[0].to / rate - 2.2) < 0.12, `end ${segs[0].to / rate}`);
+});
+
+test("VAD caps an utterance at 15 s and keeps a pause inside a sentence", () => {
+  const rate = 16000;
+  const long = segment(synth([{ s: 0.5 }, { s: 18, kind: "voice", amp: 0.2 }, { s: 1 }], rate), rate);
+  assert.ok(long[0].capped && Math.abs((long[0].to - long[0].from) / rate - 15) < 0.2, JSON.stringify(long[0]));
+  const paused = segment(synth([{ s: 0.5 }, { s: 0.8, kind: "voice", amp: 0.2 }, { s: 0.35 }, { s: 0.8, kind: "voice", amp: 0.2 }, { s: 1.2 }], rate), rate);
+  assert.equal(paused.length, 1);
+});

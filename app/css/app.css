@@ -431,3 +431,13 @@ select option { background: var(--surface-solid); color: var(--ink); }
 .body-left, .body-right { transition: opacity 0.5s ease, transform 0.5s ease; }
 body.is-pointing .body-left { opacity: 0; transform: translateX(-16px); pointer-events: none; }
 body.is-pointing .body-right { opacity: 0.35; }
+
+/* coordinator review: nothing floating covers a panel or a control */
+body.is-pointing .body-left { opacity: 0.55; transform: none; pointer-events: auto; }
+body.is-pointing .body-right { opacity: 0.55; }
+.bubble.is-subtitle { top: calc(var(--top-h) + env(safe-area-inset-top) + 10px); transform: translateX(-50%); text-align: center;
+  border-radius: var(--radius-card); padding: var(--s-2) var(--s-4); background: rgba(6, 10, 20, 0.72); }
+.statusline { background: linear-gradient(to bottom, rgba(3, 6, 14, 0.92), rgba(3, 6, 14, 0.6) 70%, rgba(3, 6, 14, 0)); gap: var(--s-5); }
+.statusline .sl-item { flex: none; }
+.statusline .badge { font-size: 9px; padding: 0 6px; }
+@media (max-width: 1400px) { .statusline { gap: var(--s-4); } }

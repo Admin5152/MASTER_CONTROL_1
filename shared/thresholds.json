@@ -2,175 +2,600 @@
   "_doc": "Every limit Sentinel uses. Each level carries kind (nasa | clinical_reference | demo_placeholder) and source {title, url}. The brain loads this file; the UI shows kind and source next to every threshold. See shared/SOURCES.md for how each number was checked.",
   "absolute": {
     "cabin.oxygen_pct": {
-      "label": "Cabin oxygen", "unit": "%", "zone": "cabin",
+      "label": "Cabin oxygen",
+      "unit": "%",
+      "zone": "cabin",
       "levels": [
-        { "severity": "alert", "below": 19.5, "kind": "clinical_reference",
+        {
+          "severity": "alert",
+          "below": 19.5,
+          "kind": "clinical_reference",
           "note": "Oxygen-deficient atmosphere is defined as below 19.5% O2 by volume. Occupational safety reference, not a NASA limit.",
-          "source": { "title": "OSHA 29 CFR 1910.146 Permit-required confined spaces (definitions)", "url": "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.146" } },
-        { "severity": "alert", "below": 17.1, "kind": "nasa",
+          "source": {
+            "title": "OSHA 29 CFR 1910.146 Permit-required confined spaces (definitions)",
+            "url": "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.146"
+          }
+        },
+        {
+          "severity": "alert",
+          "below": 17.1,
+          "kind": "nasa",
           "note": "NASA-STD-3001 Vol 2 [V2 6003] Table 6.2-1 gives an absolute lower limit of PIO2 122 mmHg (1-hour TWA). At 14.7 psia (760 mmHg) cabin: FiO2 = 122 / (760 - 47) = 0.171, i.e. 17.1% O2. Conversion by this build.",
-          "source": { "title": "NASA OCHMO-TB-003 Habitable Atmosphere, Rev A (2023)", "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-003-habitable-atmosphere.pdf" } }
+          "source": {
+            "title": "NASA OCHMO-TB-003 Habitable Atmosphere, Rev A (2023)",
+            "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-003-habitable-atmosphere.pdf"
+          }
+        }
       ]
     },
     "cabin.co2_ppm": {
-      "label": "Cabin CO2", "unit": "ppm", "zone": "cabin",
+      "label": "Cabin CO2",
+      "unit": "ppm",
+      "zone": "cabin",
       "levels": [
-        { "severity": "watch", "above": 3289, "kind": "nasa",
+        {
+          "severity": "watch",
+          "above": 3289,
+          "kind": "nasa",
           "note": "Brief: to keep headache risk below 1%, average 7-day CO2 below 2.5 mmHg. 2.5 / 760 x 1e6 = 3,289 ppm at 14.7 psia.",
-          "source": { "title": "NASA OCHMO-TB-004 Carbon Dioxide (2023)", "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf" } },
-        { "severity": "alert", "above": 3947, "kind": "nasa",
+          "source": {
+            "title": "NASA OCHMO-TB-004 Carbon Dioxide (2023)",
+            "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf"
+          }
+        },
+        {
+          "severity": "alert",
+          "above": 3947,
+          "kind": "nasa",
           "note": "NASA-STD-3001 Vol 2 Rev D [V2 6004]: average one-hour ppCO2 no more than 3 mmHg. 3 / 760 x 1e6 = 3,947 ppm at 14.7 psia (760 mmHg) cabin pressure. Conversion by this build.",
-          "source": { "title": "NASA OCHMO-TB-004 Carbon Dioxide (2023)", "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf" } }
+          "source": {
+            "title": "NASA OCHMO-TB-004 Carbon Dioxide (2023)",
+            "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf"
+          }
+        }
       ]
     },
     "vitals.heart_rate": {
-      "label": "Heart rate", "unit": "bpm", "zone": "heart",
+      "label": "Heart rate",
+      "unit": "bpm",
+      "zone": "heart",
       "levels": [
-        { "severity": "watch", "above": 100, "kind": "clinical_reference", "note": "Adult resting pulse 60 to 100 bpm.",
-          "source": { "title": "MedlinePlus: Vital signs", "url": "https://medlineplus.gov/ency/article/002341.htm" } },
-        { "severity": "watch", "below": 50, "kind": "demo_placeholder", "note": "Low-side watch line chosen for the demo; MedlinePlus normal floor is 60 but trained crew often rest lower.",
-          "source": { "title": "MedlinePlus: Vital signs (normal range only)", "url": "https://medlineplus.gov/ency/article/002341.htm" } },
-        { "severity": "alert", "above": 130, "kind": "demo_placeholder", "note": "Alert line chosen for the demo, not a clinical limit.",
-          "source": { "title": "Sentinel demo setting", "url": "" } }
+        {
+          "severity": "watch",
+          "above": 100,
+          "kind": "clinical_reference",
+          "note": "Adult resting pulse 60 to 100 bpm.",
+          "source": {
+            "title": "MedlinePlus: Vital signs",
+            "url": "https://medlineplus.gov/ency/article/002341.htm"
+          }
+        },
+        {
+          "severity": "watch",
+          "below": 50,
+          "kind": "demo_placeholder",
+          "note": "Low-side watch line chosen for the demo; MedlinePlus normal floor is 60 but trained crew often rest lower.",
+          "source": {
+            "title": "MedlinePlus: Vital signs (normal range only)",
+            "url": "https://medlineplus.gov/ency/article/002341.htm"
+          }
+        },
+        {
+          "severity": "alert",
+          "above": 130,
+          "kind": "demo_placeholder",
+          "note": "Alert line chosen for the demo, not a clinical limit.",
+          "source": {
+            "title": "Sentinel demo setting",
+            "url": ""
+          }
+        }
       ]
     },
     "vitals.breathing_rate": {
-      "label": "Breathing rate", "unit": "/min", "zone": "lungs",
+      "label": "Breathing rate",
+      "unit": "/min",
+      "zone": "lungs",
       "levels": [
-        { "severity": "watch", "above": 18, "kind": "clinical_reference", "note": "Adult resting breathing 12 to 18 per minute.",
-          "source": { "title": "MedlinePlus: Vital signs", "url": "https://medlineplus.gov/ency/article/002341.htm" } },
-        { "severity": "watch", "below": 12, "kind": "clinical_reference", "note": "Adult resting breathing 12 to 18 per minute.",
-          "source": { "title": "MedlinePlus: Vital signs", "url": "https://medlineplus.gov/ency/article/002341.htm" } }
+        {
+          "severity": "watch",
+          "above": 18,
+          "kind": "clinical_reference",
+          "note": "Adult resting breathing 12 to 18 per minute.",
+          "source": {
+            "title": "MedlinePlus: Vital signs",
+            "url": "https://medlineplus.gov/ency/article/002341.htm"
+          }
+        },
+        {
+          "severity": "watch",
+          "below": 12,
+          "kind": "clinical_reference",
+          "note": "Adult resting breathing 12 to 18 per minute.",
+          "source": {
+            "title": "MedlinePlus: Vital signs",
+            "url": "https://medlineplus.gov/ency/article/002341.htm"
+          }
+        }
       ]
     },
     "vitals.spo2": {
-      "label": "SpO2", "unit": "%", "zone": "lungs",
+      "label": "SpO2",
+      "unit": "%",
+      "zone": "lungs",
       "levels": [
-        { "severity": "watch", "below": 95, "kind": "clinical_reference", "note": "A normal oxygen saturation level ranges between 95% and 100%.",
-          "source": { "title": "MedlinePlus: Pulse oximetry", "url": "https://medlineplus.gov/lab-tests/pulse-oximetry/" } },
-        { "severity": "alert", "below": 90, "kind": "demo_placeholder", "note": "Alert line chosen for the demo.",
-          "source": { "title": "Sentinel demo setting", "url": "" } }
+        {
+          "severity": "watch",
+          "below": 95,
+          "kind": "clinical_reference",
+          "note": "A normal oxygen saturation level ranges between 95% and 100%.",
+          "source": {
+            "title": "MedlinePlus: Pulse oximetry",
+            "url": "https://medlineplus.gov/lab-tests/pulse-oximetry/"
+          }
+        },
+        {
+          "severity": "alert",
+          "below": 90,
+          "kind": "demo_placeholder",
+          "note": "Alert line chosen for the demo.",
+          "source": {
+            "title": "Sentinel demo setting",
+            "url": ""
+          }
+        }
       ]
     },
     "manual.temp_c": {
-      "label": "Body temperature", "unit": "C", "zone": "whole_body",
+      "label": "Body temperature",
+      "unit": "C",
+      "zone": "whole_body",
       "levels": [
-        { "severity": "watch", "above": 37.3, "kind": "clinical_reference", "note": "Normal adult 36.5 to 37.3 C.",
-          "source": { "title": "MedlinePlus: Vital signs", "url": "https://medlineplus.gov/ency/article/002341.htm" } },
-        { "severity": "alert", "above": 37.9, "kind": "clinical_reference", "note": "Fever: measured temperature of 38 C (100.4 F) or greater.",
-          "source": { "title": "CDC: Definitions of signs, symptoms, and conditions of ill travelers", "url": "https://www.cdc.gov/quarantine/maritime/definitions-signs-symptoms-conditions-ill-travelers.html" } },
-        { "severity": "watch", "below": 36.0, "kind": "demo_placeholder", "note": "Low-side line chosen for the demo.",
-          "source": { "title": "Sentinel demo setting", "url": "" } }
+        {
+          "severity": "watch",
+          "above": 37.3,
+          "kind": "clinical_reference",
+          "note": "Normal adult 36.5 to 37.3 C.",
+          "source": {
+            "title": "MedlinePlus: Vital signs",
+            "url": "https://medlineplus.gov/ency/article/002341.htm"
+          }
+        },
+        {
+          "severity": "alert",
+          "above": 37.9,
+          "kind": "clinical_reference",
+          "note": "Fever: measured temperature of 38 C (100.4 F) or greater.",
+          "source": {
+            "title": "CDC: Definitions of signs, symptoms, and conditions of ill travelers",
+            "url": "https://www.cdc.gov/quarantine/maritime/definitions-signs-symptoms-conditions-ill-travelers.html"
+          }
+        },
+        {
+          "severity": "watch",
+          "below": 36.0,
+          "kind": "demo_placeholder",
+          "note": "Low-side line chosen for the demo.",
+          "source": {
+            "title": "Sentinel demo setting",
+            "url": ""
+          }
+        }
       ]
     },
     "manual.bp_systolic": {
-      "label": "Blood pressure (systolic)", "unit": "mmHg", "zone": "heart",
+      "label": "Blood pressure (systolic)",
+      "unit": "mmHg",
+      "zone": "heart",
       "levels": [
-        { "severity": "watch", "above": 129, "kind": "clinical_reference", "note": "AHA: 130 or higher is high blood pressure stage 1.",
-          "source": { "title": "American Heart Association: Understanding blood pressure readings", "url": "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings" } },
-        { "severity": "alert", "above": 180, "kind": "clinical_reference", "note": "AHA: higher than 180 is a hypertensive crisis range.",
-          "source": { "title": "American Heart Association: Understanding blood pressure readings", "url": "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings" } }
+        {
+          "severity": "watch",
+          "above": 129,
+          "kind": "clinical_reference",
+          "note": "AHA: 130 or higher is high blood pressure stage 1.",
+          "source": {
+            "title": "American Heart Association: Understanding blood pressure readings",
+            "url": "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings"
+          }
+        },
+        {
+          "severity": "alert",
+          "above": 180,
+          "kind": "clinical_reference",
+          "note": "AHA: higher than 180 is a hypertensive crisis range.",
+          "source": {
+            "title": "American Heart Association: Understanding blood pressure readings",
+            "url": "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings"
+          }
+        }
       ]
     },
     "manual.bp_diastolic": {
-      "label": "Blood pressure (diastolic)", "unit": "mmHg", "zone": "heart",
+      "label": "Blood pressure (diastolic)",
+      "unit": "mmHg",
+      "zone": "heart",
       "levels": [
-        { "severity": "watch", "above": 79, "kind": "clinical_reference", "note": "AHA: 80 or higher is high blood pressure stage 1.",
-          "source": { "title": "American Heart Association: Understanding blood pressure readings", "url": "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings" } },
-        { "severity": "alert", "above": 120, "kind": "clinical_reference", "note": "AHA: higher than 120 is a hypertensive crisis range.",
-          "source": { "title": "American Heart Association: Understanding blood pressure readings", "url": "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings" } }
+        {
+          "severity": "watch",
+          "above": 79,
+          "kind": "clinical_reference",
+          "note": "AHA: 80 or higher is high blood pressure stage 1.",
+          "source": {
+            "title": "American Heart Association: Understanding blood pressure readings",
+            "url": "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings"
+          }
+        },
+        {
+          "severity": "alert",
+          "above": 120,
+          "kind": "clinical_reference",
+          "note": "AHA: higher than 120 is a hypertensive crisis range.",
+          "source": {
+            "title": "American Heart Association: Understanding blood pressure readings",
+            "url": "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings"
+          }
+        }
       ]
     },
     "manual.glucose_mgdl": {
-      "label": "Blood glucose", "unit": "mg/dL", "zone": "gut",
+      "label": "Blood glucose",
+      "unit": "mg/dL",
+      "zone": "gut",
       "levels": [
-        { "severity": "alert", "below": 70, "kind": "clinical_reference", "note": "ADA: blood glucose below 70 mg/dL is low (hypoglycaemia).",
-          "source": { "title": "American Diabetes Association: Hypoglycemia (low blood glucose)", "url": "https://diabetes.org/living-with-diabetes/treatment-care/hypoglycemia-low-blood-glucose" } },
-        { "severity": "watch", "above": 180, "kind": "clinical_reference", "note": "ADA target: less than 180 mg/dL one to two hours after a meal.",
-          "source": { "title": "American Diabetes Association: Checking your blood sugar", "url": "https://diabetes.org/living-with-diabetes/treatment-care/checking-your-blood-sugar" } }
+        {
+          "severity": "alert",
+          "below": 70,
+          "kind": "clinical_reference",
+          "note": "ADA: blood glucose below 70 mg/dL is low (hypoglycaemia).",
+          "source": {
+            "title": "American Diabetes Association: Hypoglycemia (low blood glucose)",
+            "url": "https://diabetes.org/living-with-diabetes/treatment-care/hypoglycemia-low-blood-glucose"
+          }
+        },
+        {
+          "severity": "watch",
+          "above": 180,
+          "kind": "clinical_reference",
+          "note": "ADA target: less than 180 mg/dL one to two hours after a meal.",
+          "source": {
+            "title": "American Diabetes Association: Checking your blood sugar",
+            "url": "https://diabetes.org/living-with-diabetes/treatment-care/checking-your-blood-sugar"
+          }
+        }
       ]
     },
     "manual.sleep_hours": {
-      "label": "Sleep", "unit": "h", "zone": "head",
+      "label": "Sleep",
+      "unit": "h",
+      "zone": "head",
       "levels": [
-        { "severity": "watch", "below": 7, "kind": "clinical_reference", "note": "Adults need 7 or more hours of sleep per night.",
-          "source": { "title": "CDC: About sleep", "url": "https://www.cdc.gov/sleep/about/index.html" } }
+        {
+          "severity": "watch",
+          "below": 7,
+          "kind": "clinical_reference",
+          "note": "Adults need 7 or more hours of sleep per night.",
+          "source": {
+            "title": "CDC: About sleep",
+            "url": "https://www.cdc.gov/sleep/about/index.html"
+          }
+        }
       ]
     },
     "manual.mood": {
-      "label": "Mood (1-5)", "unit": "/5", "zone": "head",
+      "label": "Mood (1-5)",
+      "unit": "/5",
+      "zone": "head",
       "levels": [
-        { "severity": "watch", "below": 3, "kind": "demo_placeholder", "note": "Self-report scale used by this app; 1-2 counts as low.",
-          "source": { "title": "Sentinel demo setting", "url": "" } }
+        {
+          "severity": "watch",
+          "below": 3,
+          "kind": "demo_placeholder",
+          "note": "Self-report scale used by this app; 1-2 counts as low.",
+          "source": {
+            "title": "Sentinel demo setting",
+            "url": ""
+          }
+        }
       ]
     },
     "state.fatigue": {
-      "label": "Fatigue index (SIM)", "unit": "", "zone": "eyes",
+      "label": "Fatigue index (SIM)",
+      "unit": "",
+      "zone": "eyes",
       "levels": [
-        { "severity": "watch", "above": 0.5, "kind": "demo_placeholder", "note": "Simulated 0-1 index; no fatigue sensor in this build.",
-          "source": { "title": "Sentinel demo setting", "url": "" } },
-        { "severity": "alert", "above": 0.7, "kind": "demo_placeholder", "note": "Simulated 0-1 index; no fatigue sensor in this build.",
-          "source": { "title": "Sentinel demo setting", "url": "" } }
+        {
+          "severity": "watch",
+          "above": 0.5,
+          "kind": "demo_placeholder",
+          "note": "Simulated 0-1 index; no fatigue sensor in this build.",
+          "source": {
+            "title": "Sentinel demo setting",
+            "url": ""
+          }
+        },
+        {
+          "severity": "alert",
+          "above": 0.7,
+          "kind": "demo_placeholder",
+          "note": "Simulated 0-1 index; no fatigue sensor in this build.",
+          "source": {
+            "title": "Sentinel demo setting",
+            "url": ""
+          }
+        }
       ]
     },
     "state.stress": {
-      "label": "Stress index (SIM)", "unit": "", "zone": "heart",
+      "label": "Stress index (SIM)",
+      "unit": "",
+      "zone": "heart",
       "levels": [
-        { "severity": "watch", "above": 0.6, "kind": "demo_placeholder", "note": "Simulated 0-1 index.",
-          "source": { "title": "Sentinel demo setting", "url": "" } }
+        {
+          "severity": "watch",
+          "above": 0.6,
+          "kind": "demo_placeholder",
+          "note": "Simulated 0-1 index.",
+          "source": {
+            "title": "Sentinel demo setting",
+            "url": ""
+          }
+        }
       ]
     }
   },
   "drift": {
     "_doc": "Percent change from the person's own baseline. watch when |change| >= pct in the flagged direction, alert when >= 2 x pct. All drift percentages are demo_placeholder: there is no validated NASA or clinical percent-change limit for these signals.",
-    "vitals.heart_rate": { "label": "heart rate", "pct": 15, "direction": "up", "zone": "heart", "baseline_field": "baseline.heart_rate", "kind": "demo_placeholder", "source": { "title": "Sentinel demo setting", "url": "" } },
-    "voice.talk_time": { "label": "talk time", "pct": 25, "direction": "down", "zone": "head", "baseline_field": "baseline.talk_time", "kind": "demo_placeholder", "source": { "title": "Sentinel demo setting", "url": "" } },
-    "voice.pitch": { "label": "pitch", "pct": 10, "direction": "down", "zone": "head", "baseline_field": "baseline.pitch", "kind": "demo_placeholder", "source": { "title": "Sentinel demo setting", "url": "" } },
-    "cognitive.reaction_ms": { "label": "reaction time", "pct": 15, "direction": "up", "zone": "head", "baseline_field": "cognitive.baseline_ms", "kind": "demo_placeholder", "source": { "title": "Sentinel demo setting", "url": "" } },
-    "manual.bp_systolic": { "label": "systolic pressure", "pct": 12, "direction": "up", "zone": "heart", "baseline_field": "history", "kind": "demo_placeholder", "source": { "title": "Sentinel demo setting", "url": "" } },
-    "manual.glucose_mgdl": { "label": "glucose", "pct": 20, "direction": "both", "zone": "gut", "baseline_field": "history", "kind": "demo_placeholder", "source": { "title": "Sentinel demo setting", "url": "" } },
-    "manual.temp_c": { "label": "temperature", "pct": 2, "direction": "up", "zone": "whole_body", "baseline_field": "history", "kind": "demo_placeholder", "source": { "title": "Sentinel demo setting", "url": "" } },
-    "manual.sleep_hours": { "label": "sleep", "pct": 20, "direction": "down", "zone": "head", "baseline_field": "history", "kind": "demo_placeholder", "source": { "title": "Sentinel demo setting", "url": "" } },
-    "manual.mood": { "label": "mood", "pct": 30, "direction": "down", "zone": "head", "baseline_field": "history", "kind": "demo_placeholder", "source": { "title": "Sentinel demo setting", "url": "" } }
+    "vitals.heart_rate": {
+      "label": "heart rate",
+      "pct": 15,
+      "direction": "both",
+      "zone": "heart",
+      "baseline_field": "baseline.heart_rate",
+      "kind": "demo_placeholder",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    },
+    "voice.talk_time": {
+      "label": "talk time",
+      "pct": 25,
+      "direction": "down",
+      "zone": "head",
+      "baseline_field": "baseline.talk_time",
+      "kind": "demo_placeholder",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    },
+    "voice.pitch": {
+      "label": "pitch",
+      "pct": 10,
+      "direction": "down",
+      "zone": "head",
+      "baseline_field": "baseline.pitch",
+      "kind": "demo_placeholder",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    },
+    "cognitive.reaction_ms": {
+      "label": "reaction time",
+      "pct": 15,
+      "direction": "up",
+      "zone": "head",
+      "baseline_field": "cognitive.baseline_ms",
+      "kind": "demo_placeholder",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    },
+    "manual.bp_systolic": {
+      "label": "systolic pressure",
+      "pct": 12,
+      "direction": "up",
+      "zone": "heart",
+      "baseline_field": "history",
+      "kind": "demo_placeholder",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    },
+    "manual.glucose_mgdl": {
+      "label": "glucose",
+      "pct": 20,
+      "direction": "both",
+      "zone": "gut",
+      "baseline_field": "history",
+      "kind": "demo_placeholder",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    },
+    "manual.temp_c": {
+      "label": "temperature",
+      "pct": 2,
+      "direction": "up",
+      "zone": "whole_body",
+      "baseline_field": "history",
+      "kind": "demo_placeholder",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    },
+    "manual.sleep_hours": {
+      "label": "sleep",
+      "pct": 20,
+      "direction": "down",
+      "zone": "head",
+      "baseline_field": "history",
+      "kind": "demo_placeholder",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    },
+    "manual.mood": {
+      "label": "mood",
+      "pct": 30,
+      "direction": "down",
+      "zone": "head",
+      "baseline_field": "history",
+      "kind": "demo_placeholder",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    }
   },
   "radiation": {
-    "career_limit_msv": { "value": 600, "kind": "nasa",
+    "career_limit_msv": {
+      "value": 600,
+      "kind": "nasa",
       "note": "[V1 4030] An individual astronaut's total career effective radiation dose due to space flight radiation exposure shall be less than 600 mSv.",
-      "source": { "title": "NASA OCHMO-TB-020 Design for Ionizing Radiation Protection (radiation protection technical brief)", "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf" } },
-    "spe_event_limit_msv": { "value": 250, "kind": "nasa",
-      "note": "Short-term exposure to solar particle events limited to an effective dose of 250 mSv per event.",
-      "source": { "title": "NASA OCHMO-TB-020 radiation protection technical brief", "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf" } },
-    "dose_rates_msv_day": {
-      "iss": { "value": 0.35, "kind": "nasa",
-        "note": "On the ISS effective doses accumulate at approximately 0.2 to 0.5 mSv/day (40 to 90 mSv per six-month mission). 0.35 is the midpoint of that range, chosen by this build.",
-        "source": { "title": "Simonsen, Zawaski, Weeks: Moon 2 Mars Space Radiation Protection, Buying Down Risks to Crew (NASA, NTRS 20250006168)", "url": "https://ntrs.nasa.gov/citations/20250006168" } },
-      "lunar": { "value": 1.37, "kind": "demo_placeholder",
-        "note": "Approximate lunar-surface dose equivalent rate measured by the Chang'e-4 Lunar Lander Neutron and Dosimetry experiment (1,369 microSv/day). Peer-reviewed but not a NASA figure, so marked demo_placeholder.",
-        "source": { "title": "Zhang et al. 2020, First measurements of the radiation dose on the lunar surface, Science Advances", "url": "https://www.science.org/doi/10.1126/sciadv.aaz1334" } },
-      "mars_transit": { "value": 1.8, "kind": "nasa",
-        "note": "Curiosity RAD measured an average of 1.8 milliSieverts of GCR per day during cruise to Mars (Zeitlin et al., Science, 31 May 2013).",
-        "source": { "title": "NASA JPL: Data from NASA rover's voyage to Mars aids planning (30 May 2013)", "url": "https://www.jpl.nasa.gov/news/data-from-nasa-rovers-voyage-to-mars-aids-planning/" } },
-      "mars_surface": { "value": 0.67, "kind": "nasa",
-        "note": "Average GCR dose equivalent rate of 0.67 mSv/day on the Martian surface, August 2012 to June 2013 (Hassler et al., Science, 2014). The often-quoted 0.64 could not be confirmed on a primary page, so 0.67 is used.",
-        "source": { "title": "SwRI: SwRI scientists publish first radiation measurements from the surface of Mars (Dec 2013); NASA NTRS 20180007641", "url": "https://www.swri.org/press-release/swri-scientists-publish-first-radiation-measurements-surface-mars" } }
+      "source": {
+        "title": "NASA OCHMO-TB-020 Design for Ionizing Radiation Protection (radiation protection technical brief)",
+        "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf"
+      }
     },
-    "storm_scale": { "kind": "nasa",
+    "spe_event_limit_msv": {
+      "value": 250,
+      "kind": "nasa",
+      "note": "Short-term exposure to solar particle events limited to an effective dose of 250 mSv per event.",
+      "source": {
+        "title": "NASA OCHMO-TB-020 radiation protection technical brief",
+        "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf"
+      }
+    },
+    "dose_rates_msv_day": {
+      "iss": {
+        "value": 0.35,
+        "kind": "nasa",
+        "note": "On the ISS effective doses accumulate at approximately 0.2 to 0.5 mSv/day (40 to 90 mSv per six-month mission). 0.35 is the midpoint of that range, chosen by this build.",
+        "source": {
+          "title": "Simonsen, Zawaski, Weeks: Moon 2 Mars Space Radiation Protection, Buying Down Risks to Crew (NASA, NTRS 20250006168)",
+          "url": "https://ntrs.nasa.gov/citations/20250006168"
+        }
+      },
+      "lunar": {
+        "value": 1.37,
+        "kind": "demo_placeholder",
+        "note": "Approximate lunar-surface dose equivalent rate measured by the Chang'e-4 Lunar Lander Neutron and Dosimetry experiment (1,369 microSv/day). Peer-reviewed but not a NASA figure, so marked demo_placeholder.",
+        "source": {
+          "title": "Zhang et al. 2020, First measurements of the radiation dose on the lunar surface, Science Advances",
+          "url": "https://www.science.org/doi/10.1126/sciadv.aaz1334"
+        }
+      },
+      "mars_transit": {
+        "value": 1.8,
+        "kind": "nasa",
+        "note": "Curiosity RAD measured an average of 1.8 milliSieverts of GCR per day during cruise to Mars (Zeitlin et al., Science, 31 May 2013).",
+        "source": {
+          "title": "NASA JPL: Data from NASA rover's voyage to Mars aids planning (30 May 2013)",
+          "url": "https://www.jpl.nasa.gov/news/data-from-nasa-rovers-voyage-to-mars-aids-planning/"
+        }
+      },
+      "mars_surface": {
+        "value": 0.67,
+        "kind": "nasa",
+        "note": "Average GCR dose equivalent rate of 0.67 mSv/day on the Martian surface, August 2012 to June 2013 (Hassler et al., Science, 2014). The often-quoted 0.64 could not be confirmed on a primary page, so 0.67 is used.",
+        "source": {
+          "title": "SwRI: SwRI scientists publish first radiation measurements from the surface of Mars (Dec 2013); NASA NTRS 20180007641",
+          "url": "https://www.swri.org/press-release/swri-scientists-publish-first-radiation-measurements-surface-mars"
+        }
+      }
+    },
+    "storm_scale": {
+      "kind": "nasa",
       "note": "NOAA Solar Radiation Storm scale: flux level of >=10 MeV particles (pfu). NOAA is not NASA; kind 'nasa' is used here for an official US government space-weather standard.",
-      "source": { "title": "NOAA SWPC: NOAA Space Weather Scales", "url": "https://www.swpc.noaa.gov/noaa-scales-explanation" },
-      "levels": [ { "level": 1, "pfu": 10 }, { "level": 2, "pfu": 100 }, { "level": 3, "pfu": 1000 }, { "level": 4, "pfu": 10000 }, { "level": 5, "pfu": 100000 } ] },
-    "flag_storm_level": { "value": 2, "kind": "demo_placeholder", "note": "Sentinel raises the shelter alert at S2 or above, as this spec requires. Operational shelter rules are set by mission flight rules, not by this app.", "source": { "title": "Sentinel build spec", "url": "" } },
-    "shelter_reduction": { "value": 0.5, "kind": "nasa",
+      "source": {
+        "title": "NOAA SWPC: NOAA Space Weather Scales",
+        "url": "https://www.swpc.noaa.gov/noaa-scales-explanation"
+      },
+      "levels": [
+        {
+          "level": 1,
+          "pfu": 10
+        },
+        {
+          "level": 2,
+          "pfu": 100
+        },
+        {
+          "level": 3,
+          "pfu": 1000
+        },
+        {
+          "level": 4,
+          "pfu": 10000
+        },
+        {
+          "level": 5,
+          "pfu": 100000
+        }
+      ]
+    },
+    "flag_storm_level": {
+      "value": 2,
+      "kind": "demo_placeholder",
+      "note": "Sentinel raises the shelter alert at S2 or above, as this spec requires. Operational shelter rules are set by mission flight rules, not by this app.",
+      "source": {
+        "title": "Sentinel build spec",
+        "url": ""
+      }
+    },
+    "shelter_reduction": {
+      "value": 0.5,
+      "kind": "nasa",
       "note": "Aluminium and polyethylene provide an average 50% reduction in dose from SPE radiation (GCR only about 7%). Used as the shelter factor for storm dose only.",
-      "source": { "title": "NASA OCHMO-TB-020 radiation protection technical brief, Engineering Countermeasures", "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf" } },
-    "storm_extra_msv_hour": { "kind": "demo_placeholder",
+      "source": {
+        "title": "NASA OCHMO-TB-020 radiation protection technical brief, Engineering Countermeasures",
+        "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf"
+      }
+    },
+    "storm_extra_msv_hour": {
+      "kind": "demo_placeholder",
       "note": "Extra dose per hour unsheltered during a storm, by S level. Illustrative only; real SPE dose depends on spectrum, location and shielding.",
-      "source": { "title": "Sentinel demo setting", "url": "" },
-      "by_level": { "0": 0, "1": 0.01, "2": 0.1, "3": 1.0, "4": 5.0, "5": 20.0 } }
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      },
+      "by_level": {
+        "0": 0,
+        "1": 0.01,
+        "2": 0.1,
+        "3": 1.0,
+        "4": 5.0,
+        "5": 20.0
+      }
+    }
   },
   "speaker_id": {
-    "min_similarity": { "value": 0.75, "kind": "demo_placeholder", "note": "Cosine similarity cut-off for a voice match, from the build spec.", "source": { "title": "Sentinel build spec", "url": "" } }
+    "min_similarity": {
+      "value": 0.75,
+      "kind": "demo_placeholder",
+      "note": "Cosine similarity cut-off for a voice match, from the build spec.",
+      "source": {
+        "title": "Sentinel build spec",
+        "url": ""
+      }
+    }
   },
   "rppg": {
-    "min_quality": { "value": 0.35, "kind": "demo_placeholder", "note": "Signal-quality score below which no pulse value is shown or written.", "source": { "title": "Sentinel demo setting", "url": "" } }
+    "min_quality": {
+      "value": 0.35,
+      "kind": "demo_placeholder",
+      "note": "Signal-quality score below which no pulse value is shown or written.",
+      "source": {
+        "title": "Sentinel demo setting",
+        "url": ""
+      }
+    }
   }
 }

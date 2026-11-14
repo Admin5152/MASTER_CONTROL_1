@@ -225,8 +225,8 @@ def tts(text: str, voice: str = DEFAULT_VOICE, engine: str = "auto") -> dict:
     eleven_voice = voice if voice in ELEVEN_VOICES else DEFAULT_VOICE
     kokoro_voice = voice if voice in KOKORO_VOICES else "af_heart"
     order = ["elevenlabs", "kokoro"]
-    if engine == "kokoro" or voice in KOKORO_VOICES:
-        order = ["kokoro"]
+    if engine == "kokoro" or voice in KOKORO_VOICES or os.getenv("SENTINEL_TTS") == "kokoro":
+        order = ["kokoro"]   # SENTINEL_TTS=kokoro: test runs that must not spend ElevenLabs credit
     # cached ElevenLabs audio is free: use it even past the budget or offline
     for eng in order:
         p = _cache_path(eng, eleven_voice if eng == "elevenlabs" else kokoro_voice, text, "mp3" if eng == "elevenlabs" else "wav")

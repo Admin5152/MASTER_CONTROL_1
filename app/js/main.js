@@ -154,6 +154,8 @@ async function mountApp() {
   screens = initScreens(ctx);
   ctx.screens = screens;
   ctx.say = say;
+  ctx.setVoice = (v) => voiceMod.setVoice(v);
+  voiceMod.setVoice(settings.get("voice") || "river");
   ctx.setCrew = (id, src) => switchCrew(id, src);
   ctx.onCheckin = onCheckin;
   ctx.openIntervention = openIntervention;
@@ -350,6 +352,7 @@ function wireVoice() {
   on("voice:speaking-start", () => { orb.setState("speaking"); stages.setOrbBig(true); });
   on("voice:speaking-end", () => { orb.setState("idle"); orb.setSpeakLevel(0); stages.setOrbBig(false); });
   on("voice:status", (t) => note(t));
+  on("voice:sentence", (t) => caption(t, speakingSource));
 }
 
 // ---------- captions and speech out ----------
@@ -363,11 +366,15 @@ function caption(text, source) {
     c.classList.add("is-caption");
     $("orb-source").textContent = source && source !== "local" ? `Answered by ${source}` : "";
   } else {
-    const o = world.orbPlace;
+    // a reserved subtitle lane at the top of the centre column: never over a panel or a control
     b.innerHTML = `${esc(text)}${source ? `<span class="src">${esc(source)}</span>` : ""}`;
     b.hidden = false;
-    if (o.x > window.innerWidth / 2) { b.style.left = "auto"; b.style.right = `${window.innerWidth - o.x + 10}px`; b.style.top = `${o.y + 40}px`; b.style.bottom = "auto"; }
-    else { b.style.right = "auto"; b.style.left = `${o.x + 44}px`; b.style.top = "auto"; b.style.bottom = `${window.innerHeight - o.y + 6}px`; }
+    b.classList.add("is-subtitle");
+    const host = stages.current === "body" ? $("body-host").getBoundingClientRect() : null;
+    const cx = host && host.width > 50 ? host.left + host.width / 2 : window.innerWidth / 2;
+    const w = host && host.width > 50 ? Math.min(560, host.width - 16) : Math.min(560, window.innerWidth * 0.46);
+    b.style.left = `${cx}px`; b.style.maxWidth = `${w}px`;
+    b.style.right = "auto"; b.style.bottom = "auto"; b.style.top = "";
   }
   captionTimer = setTimeout(resetCaption, Math.min(16000, 5000 + text.length * 70));
 }
@@ -380,10 +387,13 @@ function resetCaption() {
   $("orb-source").textContent = "";
 }
 
+let speakingSource = "";
 function say(text, opts = {}) {
   if (!text) return Promise.resolve();
   logLine("Sentinel", text, opts.source);
-  caption(text, opts.source);
+  speakingSource = opts.source || "";
+  // the caption follows what is being said: a queued sentence is captioned when it starts playing
+  if (!opts.append || !voiceMod.voice.speaking) caption(text, opts.source);
   return voiceMod.speak(text, { interrupt: opts.append ? false : true });
 }
 
@@ -427,9 +437,10 @@ async function handleCommand(text, meta = {}) {
   try {
     let spoke = false, first = true;
     const r = await api.chatStream(view.crewId, text, (sentence, source) => {
+      const isFirst = first;
       if (first) { emit("voice:thinking", false); first = false; }
       spoke = true;
-      say(sentence, { source: source === "llm" ? "LLM" : "rules", append: !first });
+      say(sentence, { source: source === "llm" ? "LLM" : "rules", append: !isFirst });
     });
     emit("voice:thinking", false);
     if (!spoke && r.reply) say(r.reply, { source: r.source === "llm" ? "LLM" : "rules" });

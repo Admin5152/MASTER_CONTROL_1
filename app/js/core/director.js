@@ -133,20 +133,24 @@ export function createDirector(deps) {
 
   function placeCallout(dot, leader) {
     if (callout.hidden) return;
+    // the callout lives in the free column between the side panels, above the body tools: it never
+    // covers a panel, a control or the subtitle lane (coordinator review, 1366x768)
     const host = document.getElementById("body-host").getBoundingClientRect();
-    const cw = callout.offsetWidth || 340, ch = callout.offsetHeight || 220;
-    const top0 = 64, bottomMax = window.innerHeight - 90;
-    // ref 06: the card sits to the side of the body, the leader runs to its edge
-    let x = host.left - cw * 0.55;
-    let side = "left";
-    if (x < 12) { x = Math.min(window.innerWidth - cw - 12, host.right - cw * 0.45); side = "right"; }
-    if (side === "right" && x < dot.x + 30) x = Math.max(12, dot.x - cw - 60), side = "left";
-    const y = Math.min(Math.max(top0, dot.y - ch * 0.35), bottomMax - ch);
+    const tools = document.querySelector("#body-host .body-tools")?.getBoundingClientRect();
+    const cw = callout.offsetWidth || 320, ch = callout.offsetHeight || 220;
+    const minX = host.left + 8, maxX = Math.max(minX, host.right - cw - 8);
+    const top0 = host.top + 56, bottomMax = (tools && tools.height ? tools.top : host.bottom) - 10;
+    const side = dot.x - host.left >= host.right - dot.x ? "left" : "right";
+    let x = side === "left" ? dot.x - cw - 56 : dot.x + 56;
+    x = Math.min(Math.max(x, minX), maxX);
+    const y = Math.min(Math.max(top0, dot.y - ch * 0.35), Math.max(top0, bottomMax - ch));
     callout.style.left = `${x}px`; callout.style.top = `${y}px`;
+    callout.style.maxHeight = `${Math.max(160, bottomMax - y)}px`;
     if (leader) {
-      const ex = side === "left" ? x + cw : x;
-      const ey = Math.min(Math.max(dot.y, y + 18), y + ch - 18);
-      const mx = side === "left" ? Math.max(ex + 12, dot.x - 40) : Math.min(ex - 12, dot.x + 40);
+      const onLeft = x + cw / 2 < dot.x;
+      const ex = onLeft ? x + cw : x;
+      const ey = Math.min(Math.max(dot.y, y + 18), y + Math.min(ch, bottomMax - y) - 18);
+      const mx = onLeft ? Math.max(ex + 12, dot.x - 40) : Math.min(ex - 12, dot.x + 40);
       leader.setAttribute("points", `${dot.x},${dot.y} ${mx},${ey} ${ex},${ey}`);
     }
   }
@@ -370,7 +374,7 @@ export function createDirector(deps) {
         color = SEV_COLOR[sev] || SEV_COLOR.alert;
         html = `<h3>${INFO_ICON}${esc(name)}<span class="co-sev st-${sev === "ok" ? "watch" : sev}">${statusWord(sev === "ok" ? "watch" : sev)}</span></h3><p class="co-time">${esc(nowStr())}</p>
           <div class="co-reading"><span>${esc(topR.label)}: <strong class="num">${esc(fmt(topR.value, topR.field))}</strong> ${esc(topR.unit || "")}</span>${badgeHTML(topR.badge)}</div>
-          <p class="co-change">${esc(topR.change || "No baseline comparison for this reading.")} This is a change from your own baseline, not a diagnosis.</p>
+          <p class="co-change">${esc((topR.change || "No baseline comparison for this reading").replace(/\.?$/, "."))} This is a change from your own baseline, not a diagnosis.</p>
           ${readingRows(rs.filter((r) => r !== topR))}${skinBlock(zone)}
           <button class="pill pill-dark pill-block" type="button" data-next>${esc(next.label)}</button>`;
       }

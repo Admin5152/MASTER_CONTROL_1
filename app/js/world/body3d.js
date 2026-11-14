@@ -29,7 +29,7 @@ const COL = {
 };
 const NAMED = { front: 0, left: -Math.PI / 2, right: Math.PI / 2, back: Math.PI };
 // best viewing angle per zone (rad, 0 = front, + = toward the subject's left) and the height of body to frame (fraction of stature)
-const ZONE_VIEW = { head: [-0.42, 0.2], eyes: [0, 0.1], heart: [0.28, 0.24], lungs: [-0.2, 0.3], gut: [0.12, 0.3], bones: [0.38, 0.62], whole_body: [0, 1] };
+const ZONE_VIEW = { head: [-0.42, 0.2], eyes: [0, 0.17], heart: [0.28, 0.24], lungs: [-0.2, 0.3], gut: [0.12, 0.3], bones: [0.38, 0.62], whole_body: [0, 1] };
 const ZLABEL = { head: "Brain and cognition", eyes: "Eyes and vision", heart: "Heart and circulation", lungs: "Lungs and breathing", gut: "Digestion and nutrition", bones: "Bones and muscles" };
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
