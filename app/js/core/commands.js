@@ -8,7 +8,8 @@ export const METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose",
   "reaction", "talk_time", "pitch", "o2", "co2"];
 export const VIEWS = ["front", "back", "left", "right"];
 export const MAX_COMMANDS = 3;
-export const WEAR_ACTIONS = ["open", "close", "explode", "assemble", "zoom_in", "zoom_out", "turn", "reset"];
+export const WEAR_ACTIONS = ["open", "close", "explode", "assemble", "zoom_in", "zoom_out", "turn", "reset", "alert"];
+export const WEAR_ALERTS = ["normal", "health", "radiation", "sos"];
 export const WEAR_PARTS = ["chest", "wrist", "patch"];
 export const XRAY_STYLES = ["radiograph", "anatomy"];
 /** Anatomy parts a person or the LLM can isolate: the 18 model nodes plus named groups. */
@@ -33,6 +34,7 @@ export function validateCommands(cmds, max = MAX_COMMANDS) {
         const w = { cmd: "wearable", action: c.action };
         if (WEAR_PARTS.includes(c.part)) w.part = c.part;
         if (["left", "right", "back", "front"].includes(c.direction)) w.direction = c.direction;
+        if (c.action === "alert") { if (!WEAR_ALERTS.includes(c.kind)) break; w.kind = c.kind; }
         out.push(w);
         break;
       }

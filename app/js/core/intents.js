@@ -106,6 +106,12 @@ const WEAR_PART = (t) => (/ (chest|harness|hub) /.test(t) ? "chest" : / (watch|w
 export function wearIntent(text, { open = false } = {}) {
   const t = norm(text);
   if (/ (hardware|sensor) (screen|status|list|page) /.test(t)) return null;   // the hardware status screen, not the 3D models
+  // the alert simulator: "simulate a radiation alert", "test the SOS", "show me the health warning", "back to normal"
+  const alertKind = / (sos|emergency button|panic button|mayday) / .test(t) ? "sos" : / radiation (alert|alarm|warning) / .test(t) ? "radiation" : / health (alert|alarm|warning) / .test(t) ? "health" : null;
+  if (alertKind && / (simulate|test|trigger|show|demo|play|try|run|what does|press) /.test(t)) {
+    return { intent: "wear_alert", action: "control_wearable", target: alertKind, commands: [{ cmd: "wearable", action: "alert", kind: alertKind }] };
+  }
+  if (open && / (clear|stop|cancel|reset) (the )?(alert|alarm|warning)|back to normal|all clear /.test(t)) return { intent: "wear_alert", action: "control_wearable", target: "normal", commands: [{ cmd: "wearable", action: "alert", kind: "normal" }] };
   const named = WEAR_WORDS.test(t);
   if (!named && !open) return null;
   if (!named && / (body|me|my|skeleton|organs) /.test(t)) return null;   // "turn the body", "zoom in on my heart": the body, not the device
@@ -132,6 +138,12 @@ export function matchIntent(text, ctx = {}) {
 
   const wear = wearIntent(text, { open: !!ctx.wearOpen });
   if (wear) return wear;
+
+  // full screen
+  if (/ (full ?screen|fullscreen|immersive mode|kiosk mode) /.test(t)) {
+    const off = / (exit|leave|close|stop|turn off|out of|no|disable|quit) /.test(t);
+    return { intent: "fullscreen", action: "control_app", local: "fullscreen", on: !off, commands: [] };
+  }
 
   // stop / back
   if (/^ (stop|cancel|be quiet|quiet|shush|stop talking) $/.test(t) || has(t, "stop talking")) return { intent: "stop", action: "stop", local: "stop", commands: [] };

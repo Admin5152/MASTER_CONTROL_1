@@ -96,7 +96,8 @@ Allowed commands (at most 3):
   {"cmd":"show_radiation","on":true}
   {"cmd":"wearable","action":A,"part":P,"direction":D}   the SpaceWear hardware prototypes in 3D (the crew's chest hub,
                                          watch and skin patch). A in open, close, explode (exploded view of its parts),
-                                         assemble, zoom_in, zoom_out, turn, reset; P in chest, wrist, patch (optional);
+                                         assemble, zoom_in, zoom_out, turn, reset, alert (with "kind": normal, health,
+                                         radiation or sos: plays that alert's vibration and light pattern on the device); P in chest, wrist, patch (optional);
                                          D in left, right, back, front (only with turn). Use it for "show the hardware",
                                          "the watch", "explode it", "zoom in", "turn it around" while the hardware is shown.
   {"cmd":"set_theme","theme":T}          T in dark, light
@@ -149,12 +150,16 @@ def validate_commands(cmds: Any) -> list[dict]:
             out.append({"cmd": "show_radiation", "on": bool(c.get("on", True))})
         elif name == "close":
             out.append({"cmd": "close"})
-        elif name == "wearable" and c.get("action") in ("open", "close", "explode", "assemble", "zoom_in", "zoom_out", "turn", "reset"):
+        elif name == "wearable" and c.get("action") in ("open", "close", "explode", "assemble", "zoom_in", "zoom_out", "turn", "reset", "alert"):
+            if c["action"] == "alert" and c.get("kind") not in ("normal", "health", "radiation", "sos"):
+                continue
             w = {"cmd": "wearable", "action": c["action"]}
             if c.get("part") in ("chest", "wrist", "patch"):
                 w["part"] = c["part"]
             if c.get("direction") in ("left", "right", "back", "front"):
                 w["direction"] = c["direction"]
+            if c["action"] == "alert":
+                w["kind"] = c["kind"]
             out.append(w)
         elif name == "set_theme" and c.get("theme") in ("dark", "light"):
             out.append({"cmd": "set_theme", "theme": c["theme"]})

@@ -413,11 +413,15 @@ function wireControls() {
   $("btn-key").addEventListener("click", () => screens.open("about"));
   $("btn-cam").addEventListener("click", () => (vision.state.on ? vision.stop() : vision.start()));
   $("btn-cam-devices").addEventListener("click", () => screens.open("settings"));
+  // full screen: the button, F, or by voice; the icon follows the real state (Esc and swipe-down exit too)
+  $("btn-fullscreen").addEventListener("click", () => toggleFullscreen());
+  document.addEventListener("fullscreenchange", syncFullscreen); document.addEventListener("webkitfullscreenchange", syncFullscreen);
   $("btn-mute").addEventListener("click", (e) => { const m = !isMuted(); setMuted(m); e.currentTarget.setAttribute("aria-pressed", String(m)); });
   $("sb-crew-name").addEventListener("click", () => director.run([{ cmd: "open_screen", name: "crew" }]));
   window.addEventListener("keydown", (e) => {
     if (e.target.closest?.("input, textarea, select")) return;
     if (e.key === "h" || e.key === "H") director.run([{ cmd: "open_screen", name: "hardware" }]);
+    if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey) toggleFullscreen();
     if (e.key === "Escape") { director.cancel(); closeScreen(); closeMenus(); }
   });
   $("ask-form").addEventListener("submit", (e) => {
@@ -475,6 +479,23 @@ function renderAllReadings(el) {
   const t = setInterval(draw, 1500);
   return () => clearInterval(t);
 }
+
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+function syncFullscreen() { const on = !!fsEl(); $("btn-fullscreen").setAttribute("aria-pressed", String(on)); $("btn-fullscreen").setAttribute("aria-label", on ? "Exit full screen" : "Full screen"); document.body.classList.toggle("is-fs", on); }
+/** Enter or leave full screen. Browsers allow entering only from a tap or key press, so a spoken request asks for one tap. */
+async function toggleFullscreen(want) {
+  const on = !!fsEl(), go = want ?? !on;
+  if (go === on) return true;
+  try {
+    if (go) { const el = document.documentElement; await (el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : el.webkitRequestFullscreen?.()); }
+    else await (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen?.());
+    return true;
+  } catch {
+    if (go) { $("btn-fullscreen").classList.add("is-hint"); setTimeout(() => $("btn-fullscreen").classList.remove("is-hint"), 4000); }
+    return false;
+  }
+}
+ctx.toggleFullscreen = toggleFullscreen;
 
 function pushToTalk() {
   voiceMod.stopSpeaking();
@@ -609,6 +630,11 @@ async function handleCommand(text, meta = {}) {
   const m = matchIntent(text, { wearOpen: stages.current === "vitals" });
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
+    if (m.local === "fullscreen") {
+      const ok = await toggleFullscreen(m.on);
+      say(ok ? (m.on ? "Full screen." : "Leaving full screen.") : "Tap the full-screen button at the top right; the browser needs a tap for that.", { source: "local" });
+      return;
+    }
     if (m.local === "cabin") {
       const c = view.state?.cabin || {};
       say(`Cabin oxygen is ${c.oxygen_pct} percent and carbon dioxide ${c.co2_ppm} parts per million. ${c.alert ? "That is out of range and flagged to ground." : "Both are within limits."} These cabin readings are simulated.`, { source: "local" });
@@ -619,7 +645,7 @@ async function handleCommand(text, meta = {}) {
     else if (m.commands?.[0]?.cmd === "wearable") {
       const w = m.commands[0], P = { chest: "the chest hub", wrist: "the watch", patch: "the patch" };
       const line = { open: `Here's ${P[w.part] || "the SpaceWear hardware"}.`, explode: "Exploded view.", assemble: "Back together.", zoom_in: "Closer.",
-        zoom_out: "Zooming out.", turn: w.direction === "back" ? "Turning it around." : `Turning it ${w.direction || "right"}.`, reset: "Reset.", close: "Hardware closed." }[w.action];
+        alert: { sos: "Simulating a manual SOS.", radiation: "Simulating a radiation alert: three long pulses.", health: "Simulating a health warning.", normal: "All clear." }[w.kind], zoom_out: "Zooming out.", turn: w.direction === "back" ? "Turning it around." : `Turning it ${w.direction || "right"}.`, reset: "Reset.", close: "Hardware closed." }[w.action];
       if (line) say(line, { source: "local" });
     }
     else if (m.commands?.[0]?.cmd === "open_screen") {

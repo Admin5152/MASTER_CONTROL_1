@@ -67,11 +67,11 @@ function fabricTexture(color = "#3d4954", line = "rgba(255,255,255,.07)") {
 function makeWatch(parent) {
   const figure = new THREE.Group(); parent.add(figure);
   figure.rotation.set(-0.12, -0.38, 0);
-  const titanium = new THREE.MeshPhysicalMaterial({ color: 0x9aa0a6, metalness: 1, roughness: 0.28, clearcoat: 0.3, clearcoatRoughness: 0.2 });
+  const titanium = new THREE.MeshPhysicalMaterial({ color: 0x1f2227, metalness: 0.75, roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.15 });
   const darkTi = new THREE.MeshPhysicalMaterial({ color: 0x3a3f45, metalness: 1, roughness: 0.35 });
-  const silicone = new THREE.MeshPhysicalMaterial({ color: 0x1f2a33, roughness: 0.62, metalness: 0, sheen: 0.6, sheenColor: new THREE.Color(0x5a7080), sheenRoughness: 0.7 });
+  const silicone = new THREE.MeshPhysicalMaterial({ color: 0x141619, roughness: 0.6, metalness: 0, sheen: 0.5, sheenColor: new THREE.Color(0x4a4f57), sheenRoughness: 0.7 });
   const glassBlack = new THREE.MeshPhysicalMaterial({ color: 0x020304, roughness: 0.04, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, reflectivity: 0.6 });
-  const accent = new THREE.MeshStandardMaterial({ color: 0xff7a2f, roughness: 0.4, metalness: 0.2 });
+  const accent = new THREE.MeshStandardMaterial({ color: 0x1a1030, emissive: 0x9b6bff, emissiveIntensity: 2.0, roughness: 0.3 });
   const glow = new THREE.MeshStandardMaterial({ color: 0x0a2a1c, emissive: 0x29ff8a, emissiveIntensity: 1.6, roughness: 0.3 });
 
   // case, then the black glass front, then the lit screen just above it
@@ -87,6 +87,12 @@ function makeWatch(parent) {
   screen.position.z = 0.156; figure.add(screen);
   const sheen = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.57), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, roughness: 0.05, metalness: 0, clearcoat: 1, depthWrite: false }));
   sheen.position.z = 0.158; figure.add(sheen);
+  // the violet edge light round the screen
+  const edge = new THREE.Shape(), hole = new THREE.Path();
+  const rr = (o, w, h, r) => { const x = -w / 2, y = -h / 2; o.moveTo(x + r, y); o.lineTo(x + w - r, y); o.absarc(x + w - r, y + r, r, -Math.PI / 2, 0); o.lineTo(x + w, y + h - r); o.absarc(x + w - r, y + h - r, r, 0, Math.PI / 2); o.lineTo(x + r, y + h); o.absarc(x + r, y + h - r, r, Math.PI / 2, Math.PI); o.lineTo(x, y + r); o.absarc(x + r, y + r, r, Math.PI, Math.PI * 1.5); };
+  rr(edge, 0.47, 0.58, 0.1); rr(hole, 0.455, 0.565, 0.093); edge.holes.push(hole);
+  const glowRing = new THREE.Mesh(new THREE.ShapeGeometry(edge, 24), accent); glowRing.position.z = 0.1575; figure.add(glowRing);
+  figure.userData.leds = [accent];
   // digital crown (knurled), side button, orange action ring
   const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.07, 36, 1), darkTi);
   crown.rotation.z = Math.PI / 2; crown.position.set(0.3, 0.1, 0.02); figure.add(crown);
@@ -107,13 +113,14 @@ function makeWatch(parent) {
 function makeChestHub(parent) {
   const unit = new THREE.Group();
   parent.add(unit);
-  const fabric = new THREE.MeshPhysicalMaterial({ map: fabricTexture("#4a5763"), roughness: 0.82, sheen: 0.8, sheenColor: new THREE.Color(0x8fa3b5), sheenRoughness: 0.55 });
+  const fabric = new THREE.MeshPhysicalMaterial({ map: fabricTexture("#2f3338", "rgba(255,255,255,.05)"), roughness: 0.88, sheen: 0.7, sheenColor: new THREE.Color(0x5d6670), sheenRoughness: 0.6 });
   fabric.map.repeat.set(1, 4);
-  const trim = new THREE.MeshPhysicalMaterial({ color: 0xa9afb5, metalness: 1, roughness: 0.26 });
-  const shell = new THREE.MeshPhysicalMaterial({ color: 0x1c232b, metalness: 0.15, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.06 });
+  const trim = new THREE.MeshPhysicalMaterial({ color: 0x3b3e44, metalness: 0.85, roughness: 0.34 });
+  const shell = new THREE.MeshPhysicalMaterial({ color: 0x15171b, metalness: 0.1, roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.3 });
   const groove = new THREE.MeshStandardMaterial({ color: 0x07090c, roughness: 0.6 });
   const stitch = new THREE.MeshStandardMaterial({ color: 0x9fb0be, roughness: 0.9 });
-  const violet = new THREE.MeshStandardMaterial({ color: 0x0b2b2b, emissive: 0x4ef0e6, emissiveIntensity: 1.6, roughness: 0.25 });
+  const violet = new THREE.MeshStandardMaterial({ color: 0x1a1030, emissive: 0x9b6bff, emissiveIntensity: 2.2, roughness: 0.25 });
+  unit.userData.leds = [violet];
   const strapL = new THREE.Mesh(roundedPanel(0.16, 0.78, 0.075, 0.055), fabric);
   strapL.rotation.z = -0.29; strapL.position.set(-0.22, 0.1, -0.08); unit.add(strapL);
   const strapR = strapL.clone(); strapR.rotation.z = 0.29; strapR.position.x = 0.22; unit.add(strapR);
@@ -146,8 +153,8 @@ function makeChestHub(parent) {
   const label = new THREE.Mesh(new THREE.PlaneGeometry(0.31, 0.075), new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true, toneMapped: false }));
   label.position.set(0, 0.17, 0.259); unit.add(label);
   for (const x of [-0.17, 0.17]) {
-    const light = new THREE.Mesh(roundedPanel(0.028, 0.15, 0.012, 0.012), violet);
-    light.position.set(x, -0.015, 0.26); unit.add(light);
+    const light = new THREE.Mesh(roundedPanel(0.026, 0.2, 0.012, 0.012), violet);
+    light.position.set(x, -0.03, 0.26); unit.add(light);
   }
   const status = new THREE.Mesh(new THREE.SphereGeometry(0.026, 14, 10), violet);
   status.position.set(0, 0.23, 0.26); unit.add(status);
@@ -168,6 +175,12 @@ function makeChestHub(parent) {
     const contact = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.025, 20), violet);
     contact.rotation.x = Math.PI / 2; contact.position.set(x, y, -0.13); unit.add(contact);
   }
+  // haptic modules: small pods on the shoulder straps, each with its own light
+  for (const x of [-0.27, 0.27]) {
+    const podMesh = new THREE.Mesh(roundedPanel(0.13, 0.09, 0.04, 0.035), shell);
+    podMesh.position.set(x, 0.5, 0.03); podMesh.rotation.z = x < 0 ? -0.29 : 0.29; unit.add(podMesh);
+    const dot = new THREE.Mesh(new THREE.CircleGeometry(0.009, 16), violet); dot.position.set(x, 0.5, 0.075); unit.add(dot);
+  }
   unit.scale.setScalar(0.68);
   unit.rotation.y = -0.12;
   return unit;
@@ -175,25 +188,24 @@ function makeChestHub(parent) {
 
 function makePatchSensor(parent) {
   const patch = new THREE.Group(); parent.add(patch);
-  patch.rotation.set(1.05, 0, -0.2);   // the top (channels and reader) faces the viewer
-  // the adhesive: printed microfluidic channels that fill with sweat (the colours a hydration patch shows)
-  const c = document.createElement("canvas"); c.width = c.height = 512;
-  const g = c.getContext("2d");
-  g.fillStyle = "#aeb5bb"; g.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.05})`; g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2); }
-  const chan = (r, col, a0, a1) => { g.strokeStyle = col; g.lineWidth = 10; g.lineCap = "round"; g.beginPath(); g.arc(256, 256, r, a0, a1); g.stroke(); };
-  chan(150, "#3fa8ff", -2.6, 0.9); chan(180, "#ff8a3d", -0.4, 2.2); chan(205, "#7ad36b", 1.4, 3.6); chan(122, "#c9a3ff", 2.6, 4.6);
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  const adhesive = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.012, 96), [
-    new THREE.MeshStandardMaterial({ color: 0x9aa1a7, roughness: 0.9 }), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.82 }), new THREE.MeshStandardMaterial({ color: 0x969da3, roughness: 0.9 })]);
-  patch.add(adhesive);
-  // the reader puck: graphite, glossy, with a light ring
-  const puck = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.165, 0.07, 64), new THREE.MeshPhysicalMaterial({ color: 0x23282e, roughness: 0.2, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08 }));
-  puck.position.y = 0.04; patch.add(puck);
-  const lightRing = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.006, 10, 64), new THREE.MeshStandardMaterial({ color: 0x062026, emissive: 0x3ce3ff, emissiveIntensity: 1.6 }));
-  lightRing.rotation.x = Math.PI / 2; lightRing.position.y = 0.076; patch.add(lightRing);
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.1, 48, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0x2c333a, roughness: 0.25, metalness: 0.3, clearcoat: 1 }));
-  cap.scale.y = 0.25; cap.position.y = 0.075; patch.add(cap);
+  patch.rotation.set(0.18, -0.35, 0);
+  const body = new THREE.MeshPhysicalMaterial({ color: 0x16181c, roughness: 0.38, metalness: 0.1, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+  const bezel = new THREE.MeshPhysicalMaterial({ color: 0x2a2d33, metalness: 0.9, roughness: 0.3 });
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0x0a1220, roughness: 0.03, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, transparent: true, opacity: 0.38, depthWrite: false });
+  const lensGlow = new THREE.MeshStandardMaterial({ color: 0x0b1830, emissive: 0x9fd4ff, emissiveIntensity: 1.8 });
+  const ringGlow = new THREE.MeshStandardMaterial({ color: 0x1a1030, emissive: 0x9b6bff, emissiveIntensity: 1.6 });
+  // a soft round puck: a capsule profile turned about its axis
+  const prof = [];
+  for (let i = 0; i <= 16; i++) { const a = -Math.PI / 2 + i / 16 * Math.PI; prof.push(new THREE.Vector2(0.3 + Math.cos(a) * 0.07, Math.sin(a) * 0.07)); }
+  prof.unshift(new THREE.Vector2(0, -0.07)); prof.push(new THREE.Vector2(0, 0.07));
+  const puck = new THREE.Mesh(new THREE.LatheGeometry(prof, 72), body); puck.rotation.x = Math.PI / 2; patch.add(puck);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.022, 20, 72), bezel); rim.position.z = 0.07; patch.add(rim);
+  const lens = new THREE.Mesh(new THREE.SphereGeometry(0.15, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), glass);
+  lens.rotation.x = Math.PI / 2; lens.scale.y = 0.35; lens.position.z = 0.068; patch.add(lens);
+  const core = new THREE.Mesh(new THREE.CircleGeometry(0.06, 40), lensGlow); core.position.z = 0.085; patch.add(core);
+  const halo = new THREE.Mesh(new THREE.RingGeometry(0.075, 0.095, 48), new THREE.MeshBasicMaterial({ color: 0x7fc4ff, transparent: true, opacity: 0.35 })); halo.position.z = 0.086; patch.add(halo);
+  const status = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.006, 8, 96), ringGlow); status.position.z = 0.0; patch.add(status);
+  patch.userData.leds = [ringGlow];
   return patch;
 }
 
@@ -322,13 +334,35 @@ function paintDashboard(g, state, time, steps, calories, connected) {
 
 // What each device measures, and where the number on screen comes from.
 const DEVICES = {
-  chest: { name: "Chest hub", title: "SpaceWear chest hub", copy: "Harness-mounted biometric hub: ECG-grade heart rhythm, breathing from chest movement, skin temperature.",
+  chest: { name: "Chest hub", title: "SpaceWear chest hub", copy: "Processing, communications and spacecraft integration, on a sensor harness: heart rate and ECG, SpO₂ and respiration from the straps, haptic modules on the shoulders, modular ports for radiation, O₂, CO₂ and pressure feeds.",
     rows: (s) => [["Heart rate", s.vitals?.heart_rate, "bpm", s.vitals?.sources?.heart_rate], ["Breathing", s.vitals?.breathing_rate, "/min", s.vitals?.sources?.breathing_rate], ["Skin temp", s.manual?.temp_c, "°C", s.manual?.temp_c != null ? "manual" : null]] },
-  wrist: { name: "Watch", title: "SpaceWear watch", copy: "The crew member's own display: optical pulse and SpO₂, activity, and Sentinel's alerts on the wrist.",
+  wrist: { name: "Wrist module", title: "SpaceWear wrist module", copy: "Quick status, acknowledging alerts and secondary haptics: optical pulse and SpO₂, and Sentinel's warnings on the wrist.",
     rows: (s) => [["SpO₂", s.vitals?.spo2, "%", s.vitals?.sources?.spo2], ["Heart rate", s.vitals?.heart_rate, "bpm", s.vitals?.sources?.heart_rate], ["Sleep", s.manual?.sleep_hours, "h", s.manual?.sleep_hours != null ? "manual" : null]] },
-  patch: { name: "Patch", title: "SpaceWear patch", copy: "Skin-contact sensor for sweat and hydration. A concept: no patch is connected in this build.",
+  patch: { name: "Patch sensor", title: "SpaceWear patch sensor", copy: "Optional skin-contact sensor for skin temperature, hydration and sweat. A concept: no patch is connected in this build.",
     rows: (s) => [["Hydration", s.manual?.hydration_ml, "ml", s.manual?.hydration_ml != null ? "manual" : null], ["Skin temp", s.manual?.temp_c, "°C", s.manual?.temp_c != null ? "manual" : null]] },
 };
+// vibration and light patterns for each alert (ms on, ms off, ...), after the AEGIS-1 design
+export const ALERTS = {
+  normal: { name: "Normal", color: 0x9b6bff, pattern: [], note: "All clear: the status light glows steady." },
+  health: { name: "Health warning", color: 0xffb02e, pattern: [180, 140, 180, 900], title: "Health warning", sub: "Check your heart rate", note: "Two short pulses, repeating: a vital sign is outside your range." },
+  radiation: { name: "Radiation alert", color: 0xff4b2e, pattern: [650, 300, 650, 300, 650, 1100], title: "High radiation", sub: "Seek shielding", note: "Three long pulses: the radiation system reports an alert condition." },
+  sos: { name: "Manual SOS", color: 0xff2244, pattern: [140, 110, 140, 110, 140, 320, 420, 140, 420, 140, 420, 320, 140, 110, 140, 110, 140, 900], title: "SOS sent", sub: "Crew and ground notified", note: "S-O-S in Morse: the astronaut pressed the emergency button." },
+};
+const patternOn = (pat, ms) => { const total = pat.reduce((a, b) => a + b, 0); if (!total) return false; let t = ms % total; for (let i = 0; i < pat.length; i++) { if (t < pat[i]) return i % 2 === 0; t -= pat[i]; } return false; };
+function paintAlert(g, a, on) {
+  const W = 256, H = 320; g.setTransform(2, 0, 0, 2, 0, 0); g.clearRect(0, 0, W, H);
+  g.save(); g.beginPath(); g.roundRect(0, 0, W, H, 25); g.clip();
+  g.fillStyle = "#07090d"; g.fillRect(0, 0, W, H);
+  const c = "#" + a.color.toString(16).padStart(6, "0");
+  g.fillStyle = c; g.globalAlpha = on ? 0.28 : 0.12; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+  g.strokeStyle = c; g.lineWidth = 3; g.beginPath(); g.moveTo(128, 70); g.lineTo(158, 122); g.lineTo(98, 122); g.closePath(); g.stroke();
+  g.fillStyle = c; g.font = "700 26px system-ui"; g.textAlign = "center"; g.fillText("!", 128, 115);
+  g.fillStyle = "#fff"; g.font = "700 24px system-ui"; g.fillText(a.title, 128, 170);
+  g.fillStyle = "#cfd6e0"; g.font = "600 13px system-ui"; g.fillText(a.sub, 128, 196);
+  g.fillStyle = c; g.font = "700 9px system-ui"; g.fillText("SPACEWEAR · SIMULATED ALERT", 128, 290);
+  g.restore();
+}
+
 const fmt = (v) => (v == null || !Number.isFinite(Number(v)) ? "—" : Number(v) >= 100 ? String(Math.round(v)) : String(Math.round(Number(v) * 10) / 10));
 const srcBadge = (v, src) => (v == null ? `<span class="badge badge-designed">NO SENSOR</span>` : src === "manual" || src === "user" ? `<span class="badge badge-sim">MANUAL</span>` : src && src !== "sim" ? `<span class="badge badge-live">LIVE</span>` : `<span class="badge badge-sim">SIM</span>`);
 
@@ -338,7 +372,8 @@ export function mountWearableFigure(panel, ctx) {
       <span class="badge badge-designed">Concept</span></header>
     <div class="wear-tabs" role="tablist">${Object.entries(DEVICES).map(([id, d]) => `<button type="button" role="tab" data-part="${id}">${d.name}</button>`).join("")}</div>
     <div class="wear-body"><div class="wear-viewer"><canvas aria-label="SpaceWear device model: drag to turn"></canvas><span class="wear-hint">Drag to turn · say "explode it"</span></div>
-    <div class="wear-info"><strong data-title></strong><p data-copy></p><ul class="wear-rows" data-rows></ul></div></div>`;
+    <div class="wear-info"><strong data-title></strong><p data-copy></p><ul class="wear-rows" data-rows></ul>
+      <div class="wear-alerts"><span class="label">Alert test</span><div class="wear-alert-row">${Object.entries(ALERTS).map(([k, a]) => `<button type="button" data-alert="${k}" class="al-${k}">${a.name}</button>`).join("")}</div><p class="fine" data-alert-note>Illustrative patterns. On a tablet that supports it, the device itself vibrates.</p></div></div></div>`;
   const canvas = panel.querySelector("canvas");
   let renderer;
   try {
@@ -385,6 +420,17 @@ export function mountWearableFigure(panel, ctx) {
   }
   let open = false, current = parts[1], drag = null, spinT = 0, idleAt = 0;
   let explode = 0, explodeTo = 0, zoom = 1, zoomTo = 1, turnTo = null, tiltTo = 0;
+  let alert = null, alertT0 = 0, alertTimer = 0;
+  const setAlert = (kind) => {
+    clearTimeout(alertTimer);
+    const a = ALERTS[kind] || ALERTS.normal;
+    alert = kind && kind !== "normal" ? a : null; alertT0 = performance.now();
+    panel.querySelectorAll("[data-alert]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.alert === (kind || "normal"))));
+    panel.querySelector("[data-alert-note]").textContent = a.note;
+    try { navigator.vibrate?.(alert ? [...a.pattern, ...a.pattern] : 0); } catch { /* no vibration motor */ }
+    if (alert) { if (current.id !== "wrist" && kind !== "sos") select("wrist"); alertTimer = setTimeout(() => setAlert("normal"), 9000); }
+    for (const p of parts) for (const m of p.object.userData.leds || []) m.emissive.setHex(a.color);
+  };
 
   const info = panel.querySelector(".wear-info");
   const renderInfo = () => {
@@ -404,6 +450,7 @@ export function mountWearableFigure(panel, ctx) {
     window.gsap?.fromTo(canvas, { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.45, ease: "power2.out" });
   };
   panel.querySelectorAll("[data-part]").forEach((b) => b.addEventListener("click", () => select(b.dataset.part)));
+  panel.querySelectorAll("[data-alert]").forEach((b) => b.addEventListener("click", () => setAlert(b.dataset.alert)));
 
   const resize = () => {
     if (!open) return;
@@ -450,6 +497,12 @@ export function mountWearableFigure(panel, ctx) {
     if (vr.bottom < 0 || vr.top > innerHeight) return;   // scrolled out of view: nothing to draw
     // a slow turntable sway, paused while dragged and for two seconds after
     const k = 1 - Math.exp(-dt * 7);
+    if (alert) {
+      const on = patternOn(alert.pattern, now - alertT0);
+      for (const m of current.object.userData.leds || []) m.emissiveIntensity = on ? 3.2 : 0.4;
+      current.object.position.x = on ? Math.sin(now * 0.9) * 0.008 : 0;   // the motor buzzing
+      if (current.id === "wrist") { paintAlert(face.getContext("2d"), alert, on); display.needsUpdate = true; lastPaint = now; }
+    } else { current.object.position.x = 0; for (const m of current.object.userData.leds || []) m.emissiveIntensity = 2.1; }
     explode += (explodeTo - explode) * k; zoom += (zoomTo - zoom) * k;
     for (const pc of current.pieces) pc.obj.position.copy(pc.base).addScaledVector(pc.off, explode);
     if (current.fit) current.camera.position.set(current.fit.c.x + 0.04, current.fit.c.y + 0.025, current.fit.c.z + current.fit.d * zoom);
@@ -459,7 +512,7 @@ export function mountWearableFigure(panel, ctx) {
     if (!drag && turnTo == null && now - idleAt > 2000 && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
       spinT += dt; current.object.rotation.y = current.base + Math.sin(spinT * 0.5) * 0.55;
     }
-    if (current.id === "wrist" && now - lastPaint > 120) {
+    if (!alert && current.id === "wrist" && now - lastPaint > 120) {
       const elapsedMinutes = Math.max(0, (Date.now() - startDay) / 60000);
       activitySteps += (Math.min(12000, 6482 + Math.floor(elapsedMinutes * 2.1)) - activitySteps) * 0.2;
       activityCalories += (Math.min(900, 286 + Math.floor(elapsedMinutes * 0.28)) - activityCalories) * 0.2;
@@ -471,6 +524,7 @@ export function mountWearableFigure(panel, ctx) {
   raf = requestAnimationFrame(draw);
   const offCmd = on("wear:cmd", (c) => {
     if (c.action === "close") return;
+    if (c.action === "alert") { panel.scrollIntoView({ behavior: "smooth", block: "center" }); setAlert(c.kind); return; }
     panel.scrollIntoView({ behavior: "smooth", block: "center" });
     if (c.part && c.part !== current.id) select(c.part);
     const y = current.object.rotation.y;
@@ -486,6 +540,7 @@ export function mountWearableFigure(panel, ctx) {
   });
   select("wrist");
   setOpen();
+  setAlert("normal");
   return () => {
     cancelAnimationFrame(raf); ro.disconnect(); offCmd?.();
     ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel"].forEach((name) => canvas.removeEventListener(name, stopBodyDrag));

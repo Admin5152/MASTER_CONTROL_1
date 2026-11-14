@@ -7,69 +7,67 @@ import { emit, on } from "../core/bus.js";
 import { PulseTracker } from "../vision/rppg.js";
 
 /**
- * Stage 1 (FACE-1, SF1): Draw the full 468-landmark triangulated face tessellation
- * plus brighter contour lines for eyes, lips and face oval, using the CSS colour
- * variables already defined in the app (--line, --accent).
- *
- * Called from app/js/vision/vision.js draw() — only the drawing logic lives here;
- * the canvas context and landmark data come from vision.js.
- *
- * @param {CanvasRenderingContext2D} ctx   The overlay canvas 2D context.
- * @param {Array}  lm   FaceLandmarker result: faceLandmarks[0] (468 objects with .x/.y).
- * @param {object} mp   The imported MediaPipe vision_bundle module (provides connection tables).
- * @param {number} W    Canvas pixel width.
- * @param {number} H    Canvas pixel height.
+ * FACE-1: the whole face as one even mesh (all 468 landmarks and the 2,556 edges joining them), with no
+ * highlighted outline, eyes or lips. Edges are shaded by depth so the near parts of the face (nose, cheeks,
+ * brow) read brighter and the mesh looks three-dimensional; landmarks are smoothed between frames
+ * (fast when the head moves, steady when it is still) so the mesh does not shimmer; a soft scan band sweeps
+ * down the face. Called from vision.js draw(); the canvas and landmarks come from there.
  */
+const MESH_BUCKETS = 5;
+let meshSmooth = null, meshEdges = null, meshT0 = 0;
+export function smoothLandmarks(lm, prev) {
+  if (!prev || prev.length !== lm.length) return lm.map((p) => ({ x: p.x, y: p.y, z: p.z || 0 }));
+  // speed-adaptive: big movements follow at once, small tremor is averaged away
+  let move = 0;
+  for (let i = 0; i < lm.length; i += 23) move += Math.abs(lm[i].x - prev[i].x) + Math.abs(lm[i].y - prev[i].y);
+  const a = Math.min(1, 0.35 + move * 18);
+  for (let i = 0; i < lm.length; i++) {
+    prev[i].x += (lm[i].x - prev[i].x) * a; prev[i].y += (lm[i].y - prev[i].y) * a; prev[i].z += ((lm[i].z || 0) - prev[i].z) * a;
+  }
+  return prev;
+}
+
 export function drawFaceMesh(ctx, lm, mp, W, H) {
-  if (!lm || !mp) return;
+  const T = mp?.FaceLandmarker?.FACE_LANDMARKS_TESSELATION;
+  if (!lm || !T) return;
+  if (!meshEdges || meshEdges.src !== T) meshEdges = Object.assign(T.map((c) => [c.start, c.end]), { src: T });
+  meshSmooth = smoothLandmarks(lm, meshSmooth);
+  const P = meshSmooth;
   const css = getComputedStyle(document.documentElement);
-  const lineC  = css.getPropertyValue("--line").trim()  || "rgba(0,200,255,0.35)";
-  const accentC = css.getPropertyValue("--accent").trim() || "rgba(0,220,255,0.75)";
-
-  // ── 1. Full tessellation (thin, semi-transparent) ───────────────────────────
+  const col = css.getPropertyValue("--accent").trim() || "#5fd4ff";
+  // depth range of this face, so shading works at any distance from the camera
+  let zMin = Infinity, zMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+  for (const p of P) { if (p.z < zMin) zMin = p.z; if (p.z > zMax) zMax = p.z; if (p.y < yMin) yMin = p.y; if (p.y > yMax) yMax = p.y; }
+  const zr = Math.max(1e-6, zMax - zMin);
+  const now = performance.now(); if (!meshT0) meshT0 = now;
+  const sweep = yMin + ((now - meshT0) / 2600 % 1) * (yMax - yMin) * 1.25 - (yMax - yMin) * 0.12;   // band position, face-relative
+  const band = (yMax - yMin) * 0.09;
+  // edges go into a few brightness buckets: one stroke per bucket keeps it to five draw calls
+  const paths = Array.from({ length: MESH_BUCKETS }, () => new Path2D());
+  for (const [i, j] of meshEdges) {
+    const a = P[i], b = P[j];
+    const near = 1 - ((a.z + b.z) / 2 - zMin) / zr;              // 1 = closest to the camera
+    const lit = Math.max(0, 1 - Math.abs((a.y + b.y) / 2 - sweep) / band);
+    const k = Math.min(MESH_BUCKETS - 1, Math.floor((near * 0.75 + lit * 0.6) * MESH_BUCKETS * 0.8));
+    paths[k].moveTo(a.x * W, a.y * H); paths[k].lineTo(b.x * W, b.y * H);
+  }
   ctx.save();
-  ctx.lineWidth   = 0.55;
-  ctx.strokeStyle = lineC;
-  ctx.shadowBlur  = 0;              // no extra shadow on 468 triangles (perf)
-  ctx.globalAlpha = 0.55;
-
-  if (mp.FaceLandmarker.FACE_LANDMARKS_TESSELATION) {
-    ctx.beginPath();
-    for (const c of mp.FaceLandmarker.FACE_LANDMARKS_TESSELATION) {
-      const a = lm[c.start], b = lm[c.end];
-      ctx.moveTo(a.x * W, a.y * H);
-      ctx.lineTo(b.x * W, b.y * H);
-    }
-    ctx.stroke();
+  ctx.strokeStyle = col; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.shadowColor = col;
+  for (let k = 0; k < MESH_BUCKETS; k++) {
+    const t = (k + 1) / MESH_BUCKETS;
+    ctx.globalAlpha = 0.12 + t * 0.6;
+    ctx.lineWidth = 0.5 + t * 0.55;
+    ctx.shadowBlur = k === MESH_BUCKETS - 1 ? 6 : 0;
+    ctx.stroke(paths[k]);
   }
-
-  // ── 2. Bright contour lines (eyes, lips, face oval) ─────────────────────────
-  ctx.lineWidth   = 1.4;
-  ctx.strokeStyle = accentC;
-  ctx.shadowColor = accentC;
-  ctx.shadowBlur  = 6;
-  ctx.globalAlpha = 1.0;
-
-  const CONTOUR_SETS = [
-    mp.FaceLandmarker.FACE_LANDMARKS_FACE_OVAL,
-    mp.FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
-    mp.FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
-    mp.FaceLandmarker.FACE_LANDMARKS_LIPS,
-    mp.FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW,
-    mp.FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW,
-  ].filter(Boolean);  // guard: not all bundles expose every set
-
-  for (const set of CONTOUR_SETS) {
-    ctx.beginPath();
-    for (const c of set) {
-      ctx.moveTo(lm[c.start].x * W, lm[c.start].y * H);
-      ctx.lineTo(lm[c.end].x   * W, lm[c.end].y   * H);
-    }
-    ctx.stroke();
+  // vertices: tiny points, brighter where the face is nearer
+  ctx.shadowBlur = 0; ctx.fillStyle = col;
+  for (let i = 0; i < P.length; i += 2) {
+    const near = 1 - (P[i].z - zMin) / zr;
+    ctx.globalAlpha = 0.18 + near * 0.5;
+    ctx.fillRect(P[i].x * W - 0.8, P[i].y * H - 0.8, 1.6, 1.6);
   }
-
-  ctx.shadowBlur  = 0;
-  ctx.globalAlpha = 1.0;
   ctx.restore();
 }
 

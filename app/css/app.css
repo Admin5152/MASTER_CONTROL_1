@@ -736,3 +736,30 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
   .planet-hint { display: none; }
 }
 .stage-radiation { background: none; }   /* the planet sits in real space: no painted wash behind it */
+
+/* ---------- COSMOcare logo (vector): one colour that follows the theme; animated in on the welcome screen ---------- */
+.cc-mark { display: block; width: auto; color: var(--ink); overflow: visible; }
+:root[data-theme="light"] .cc-mark, :root[data-theme="light"] .cc-word { color: #14336b; }
+.cc-word { font-family: var(--font-ui, Inter, system-ui, sans-serif); font-weight: 800; letter-spacing: -0.02em; color: var(--ink); line-height: 1; }
+.cc-word b { font-weight: 500; letter-spacing: -0.01em; }
+.brand .cc-mark { height: 24px; }
+.brand .cc-word { font-size: 15px; text-transform: none; }
+.brand .brand-logo, .brand .brand-word { display: none; }
+.intro-logo { display: grid; justify-items: center; gap: 6px; width: auto; opacity: 1; animation: none; }
+.intro-logo .cc-mark { height: clamp(52px, 8vh, 74px); filter: drop-shadow(0 0 18px rgba(120, 190, 255, .25)); }
+.intro-logo .cc-word { font-size: clamp(20px, 2.6vh, 28px); opacity: 0; transform: translateY(6px); animation: cc-word .8s cubic-bezier(.2,.8,.2,1) 1.5s forwards; }
+.intro-logo .cc-ring { stroke-dasharray: 220; stroke-dashoffset: 220; animation: cc-draw 1.3s cubic-bezier(.65,0,.35,1) .15s forwards; }
+.intro-logo .cc-front { animation-delay: .55s; }
+.intro-logo .cc-planet { opacity: 0; transform-box: fill-box; transform-origin: center; transform: scale(.82); animation: cc-pop .9s cubic-bezier(.2,.9,.25,1.2) .1s forwards; }
+.intro-logo .cc-ecg-cut { stroke-dasharray: 120; stroke-dashoffset: 120; animation: cc-draw 1s ease-out .7s forwards; }
+.intro-logo .cc-moon { opacity: 0; transform-box: fill-box; transform-origin: center; transform: scale(0); animation: cc-pop .6s cubic-bezier(.2,.9,.25,1.4) 1.2s forwards; }
+@keyframes cc-draw { to { stroke-dashoffset: 0; } }
+@keyframes cc-pop { to { opacity: 1; transform: none; } }
+@keyframes cc-word { to { opacity: .95; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .intro-logo * { animation: none !important; opacity: 1 !important; transform: none !important; stroke-dashoffset: 0 !important; } }
+
+#btn-fullscreen .fs-out { display: none; }
+#btn-fullscreen[aria-pressed="true"] .fs-in { display: none; }
+#btn-fullscreen[aria-pressed="true"] .fs-out { display: inline; }
+#btn-fullscreen.is-hint { animation: fs-hint 1s ease-in-out 3; box-shadow: 0 0 0 2px var(--accent); }
+@keyframes fs-hint { 50% { transform: scale(1.18); } }
