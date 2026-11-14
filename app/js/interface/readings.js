@@ -117,6 +117,19 @@ export function changeText(field, state) {
   return "";
 }
 
+/** The status glyph: a tick, a warning triangle or a stop octagon. Shape differs as well as colour. */
+const STATUS_ICON = {
+  ok: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/>',
+  watch: '<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2v.3"/>',
+  alert: '<path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z"/><path d="M12 7.5v6M12 16.3v.4"/>',
+};
+export function statusKey(sev) { return sev === "alert" ? "alert" : sev === "watch" || sev === "info" ? "watch" : "ok"; }
+export function statusIcon(sev) {
+  return `<svg class="st-icon" viewBox="0 0 24 24" aria-hidden="true">${STATUS_ICON[statusKey(sev)]}</svg>`;
+}
+/** Icon and word together; the caller adds the colour class. Status is never shown by colour alone. */
+export function statusHTML(sev) { return `${statusIcon(sev)}<span class="st-word">${statusWord(sev)}</span>`; }
+
 export function statusWord(sev) {
   return { ok: "Normal", none: "Normal", info: "Watch", watch: "Watch", alert: "Alert" }[sev] || "Normal";
 }

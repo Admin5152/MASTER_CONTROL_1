@@ -123,6 +123,7 @@ class Store:
             models = {c["crew_id"]: c.get("body_model", "male") for c in self._mock()}
             for cid in self.states:
                 self.states[cid].setdefault("body_model", models.get(cid, "male"))  # saved before body_model existed
+                self.states[cid].setdefault("manual", {}).setdefault("symptom_log", [])  # saved before symptom_log existed
                 validate_full(self.states[cid])
                 self._recompute(cid)
             return True

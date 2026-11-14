@@ -56,6 +56,7 @@
         "sleep_hours": 7.2,
         "mood": 4,
         "symptoms": [],
+        "symptom_log": [],
         "updated": "2026-11-14T07:30:00Z"
       },
       "voice": {
@@ -146,6 +147,7 @@
         "sleep_hours": 7.5,
         "mood": 4,
         "symptoms": [],
+        "symptom_log": [],
         "updated": "2026-11-14T07:30:00Z"
       },
       "voice": {
@@ -236,6 +238,7 @@
         "sleep_hours": 6.9,
         "mood": 3,
         "symptoms": [],
+        "symptom_log": [],
         "updated": "2026-11-14T07:30:00Z"
       },
       "voice": {
@@ -326,6 +329,7 @@
         "sleep_hours": 7.8,
         "mood": 5,
         "symptoms": [],
+        "symptom_log": [],
         "updated": "2026-11-14T07:30:00Z"
       },
       "voice": {
@@ -416,6 +420,7 @@
         "sleep_hours": 7.0,
         "mood": 4,
         "symptoms": [],
+        "symptom_log": [],
         "updated": "2026-11-14T07:30:00Z"
       },
       "voice": {
@@ -506,6 +511,7 @@
         "sleep_hours": 7.3,
         "mood": 4,
         "symptoms": [],
+        "symptom_log": [],
         "updated": "2026-11-14T07:30:00Z"
       },
       "voice": {

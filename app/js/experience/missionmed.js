@@ -7,6 +7,7 @@
 //   organ     an organ detail view: the real anatomy, lit, isolated, with its readings and care strategy
 // Sentinel never claims compliance with NASA standards: these are "designed around" and "inspired by".
 import { api } from "../core/api.js";
+import { emit } from "../core/bus.js";
 import { badgeFor, badgeHTML, esc, fmt, statusWord, zoneReadings, ZONE_NAMES } from "../interface/readings.js";
 import { gradientCss, rangeBar } from "../interface/ranges.js";
 
@@ -213,16 +214,21 @@ function renderWellbeing(el, ctx) {
 const tile = (go, t, d, icon) => `<button type="button" class="card well-tile" data-go="${go}"><span class="well-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><strong>${esc(t)}</strong><small>${esc(d)}</small></button>`;
 
 // ---------------- organ detail view ----------------
-const ORGAN_PART = { head: "brain", eyes: "eyes", heart: "heart", lungs: "lungs", gut: "intestines", bones: "skeleton" };
+// The organ view shows the zone's whole group of parts (body3d ZONE_NODES: lungs with the airway, the gut
+// with stomach, liver and pancreas, the skeleton for bones), and the picture in this box is rendered from
+// those same parts, so the box and the 3D organ always agree.
+const ORGAN_ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones"];
 function renderOrgan(el, ctx, zone = "heart") {
-  const part = ORGAN_PART[zone] || "heart";
+  if (!ORGAN_ZONES.includes(zone)) zone = "heart";
   const img = { head: "brain" }[zone] || zone;
+  const picture = () => ctx.body3d?.snapshot?.(zone) || `assets/organs/${img}.png`;
+  emit("body:zone", zone);   // the rail and the system panel follow the organ on screen
   const draw = () => {
     const v = ctx.view;
     const rs = zoneReadings(zone, v.state, v.aux).filter((r) => r.value != null).slice(0, 4);
     const sev = v.aux?.assessment?.zones?.[zone] || "ok";
     const z = ctx.facts?.zones?.[zone] || {};
-    el.innerHTML = `<div class="organ-head"><img src="assets/organs/${img}.png" alt=""><div><span class="sev-chip is-${sev === "info" ? "watch" : sev}">${esc(statusWord(sev))}</span><p class="note">${esc(z.what || "")}</p></div></div>
+    el.innerHTML = `<div class="organ-head"><img src="${picture()}" alt=""><div><span class="sev-chip is-${sev === "info" ? "watch" : sev}">${esc(statusWord(sev))}</span><p class="note">${esc(z.what || "")}</p></div></div>
       <div class="organ-turn"><button class="pill pill-ghost" type="button" data-turn="-90">Turn left</button><button class="pill pill-ghost" type="button" data-turn="90">Turn right</button><button class="pill pill-ghost" type="button" data-zin>Closer</button></div>
       <div class="mcards">${rs.map((r) => {
         const b = r.levels ? rangeBar(r.levels, r.value) : null;
@@ -233,7 +239,7 @@ function renderOrgan(el, ctx, zone = "heart") {
       }).join("") || `<p class="note">No sensor on this organ yet. The Sentinel Skin wearable (DESIGNED) would add one.</p>`}</div>
       <p class="note">${esc(z.spaceflight || "")}</p>
       <p class="note"><strong>Next:</strong> ${esc(z.next || "")}</p>
-      <p class="fine">The organ is a reference anatomy (BodyParts3D, CC BY 4.0) fitted to this body, not your own scan. The lungs are a fitted approximation.</p>
+      <p class="fine">The organ is a reference anatomy (BodyParts3D, CC BY 4.0) fitted to this body, not your own scan.${zone === "lungs" ? " The lungs are a fitted approximation." : ""}${zone === "eyes" ? " The iris, pupil and vessels are drawn on the eyeball: an illustration, not an image of your eye." : ""}</p>
       <div class="exam-nav"><button class="pill pill-light" type="button" data-check>Check with Sentinel</button></div>`;
     el.querySelectorAll("[data-turn]").forEach((b) => b.addEventListener("click", () => ctx.body3d?.turnBy(Number(b.dataset.turn))));
     el.querySelector("[data-zin]").addEventListener("click", () => ctx.body3d?.zoomBy(0.7));
@@ -245,14 +251,17 @@ function renderOrgan(el, ctx, zone = "heart") {
     const b = ctx.body3d;
     if (!b) return;
     // the organ sits in the 3D area left of this sheet, never under it
-    await new Promise((r) => setTimeout(r, 80));
+    const switching = b.style === "real";   // from another organ: go straight there
+    if (!switching) await new Promise((r) => setTimeout(r, 80));
     const host = document.getElementById("body-host").getBoundingClientRect();
     const sheetLeft = document.getElementById("sheet").getBoundingClientRect().left;
     b.setFrameRect({ left: host.left, top: host.top, width: Math.max(200, Math.min(host.right, sheetLeft - 16) - host.left), height: host.height });
     ctx.organZone = zone;
     document.body.dataset.organ = zone;   // only this organ's dot and chip stay visible
     b.setStyle("real");
-    await b.isolate(part);
+    await b.isolate(zone, switching ? 0.6 : 1.2);
+    const im = el.querySelector(".organ-head img");
+    if (im) im.src = picture();
   })();
   draw();
   const t = setInterval(draw, 4000);
@@ -261,6 +270,8 @@ function renderOrgan(el, ctx, zone = "heart") {
     const b = ctx.body3d;
     ctx.organZone = null;
     delete document.body.dataset.organ;
+    // another organ is opening: no trip back to the whole body in between, it moves straight there
+    if (ctx.nextScreen === "organ") return;
     if (b) { b.setFrameRect(null); b.setStyle("radiograph"); b.focus(null); b.setStyle("radiograph"); b.setXray(false, 0.8); b.zoomReset(1.0); }
   };
 }

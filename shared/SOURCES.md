@@ -42,3 +42,17 @@ Every number below was read on the page named, except where marked. `thresholds.
 
 ## demo_placeholder thresholds
 All drift percentages; heart-rate alert 130 and low watch 50; SpO2 alert 90; temperature low watch 36.0; mood watch below 3; fatigue and stress indices; S2 as the shelter-alert level; storm extra dose per hour; lunar dose rate; speaker-ID 0.75 cut-off; rPPG quality cut-off.
+
+## Body model and zones: NASA MRIDs (JSC 28913)
+The "How to measure" and "Why it matters" text on each body zone (`shared/facts.json`, `zones.*.how_to_measure`, `why_it_matters`, `mrids`) paraphrases these Medical Requirements Integration Documents from `dataset/` (Person 2's set). Schedules and durations are as written in the documents; nothing is added to them.
+- **MEDB 1.1** Pre- and Postflight Physical Exam for Long Duration Crews (includes MEDB 1.4 Neurological Assessment): `dataset/cl5yvqhsu2slb01o685y93vkb.pdf`
+- **MEDB 1.2** Crew Medical Officer Health Status Evaluations: `dataset/cl5yvqhsu2sm901o68cdoern1.pdf`
+- **MEDB 1.6** Resting ECG: `dataset/cl5yvqhsu2smd01o61igocemc.pdf`
+- **MEDB 1.8** Hearing Assessment: `dataset/cl5yvqhsu2smn01o6ad8lewzs.pdf`
+- **MEDB 1.9** Dental Examination: `dataset/cl5yvqhsu2sl801o6a7fn6v7t.pdf`
+- **MEDB 1.10** Eye Examinations: `dataset/cl5yvqhsu2sm101o6fou61gqq.pdf`
+- **MEDB 1.12** Ultrasound Imaging (Sonography): `dataset/cl5yvqhsu2slc01o676lm0fsz.pdf`
+- **MEDB 1.14** Photodocumentation of Skin: `dataset/cl5yvqhsu2sm501o67yu9azg9.pdf`
+- **MEDB 7.2** Private Psychological Conferences: `dataset/cl5yvqhsv2sn401o6cfkvah14.pdf`
+- Read but not cited in the app: MEDB 1.9.1 (dental X-ray), MEDB 2.3 (tuberculosis screening), MEDB 7.1 and 7.5 (psychological status check, behavioural observation of training), MR009S, MR013S, MR032L, MR076S, MR084L, MR089S (shuttle-era or ground-only requirements).
+- The dataset has no MRID for bone density, body mass or MRI in Person 2's set, so the bones zone cites only the physical exam.

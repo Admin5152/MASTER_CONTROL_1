@@ -57,6 +57,16 @@
       "sleep_hours": null,
       "mood": null,
       "symptoms": [],
+      "symptom_log": [
+        {
+          "zone": "",
+          "region": "",
+          "type": "",
+          "severity": 1,
+          "onset": "now",
+          "at": ""
+        }
+      ],
       "updated": null
     },
     "voice": {
@@ -188,6 +198,21 @@
     "body_model": [
       "male",
       "female"
+    ],
+    "manual.symptom_log.zone": [
+      "head",
+      "eyes",
+      "heart",
+      "lungs",
+      "gut",
+      "bones",
+      "whole_body"
+    ],
+    "manual.symptom_log.onset": [
+      "now",
+      "today",
+      "yesterday",
+      "days"
     ]
   },
   "vitals_sources_keys": [
