@@ -34,6 +34,7 @@ export const api = {
   history: (id, field) => req("GET", `../api/history/${id}?field=${encodeURIComponent(field)}`),
   log: (id, field, value, source = "user") => req("POST", `../api/log/${id}`, { field, value, source }),
   chat: (crew_id, transcript) => req("POST", "../api/chat", { crew_id, transcript }, { timeout: 10000 }),
+  faceEmotion: (jpeg) => req("POST", "../api/face/emotion", jpeg, { timeout: 5000 }),
   identify: (wav) => req("POST", "../api/identify", wav, { timeout: 15000 }),
   enrol: (id, wav) => req("POST", `../api/enrol/${id}`, wav, { timeout: 30000 }),
   cabin: (body) => req("POST", "../api/cabin", body),

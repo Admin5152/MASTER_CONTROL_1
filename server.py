@@ -105,6 +105,7 @@ async def lifespan(app: FastAPI):
     if os.getenv("SENTINEL_NO_WARM") != "1":
         # load Kokoro once in the background and warm it with one short sentence (fallback voice ready)
         threading.Thread(target=speech.warm_kokoro, daemon=True).start()
+        threading.Thread(target=llm.warm_hsemotion, daemon=True).start()
     yield
     for t in tasks:
         t.cancel()
@@ -137,6 +138,7 @@ def health():
         "llm": llm.llm_available(),
         "llm_model": llm.llm_config()["model"] if llm.llm_available() else None,
         "speaker_id": SPEAKER_OK,
+        "face_emotion": llm.hsemotion_status(),
         "tts": "elevenlabs" if speech.eleven_key() else "kokoro",
         "stt": "groq" if llm.llm_available() else "local",
         "voiceprints": sorted(speaker.enrolled().keys()) if SPEAKER_OK else [],
@@ -227,6 +229,37 @@ def chat_stream(body: dict = Body(...)):
 def chat_forget(body: dict = Body(default={})):
     llm.forget(body.get("crew_id"))
     return {"ok": True}
+
+
+@app.post("/api/card/rephrase")
+def card_rephrase(body: dict = Body(...)):
+    """Rephrase a recommendation card (FACE-7, FACE-9, SF4, SF7)."""
+    card = body.get("card") or {}
+    lang = str(body.get("lang") or "en")
+    cid = body.get("crew_id")
+    state = store.get(cid) if cid and cid in store.states else None
+    return llm.rephrase_card(card, lang=lang, state=state)
+
+
+
+@app.post("/api/face/emotion")
+async def face_emotion(request: Request):
+    """Cropped face image bytes -> {emotion, scores (8 emotions), valence, arousal, confidence, wording} (FACE-3, FACE-4)."""
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, "empty image")
+    if len(data) > 2_000_000:
+        raise HTTPException(413, "face crop larger than 2 MB")
+    loop = asyncio.get_running_loop()
+    try:
+        return await loop.run_in_executor(None, lambda: llm.predict_face_emotion(data))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except llm.FaceModelUnavailable as e:
+        raise HTTPException(503, f"expression model unavailable: {e}")
+    except Exception as e:
+        print(f"[sentinel face] /api/face/emotion failed: {type(e).__name__}: {e}", flush=True)
+        raise HTTPException(500, f"expression inference failed: {type(e).__name__}")
 
 
 @app.post("/api/stt")

@@ -34,11 +34,12 @@ def pcm16k(wav: bytes):
 
 def main() -> None:
     from faster_whisper import WhisperModel
+    from brain.speech import VOCABULARY_HINT
     path = ROOT / "models" / "whisper" / "base.en"
     model = WhisperModel(str(path) if path.exists() else "base.en", device="cpu", compute_type="int8", cpu_threads=2,
                          download_root=str(ROOT / "models" / "whisper"))
     wav = sys.stdin.buffer.read()
-    segs, _ = model.transcribe(pcm16k(wav), language="en", beam_size=1, vad_filter=False)
+    segs, _ = model.transcribe(pcm16k(wav), language="en", beam_size=1, vad_filter=False, initial_prompt=VOCABULARY_HINT)
     sys.stdout.write(json.dumps({"text": " ".join(s.text.strip() for s in segs).strip()}))
 
 

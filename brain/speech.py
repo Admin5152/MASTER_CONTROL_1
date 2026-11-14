@@ -88,6 +88,16 @@ def stt_local(wav: bytes, timeout: float = 45.0) -> str:
     return json.loads(r.stdout.decode("utf-8") or "{}").get("text", "").strip()
 
 
+VOCABULARY_HINT = (
+    "Hey Sentinel, Sentinel, Artemis, Elena, James, Marcus, Maya, "
+    "radiation, vitals, vision, health log, trends, cognitive, orb calm, aurora run, "
+    "race, greenhouse, hardware, sentinel skin, crew, wellbeing, cabin, mission, body, "
+    "heart rate, pulse, breathing rate, spo2, blood pressure, glucose, temperature, sleep, mood, "
+    "head, eyes, heart, lungs, chest, stomach, gut, bones, muscles, spine, skull, ribcage, pelvis, "
+    "rotate, zoom, xray, isolate, scan, check, triage, headache, sore, hurts, tight"
+)
+
+
 def stt_groq(wav: bytes, timeout: float = 8.0, post=None) -> str:
     key = os.getenv("LLM_API_KEY", "").strip() or os.getenv("GROQ_API_KEY", "").strip()
     if not key:
@@ -96,7 +106,13 @@ def stt_groq(wav: bytes, timeout: float = 8.0, post=None) -> str:
     if "groq.com" not in base:
         base = "https://api.groq.com/openai/v1"
     files = {"file": ("speech.wav", wav, "audio/wav")}
-    data = {"model": "whisper-large-v3-turbo", "language": "en", "response_format": "json", "temperature": "0"}
+    data = {
+        "model": "whisper-large-v3-turbo",
+        "language": "en",
+        "response_format": "json",
+        "temperature": "0",
+        "prompt": VOCABULARY_HINT
+    }
     if post is not None:
         r = post(f"{base}/audio/transcriptions", files, data)
     else:

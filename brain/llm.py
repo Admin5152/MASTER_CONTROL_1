@@ -18,6 +18,7 @@ import json
 import os
 import re
 import threading
+import time
 import unicodedata
 from collections import deque
 from typing import Any, Callable, Iterator
@@ -465,3 +466,201 @@ def chat_stream(state: dict, transcript: str, crew_id: str | None = None,
         remember(cid, transcript, out["reply"])
         out.update({"type": "final", "kind": "health" if health else "general"})
         yield out
+
+
+# ---------------- recommendation card rephrasing (Person 3: FACE-7, FACE-9) ----------------
+
+CARD_SYSTEM_PROMPT = """SYSTEM: You are Sentinel, a calm onboard health assistant for astronauts.
+You receive a JSON recommendation card and a language code. Rephrase the card as at
+most two short spoken sentences in that language. Do not add medical facts, doses,
+diagnoses or reassurance that the card does not contain. If level is 3, start with the
+single most important immediate step. If asked something the card does not answer, say
+you will note the question for the flight surgeon."""
+
+
+def card_numbers_ok(text: str, card: dict, state: dict | None = None) -> bool:
+    """Ensure no numbers are invented that do not appear in the card or state."""
+    allowed: set[str] = set()
+    def _extract(obj: Any):
+        if isinstance(obj, (int, float)) and not isinstance(obj, bool):
+            allowed.add(str(round(obj)))
+            allowed.add(f"{float(obj):g}")
+        elif isinstance(obj, str):
+            allowed.update(re.findall(r"\d+(?:\.\d+)?", obj))
+        elif isinstance(obj, dict):
+            for v in obj.values():
+                _extract(v)
+        elif isinstance(obj, list):
+            for it in obj:
+                _extract(it)
+    _extract(card)
+    if state:
+        for cat in ("vitals", "baseline", "cabin", "radiation", "thresholds"):
+            _extract(state.get(cat))
+    for n in re.findall(r"\d+(?:\.\d+)?", text.replace(",", "")):
+        if n in allowed or f"{float(n):g}" in allowed or float(n) <= 3:
+            continue
+        return False
+    return True
+
+
+def rules_rephrase_card(card: dict, lang: str = "en") -> str:
+    """Scripted fallback line spoken per level (FACE-9, SF4). Always <= 2 sentences, no invented facts."""
+    level = card.get("level", 1)
+    if isinstance(level, str):
+        level = 3 if level in ("alert", "3", "critical") else (2 if level in ("watch", "2", "warning") else 1)
+    action = card.get("action") or card.get("immediate_step") or card.get("title") or "Check current readings"
+    title = card.get("title") or "Health Status"
+    detail = card.get("detail") or card.get("description") or ""
+
+    if level >= 3:
+        # Level 3: start with the single most important immediate step
+        reply = f"{action}. This status has been noted for the flight surgeon."
+    elif level == 2:
+        reply = f"{title}: {detail}." if detail else f"{title}. Please monitor your baseline."
+    else:
+        reply = f"{title}. {detail}." if detail else f"{title}. Readings are within nominal limits."
+    return clean_reply(reply)
+
+
+def rephrase_card(card: dict, lang: str = "en", state: dict | None = None, post=None) -> dict:
+    """Brain LLM rephrases recommendation cards (FACE-7, SF7) with fallback when offline (FACE-9, SF4)."""
+    level = card.get("level", 1)
+    if isinstance(level, str):
+        level = 3 if level in ("alert", "3", "critical") else (2 if level in ("watch", "2", "warning") else 1)
+
+    if not llm_available() and post is None:
+        return {"reply": rules_rephrase_card(card, lang), "source": "rules", "level": level}
+
+    prompt = f"Card: {json.dumps(card)}\nLanguage: {lang}"
+    try:
+        cfg = llm_config()
+        messages = [
+            {"role": "system", "content": CARD_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+        body = {"model": cfg["model"], "messages": messages, "temperature": 0.2, "max_tokens": 120}
+        headers = {"Authorization": f"Bearer {cfg['key']}"}
+        if post:
+            r = post(f"{cfg['base_url']}/chat/completions", body, headers)
+            raw = r.json() if hasattr(r, "json") else r
+        else:
+            with httpx.Client(timeout=8) as c:
+                r = c.post(f"{cfg['base_url']}/chat/completions", headers=headers, json=body)
+                r.raise_for_status()
+                raw = r.json()
+        content = raw["choices"][0]["message"]["content"]
+        text = clean_reply(content)
+        sents = split_sentences(text)[:2]
+        reply = " ".join(sents)
+        if not reply or not card_numbers_ok(reply, card, state):
+            return {"reply": rules_rephrase_card(card, lang), "source": "rules", "level": level}
+        return {"reply": reply, "source": "llm", "level": level}
+    except Exception:
+        return {"reply": rules_rephrase_card(card, lang), "source": "rules", "level": level}
+
+
+# ---------------- HSEmotion ONNX Face Emotion Model (Person 3: FACE-3, FACE-4) ----------------
+
+FACE_MODEL_NAME = "enet_b0_8_va_mtl"
+# Weights kept in the project so the demo works offline; ~/.hsemotion (the library's cache) is the fallback,
+# and the library downloads there on first use when neither file exists.
+FACE_MODEL_LOCAL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "models", FACE_MODEL_NAME + ".onnx")
+FACE_MODEL_RETRY_S = 30.0
+
+_fer_model = None
+_fer_lock = threading.Lock()
+_fer_status: dict = {"loaded": False, "error": None, "path": None}
+_fer_failed_at = 0.0
+
+
+class FaceModelUnavailable(RuntimeError):
+    """The HSEmotion model could not be loaded; str(e) is the reason."""
+
+
+def hsemotion_status() -> dict:
+    """{loaded, error, path}: whether the face emotion model is loaded and, if not, why."""
+    return dict(_fer_status)
+
+
+def _get_hsemotion():
+    """Load the model once. A failed load is logged with its reason and retried at most every 30 s."""
+    global _fer_model, _fer_failed_at
+    with _fer_lock:
+        if _fer_model is not None:
+            return _fer_model
+        if _fer_status["error"] and time.monotonic() - _fer_failed_at < FACE_MODEL_RETRY_S:
+            raise FaceModelUnavailable(_fer_status["error"])
+        t0 = time.monotonic()
+        try:
+            import hsemotion_onnx.facial_emotions as fe
+            if os.path.isfile(FACE_MODEL_LOCAL):
+                path = FACE_MODEL_LOCAL
+                fe.get_model_path = lambda name: FACE_MODEL_LOCAL
+            else:
+                path = os.path.join(os.path.expanduser("~"), ".hsemotion", FACE_MODEL_NAME + ".onnx")
+                if not os.path.isfile(path):
+                    print(f"[sentinel face] HSEmotion weights not found at {FACE_MODEL_LOCAL} or {path}; downloading (needs network)", flush=True)
+            _fer_model = fe.HSEmotionRecognizer(model_name=FACE_MODEL_NAME)
+        except Exception as e:
+            _fer_failed_at = time.monotonic()
+            reason = f"{type(e).__name__}: {e}"
+            _fer_status.update(loaded=False, error=reason, path=None)
+            print(f"[sentinel face] HSEmotion model NOT loaded: {reason}", flush=True)
+            raise FaceModelUnavailable(reason) from e
+        _fer_status.update(loaded=True, error=None, path=path)
+        print(f"[sentinel face] HSEmotion model loaded from {path} in {time.monotonic() - t0:.2f} s", flush=True)
+        return _fer_model
+
+
+def warm_hsemotion() -> None:
+    """Load the HSEmotion model once at startup and run one blank frame; the outcome is logged either way."""
+    try:
+        import numpy as np
+        m = _get_hsemotion()
+        dummy = np.zeros((224, 224, 3), dtype=np.uint8)
+        m.predict_emotions(dummy, logits=False)
+        print("[sentinel face] HSEmotion warm-up inference OK", flush=True)
+    except FaceModelUnavailable:
+        pass  # already logged with the reason
+    except Exception as e:
+        print(f"[sentinel face] HSEmotion warm-up failed: {type(e).__name__}: {e}", flush=True)
+
+
+# The eight classes of enet_b0_8_va_mtl, in the model's output order.
+FACE_EMOTIONS = ("Anger", "Contempt", "Disgust", "Fear", "Happiness", "Neutral", "Sadness", "Surprise")
+
+
+def predict_face_emotion(img_bytes: bytes) -> dict:
+    """Process a cropped face image with HSEmotion (enet_b0_8_va_mtl).
+    Returns the probability of each of the eight emotions, the top emotion, and continuous
+    valence and arousal. Does not use or store any age, gender, or ethnicity; the image is not kept.
+    Wording guideline: 'expression suggests', never a diagnosis."""
+    import cv2
+    import numpy as np
+    if not img_bytes:
+        raise ValueError("empty image")
+    arr = np.frombuffer(img_bytes, dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("failed to decode face crop")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # the model was trained on RGB; OpenCV decodes to BGR
+
+    fer = _get_hsemotion()
+    emotion, scores = fer.predict_emotions(img, logits=False)
+    # scores[:-2] are the 8 emotion softmax probabilities
+    # scores[-2] is valence in [-1.0, +1.0]
+    # scores[-1] is arousal in [-1.0, +1.0]
+    probs = [float(x) for x in scores[:-2]]
+    val = float(scores[-2])
+    aro = float(scores[-1])
+
+    return {
+        "emotion": str(emotion),
+        "scores": {name: round(p, 4) for name, p in zip(FACE_EMOTIONS, probs)},
+        "valence": round(val, 3),
+        "arousal": round(aro, 3),
+        "confidence": round(max(probs), 3),
+        "wording": f"expression suggests {emotion.lower()}",
+        "source": "hsemotion"
+    }

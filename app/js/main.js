@@ -23,6 +23,7 @@ import { renderOrbCalm } from "./experience/orbcalm.js";
 import { renderCognitive } from "./systems/cognitive.js";
 import { renderRadiation } from "./systems/radiation.js";
 import { createVision } from "./vision/vision.js";
+import { CameraLog } from "./systems/face.js";
 import * as voiceMod from "./voice/voice.js";
 import { createWorld, isTablet } from "./world/world.js";
 import { createSpace } from "./world/space.js";
@@ -207,14 +208,37 @@ async function mountApp() {
   vision = createVision({
     video: $("cam-video"), overlay: $("cam-overlay"), msg: $("cam-msg"), badge: $("cam-badge"),
     pulseValue: $("pulse-value"), pulseQuality: $("pulse-quality"), arc: $("pulse-arc"), stage: $("stage-vision"),
+    emotionList: $("emotion-list"), emotionTop: $("emotion-top"), camButton: $("btn-cam"),
+    moodOptIn: () => settings.get(`mood_optin:${view.crewId}`) !== "off",
     deviceId: () => settings.get("camera"),
     canPatch: () => !view.aux?.scenario?.running && !view.hrOverride,
     patchHr: (bpm) => patch({ vitals: { heart_rate: bpm, source: "camera", sources: { heart_rate: "camera" } } }).catch(() => {}),
     onFallback: () => {
-      if (view.state?.vitals?.sources?.heart_rate === "camera") patch({ vitals: { source: "sim", sources: { heart_rate: "sim" } } }).catch(() => {});
+      const src = view.state?.vitals?.sources || {};
+      const back = {};
+      if (src.heart_rate === "camera") back.heart_rate = "sim";
+      if (src.breathing_rate === "camera" && !vision.state.on) back.breathing_rate = "sim";   // breathing does not depend on the pulse lock
+      if (Object.keys(back).length) patch({ vitals: { ...(back.heart_rate ? { source: "sim" } : {}), sources: back } }).catch(() => {});
+      if (!vision.state.on) camLog.reset();
+      showCamLog();
     },
   });
   ctx.vision = vision;
+  // Face scan -> the crew member's record: breathing rate and expression are written to the state like the pulse is.
+  const camLog = new CameraLog();
+  const showCamLog = () => {
+    const el = $("cam-log"); if (!el) return;
+    const text = vision.state.on ? camLog.summary(view.state) : "";
+    el.textContent = text ? `Saved to ${view.state?.display_name || "this crew member"}'s record: ${text}` : "Nothing saved to the record yet.";
+  };
+  const logCamera = (p) => {
+    if (!p || view.aux?.scenario?.running) return;
+    patch(p).then(showCamLog).catch((e) => { camLog.reset(); console.warn(`[sentinel vision] camera reading not saved: ${e.message}`); });
+  };
+  on("reading.added", (r) => logCamera(camLog.fromReading(r, performance.now())));
+  on("vision:emotion", (e) => logCamera(camLog.fromEmotion(e, performance.now())));
+  on("vision:hr", showCamLog);
+  on("crew:changed", () => { camLog.reset(); showCamLog(); });
   renderRadiation($("radiation-host"), ctx);
   registerScreen("readings", { title: "All readings", render: renderAllReadings });
 
