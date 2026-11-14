@@ -222,4 +222,5 @@ body.is-pointing .zone .zchip { opacity: 0; }
 .skin-feed small { display: block; color: var(--ink-2); font-size: 12px; line-height: 1.45; margin-top: 4px; }
 body[data-organ] .zone { display: none; }
 body[data-organ="heart"] #zone-heart, body[data-organ="lungs"] #zone-lungs, body[data-organ="head"] #zone-head,
-body[data-organ="eyes"] #zone-eyes, body[data-organ="gut"] #zone-gut, body[data-organ="bones"] #zone-bones { display: block; }
+body[data-organ="eyes"] #zone-eyes, body[data-organ="gut"] #zone-gut, body[data-organ="bones"] #zone-bones { display: grid; }
+.callout { scrollbar-width: none; } .callout::-webkit-scrollbar { display: none; }

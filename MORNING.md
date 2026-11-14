@@ -14,11 +14,13 @@ Try, in order: the pill nav at the top (Overview, Body, Vitals, Mission, Radiati
 - **NASA-grounded features**: a 3-minute reaction test like the ISS Reaction Self Test (lapses, false starts, sleep link), a guided health exam that builds a **ground packet**, **store-and-forward** to ground with the delay shown, **weekly standard measures** with timed sit-to-stand and tandem walk, and EIMO framing in the intro and About.
 - **Space race**: Blender-made racer, three ghost racers, three laps past textured planets, five planet power-ups, mood before and after logged.
 - **Voice and brain**: ElevenLabs River (cached, budget-capped) with Kokoro and browser fallbacks; Groq Whisper with a local fallback; a VAD on the mic with wake phrase or push-to-talk; gpt-oss-120b streaming sentence by sentence, with memory of the last eight turns and general questions answered properly.
-- **Sentinel Skin** screen with each module's real source.
+- **Sentinel Skin** screen with each module's real source, and a demo switch that feeds simulated module readings into zone checks: the optic nerve sheath diameter against its 5.0 mm line, heart chamber motion with a looping echo view, lung B-lines, vena cava. All labelled SIM · Sentinel Skin.
+- **Polish pass after review**: organ views fit each organ fully in the space left of the sheet, alone on the theme's backdrop, with a tissue rim and lighter great vessels on the heart; chips stay inside the visible 3D area and show only the organ in view; the spoken subtitle never crosses an open sheet; scrolling columns have no native scrollbars (a soft fade instead).
 - **Team-ready repo**: README quickstart, CONTRIBUTING, docs/ARCHITECTURE, CREDITS, `.env.example`; dead code removed; history scanned for keys: none.
 
 ## Look at these screenshots first
 
+- `tests/screenshots/v2/polish/` real-GPU Chrome after the polish pass: `dark-organ-heart.png`, `light-organ-heart.png`, `dark-skin-check-eyes.png`, `dark-skin-check-heart.png`, `dark-exam.png`, `768x1024-body.png`
 - `tests/screenshots/v2/gpu/` real-GPU Chrome: `home.png`, `body.png`, `xray-anatomy.png`, `check-heart.png`, `vitals.png`, `race.png` (52-60 fps on this laptop)
 - `tests/screenshots/v2/dark/1366x768-*.png` and `tests/screenshots/v2/light/1366x768-*.png`: every main screen in both themes, for choosing a theme
 - `tests/screenshots/v2/body/`: radiograph, anatomy, heart check, female anatomy
@@ -30,6 +32,6 @@ A real face on the webcam (face mesh, pulse), the real microphone in a real room
 
 ## Three things I'd fix next
 
-1. **Feed Sentinel Skin with SIM data** (module readings and the looping ultrasound panels in zone checks), the one brief item cut.
-2. **Port the v1 browser checks** (`tests/browser_check.py`, `offline_check.py`, `resource_check.py`) to the v2 interface so CI covers every screen, the offline state and zero external requests.
-3. **Tune voice on the real mic and tablet**: the VAD thresholds, wake-phrase sensitivity and the tablet layout of the body screen in portrait.
+1. **Port the v1 browser checks** (`tests/browser_check.py`, `offline_check.py`, `resource_check.py`) to the v2 interface so CI covers every screen, the offline state and zero external requests.
+2. **Tune voice on the real mic and tablet**: the VAD thresholds, wake-phrase sensitivity and the tablet layout of the body screen in portrait.
+3. **Show the reference line in "all normal" verdicts** (the optic nerve sheath reading is listed, but its 5.0 mm line only appears in the ultrasound caption and on finding cards).

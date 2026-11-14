@@ -70,7 +70,7 @@ Never commit `.env`. It is git-ignored, and a scan of the full history on 14 Nov
 | Messages to ground | Store-and-forward queue with the one-way delay: queued, in transit, delivered, awaiting reply | SIM transport | test + run |
 | Weekly measures | Reaction test, mood and sleep, timed sit-to-stand and tandem walk, guided exam; "inspired by NASA Spaceflight Standard Measures" | LIVE | run (opens) |
 | Space race | Original Blender-made racer vs three ghost racers, three laps past textured planets; Earth shield, Mars boost, Jupiter slingshot + magnet, Saturn ring dash, Moon low gravity; mood before/after logged; keys, drag or tilt | mood LIVE, HR own badge | test (logic) + run (menu → finish → mood saved) |
-| Sentinel Skin | The DESIGNED wearable: smart shirt (CSA Astroskin), ultrasound patches (MIT BAUS), eye module for optic nerve sheath diameter (SANS), pocket compute; each with its source; chips on the body | DESIGNED | run |
+| Sentinel Skin | The DESIGNED wearable: smart shirt (CSA Astroskin), ultrasound patches (MIT BAUS), eye module for optic nerve sheath diameter (SANS), pocket compute; each with its source; chips on the body. A demo switch feeds simulated module readings into zone checks (ejection fraction with a looping echo view, lung B-lines, optic nerve sheath diameter against its 5.0 mm line, vena cava) | DESIGNED; readings SIM · Sentinel Skin | test (feed) + run (real GPU: eye and heart checks) |
 | Voice in | VAD on the mic → `/api/stt` (Groq Whisper; local faster-whisper offline); wake phrase "hey Sentinel" or push-to-talk (tap the orb or mic); browser recognition only as the last fallback | — | test (VAD, STT) ; live mic: human |
 | Voice out | Sentence-by-sentence `/api/tts` (ElevenLabs → Kokoro → browser), played through Web Audio so the orb pulses with the real audio | — | test (Kokoro, cache) + live ElevenLabs call; listening: human |
 | Brain | Health questions answered only from the state (numeric guard), general questions answered naturally, last 8 turns remembered, streamed sentence by sentence, commands validated | reply tagged LLM or rules | test (mocked) + live Groq run |
@@ -152,7 +152,6 @@ All limits are in `shared/thresholds.json`, each with `kind` (`nasa`, `clinical_
 
 ## Cuts
 
-- **Sentinel Skin SIM data feed** (module readings and simulated ultrasound panels flowing into zone checks): the screen ships, the data source in the demo panel does not.
 - **Measurement rings on the upper arms** (horizontal slices of A-pose arms read badly); chest, waist, thighs and head rings ship.
 - **Exploded view** of the wearable; modules are listed and pinned on the body instead.
 - **v1 browser scripts** not ported to the v2 interface (see "Not verified").
