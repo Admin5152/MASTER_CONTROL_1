@@ -458,7 +458,7 @@ export function createMarsBase(world) {
       }
       // astronaut: walks the loop, legs and arms swing
       { const u = (t * 0.018) % 1, p0 = walk.getPointAt(u), p1 = walk.getPointAt((u + 0.01) % 1);
-        astro.position.copy(p0); astro.lookAt(p1.x, astro.position.y, p1.z);
+        astro.position.copy(p0); astro.rotation.set(0, Math.atan2(p1.x - p0.x, p1.z - p0.z), 0);   // heading only: always upright
         const sw = Math.sin(t * 5.5) * 0.4;
         astro.getObjectByName("legL").rotation.x = sw; astro.getObjectByName("legR").rotation.x = -sw;
         astro.getObjectByName("armL").rotation.x = -sw * 0.8; astro.getObjectByName("armR").rotation.x = sw * 0.8;
