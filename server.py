@@ -31,6 +31,7 @@ from brain.suit import Suits, REGIONS as SUIT_REGIONS, region_from_text  # noqa:
 from brain.ops import Ops, MODES as OPS_MODES  # noqa: E402
 from brain import safety  # noqa: E402
 from brain.profile import profiles  # noqa: E402
+from brain.audit import Audit  # noqa: E402
 from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
@@ -43,6 +44,7 @@ from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
 suits = Suits()
+audit = Audit()
 ops = Ops()
 spaceweather = SpaceWeather()
 scenarios = Scenarios(store, spaceweather)
@@ -167,7 +169,12 @@ def get_state(cid: str):
 @app.post("/api/state/{cid}/patch")
 def patch_state(cid: str, patch: dict = Body(...)):
     _need(cid)
-    return store.patch(cid, patch)
+    out = store.patch(cid, patch)
+    act = (out or {}).get("action") or {}
+    # the reading (fields only, never health background) and the recommendation the pipeline made
+    audit.record("brain", "reading.patched", cid, {"fields": sorted(k + "." + j for k, v in patch.items() if isinstance(v, dict) for j in v)[:12],
+                                                     "action": act.get("type"), "severity": act.get("severity"), "zone": act.get("zone")})
+    return out
 
 
 @app.get("/api/assessment/{cid}")
@@ -196,6 +203,7 @@ def ops_set(cid: str, body: dict = Body(default={})):
         ops.set_mode(cid, body["mode"])
         if body["mode"] != "eva" and suits.status(cid).get("mode") == "eva":
             suits.set_mode(cid, "iva")
+    audit.record("brain", "ops.changed", cid, {k: body[k] for k in ("mode", "blackout_min") if k in body})
     if "blackout_min" in body:
         ops.blackout(float(body["blackout_min"]))
         if float(body["blackout_min"]) <= 0:
@@ -221,6 +229,7 @@ def digest_send(cid: str, body: dict = Body(default={})):
     _need(cid)
     d = ops.digest(cid, store.get(cid), store.assessment(cid), suits.status(cid), str(body.get("note", ""))[:200])
     p = ground.send(cid, "digest", f"Digest: {d['priority']}", {"text": d["text"]}, d["priority"], ops.hold_until())
+    audit.record("brain", "digest.queued", cid, {"priority": d["priority"], "status": p["status"]})
     return {**d, "packet": p}
 
 
@@ -235,6 +244,7 @@ def profile_get(cid: str):
 def profile_update(cid: str, body: dict = Body(...)):
     _need(cid)
     p = profiles.update(cid, body)
+    audit.record("brain", "profile.updated", cid, {"sections": sorted(body)[:8], "completeness": p["completeness"]})   # sections only
     with store.lock:   # an allergy can change a kit card now
         store._recompute(cid)
     return p
@@ -243,7 +253,24 @@ def profile_update(cid: str, body: dict = Body(...)):
 @app.delete("/api/profile/{cid}")
 def profile_delete(cid: str):
     _need(cid)
+    audit.record("brain", "profile.deleted", cid)
     return profiles.delete(cid)
+
+
+@app.post("/api/audit")
+def audit_batch(body: dict = Body(...)):
+    """The page's bus events, batched: [{"t", "event", "detail"}], plus counts of high-frequency telemetry."""
+    cid = body.get("crew_id")
+    for e in (body.get("events") or [])[:400]:
+        audit.record("page", e.get("event", "?"), cid, e.get("detail"), e.get("t"))
+    if body.get("counts"):
+        audit.record("page", "telemetry.counts", cid, body["counts"])
+    return {"ok": True}
+
+
+@app.get("/api/audit")
+def audit_list(limit: int = 200, crew_id: str | None = None, q: str = ""):
+    return {"entries": audit.recent(min(limit, 1000), crew_id, q[:60])}
 
 
 @app.post("/api/safety/{cid}")
@@ -262,6 +289,7 @@ def safety_alert(cid: str, body: dict = Body(default={})):
     p = ground.send(cid, "crisis", "Urgent wellbeing concern", {
         "text": f"URGENT wellbeing concern | crew: {name} | category: {cat.replace('_', ' ')} | buddy alerted: {who['buddy']} | "
                 f"commander alerted: {who['commander']} | onboard: safety script and grounding screen. Please contact the crew."}, "URGENT", ops.hold_until())
+    audit.record("brain", "safety.urgent_concern", cid, {"category": cat, "buddy_alerted": who["buddy"], "commander_alerted": who["commander"], "priority": "URGENT"})
     return {"category": cat, "label": "SIM", **who, "lines": [safety.LINES["first"], safety.LINES["then"].format(buddy=who["buddy"])], "packet": p}
 
 
@@ -270,6 +298,7 @@ def suit_action(cid: str, body: dict = Body(default={})):
     """SIM suit telemetry: {"action": "eva" | "iva" | "leak" | "seal", "region": ..., "size": "slow" | "leak" | "major"}."""
     _need(cid)
     a = str(body.get("action", ""))
+    audit.record("brain", f"suit.{a or 'unknown'}", cid, {"region": body.get("region"), "size": body.get("size")})
     if a in ("eva", "iva"):
         ops.set_mode(cid, "eva" if a == "eva" else "routine")   # the EVA overlay: reminders pause, suit watched
         st = suits.set_mode(cid, a)
@@ -307,6 +336,7 @@ def log_event(cid: str, body: dict = Body(...)):
         store.log(cid, body.get("field", ""), float(body.get("value")), body.get("source", "user"))
     except (ValueError, TypeError) as e:
         raise HTTPException(422, str(e))
+    audit.record("brain", "reading.logged", cid, {"field": body.get("field"), "source": body.get("source", "user")})
     return {"ok": True}
 
 

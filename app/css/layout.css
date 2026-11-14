@@ -363,3 +363,13 @@ body.is-pointing .zone .zstat, .zone.is-hidden .zstat { opacity: 0; }
 .pf-tools button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-dim); background: transparent; color: var(--ink-2); font: inherit; font-size: 12px; cursor: pointer; }
 .pf-tools button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .pf-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+
+/* ---------- audit log ---------- */
+.audit-q { width: 100%; margin: 8px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-dim); background: var(--surface); color: var(--ink); font: inherit; }
+.audit-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 12px; }
+.audit-list li { display: grid; grid-template-columns: 70px 44px 1fr; gap: 2px 8px; padding: 7px 0; border-top: 1px solid var(--line-dim); }
+.audit-list time { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.audit-list .au-src { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+.audit-list .au-src.is-brain { color: var(--accent); }
+.audit-list b { font-weight: 600; color: var(--ink); }
+.audit-list small { grid-column: 3; color: var(--ink-3); overflow-wrap: anywhere; }

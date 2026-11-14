@@ -45,6 +45,8 @@ export const api = {
   digest: (cid, note = "") => req("POST", `../api/digest/${cid}`, { note }),
   safety: (cid, category) => req("POST", `../api/safety/${cid}`, { category }),
   profile: (cid) => req("GET", `../api/profile/${cid}`),
+  auditBatch: (body) => req("POST", "../api/audit", body),
+  auditList: (q = "", limit = 200) => req("GET", `../api/audit?limit=${limit}&q=${encodeURIComponent(q)}`),
   profileUpdate: (cid, patch) => req("PATCH", `../api/profile/${cid}`, patch),
   profileDelete: (cid) => req("DELETE", `../api/profile/${cid}`),
   spaceweather: () => req("GET", "../api/spaceweather"),

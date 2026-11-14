@@ -35,7 +35,9 @@ import { chipText, defaultSystem, mountBodyPanels, render as renderBodyPanels, s
 import { mountVitals, renderVitals } from "./interface/vitals.js";
 import { registerMissionMed } from "./experience/missionmed.js";
 import { registerProfile } from "./experience/profile.js";
+import { registerAudit } from "./experience/audit.js";
 import * as reminders from "./core/reminders.js";
+import { auditBuf } from "./core/bus.js";
 import { registerSymptom } from "./systems/symptom.js";
 import { REGION_NAMES, REGION_ZONE, regionOf, zoneStatuses } from "./interface/body.js";
 
@@ -255,6 +257,7 @@ async function mountApp() {
   registerScreen("cognitive", { title: "Reaction test", badge: "LIVE", render: renderCognitive });
   registerMissionMed(registerScreen);
   registerProfile(registerScreen);
+  registerAudit(registerScreen);
   registerSymptom(registerScreen);
   registerScreen("orb_calm", { title: "Stillpoint", full: true, render: renderOrbCalm });
   registerScreen("race", { title: "Slipstream", full: true, render: renderRace });
@@ -738,7 +741,7 @@ async function handleCommand(text, meta = {}) {
         orb_calm: "Stillpoint", race: "Slipstream", greenhouse: "Red Harvest", grounding: "grounding", settings: "settings", about: "the credits",
         trends: "your trends", health_log: "the health log", cognitive: "the reaction test", symptom: "the symptom map", crew: "the crew",
         hardware: "the hardware", vision: "the camera", cabin: "the cabin", interventions: "what helps you", exam: "the health exam",
-        measures: "weekly measures", ground: "messages to ground", evidence: "the NASA evidence", profile: "your health profile" };
+        measures: "weekly measures", ground: "messages to ground", evidence: "the NASA evidence", profile: "your health profile", audit: "the audit log" };
       const n = m.commands[0].name;
       if (NAMES[n]) say(`${["race", "greenhouse", "orb_calm", "grounding", "cognitive", "exam"].includes(n) ? "Starting" : "Opening"} ${NAMES[n]}.`, { source: "local" });
     }
@@ -881,6 +884,14 @@ async function suitCommand(c) {
 }
 
 ctx.suitCommand = suitCommand;
+
+// ---------- audit (INT-3): the bus events go to the device's audit log every five seconds ----------
+setInterval(() => {
+  if (!auditBuf.events.length && !Object.keys(auditBuf.counts).length) return;
+  const body = { crew_id: view.crewId, events: auditBuf.events.splice(0), counts: auditBuf.counts };
+  auditBuf.counts = {};
+  api.auditBatch(body).catch(() => { auditBuf.events.unshift(...body.events.slice(-200)); });   // offline: keep the newest, retry
+}, 5000);
 
 // ---------- mission operations: mode, the link to ground, the digest ----------
 let lastComms = "";

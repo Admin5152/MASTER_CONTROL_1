@@ -14,7 +14,20 @@ export function on(name, fn) {
   return () => listeners.get(name)?.delete(fn);
 }
 
+// Audit (INT-3, SI6): every emitted event is recorded. High-frequency meters are counted per batch;
+// everything else is kept as an entry. The batch is sent by the app (see startAudit in main.js).
+const NOISY = new Set(["voice:level", "voice:speak-level", "vision:hr", "state", "voice:transcript", "director:frame"]);
+export const auditBuf = { events: [], counts: {} };
+function auditDetail(d) {
+  if (d == null || typeof d !== "object") return typeof d === "string" ? d.slice(0, 120) : d;
+  const out = {};
+  for (const [k, v] of Object.entries(d).slice(0, 10)) if (v == null || ["string", "number", "boolean"].includes(typeof v)) out[k] = typeof v === "string" ? v.slice(0, 120) : v;
+  return out;
+}
+
 export function emit(name, detail) {
+  if (NOISY.has(name)) auditBuf.counts[name] = (auditBuf.counts[name] || 0) + 1;
+  else if (auditBuf.events.length < 400) auditBuf.events.push({ t: Date.now() / 1000, event: name, detail: auditDetail(detail) });
   const set = listeners.get(name);
   if (!set) return;
   for (const fn of [...set]) {
