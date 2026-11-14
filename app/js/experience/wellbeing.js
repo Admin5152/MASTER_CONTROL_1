@@ -8,30 +8,16 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const sign = (x) => (x > 0 ? "+" : x < 0 ? "−" : "±") + Math.abs(x).toFixed(1);
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+// real frames from each game (captured from the running 3D scenes), with a slow camera drift
 const SCENE = {
-  orb_calm: `<div class="sc-calm">
-      <div class="sc-calm-glow"></div>
-      <div class="sc-calm-orb"><i class="r1"></i><i class="r2"></i><i class="r3"></i><b></b></div>
-      <div class="sc-calm-word"><span>in</span><span>out</span></div>
-    </div>`,
-  race: `<div class="sc-race">
-      <div class="sc-stars">${Array.from({ length: 28 }, (_, i) => `<i style="--y:${(i * 37) % 100}%;--d:${0.5 + ((i * 13) % 10) / 10}s;--o:${(i * 7) % 5 / 5}s"></i>`).join("")}</div>
-      <div class="sc-planet p1"></div><div class="sc-planet p2"></div>
-      <div class="sc-ship"><svg viewBox="0 0 80 40"><path d="M6 20 L62 8 L78 20 L62 32Z" fill="#eef2f8"/><path d="M40 14 L62 8 L66 20 L40 20Z" fill="#9fd6ff"/><path d="M0 16 h14 v8 H0z" fill="#6fd0ff" class="sc-flame"/></svg></div>
-    </div>`,
-  greenhouse: `<div class="sc-mars">
-      <div class="sc-mars-sky"></div><div class="sc-mars-sun"></div>
-      <div class="sc-dune d1"></div><div class="sc-dune d2"></div>
-      <div class="sc-dome"><div class="sc-led"></div>
-        ${[0, 1, 2, 3, 4].map((i) => `<div class="sc-plant" style="--i:${i}"><i></i><i></i><i></i></div>`).join("")}
-      </div>
-      <div class="sc-dust"></div>
-    </div>`,
+  orb_calm: `<div class="sc-shot"><img src="assets/wellbeing/stillpoint.jpg" alt="" loading="lazy"></div>`,
+  race: `<div class="sc-shot"><img src="assets/wellbeing/slipstream.jpg" alt="" loading="lazy"></div>`,
+  greenhouse: `<div class="sc-shot"><img src="assets/wellbeing/red-harvest.jpg" alt="" loading="lazy"></div>`,
 };
 
 const GAMES = [
   { id: "orb_calm", title: "Stillpoint", tag: "Breathe", sub: "Paced breathing with live heart-rate feedback.", time: "1–5 min", hue: "#7fb6ff" },
-  { id: "race", title: "Slipstream", tag: "Race", sub: "Three laps past five worlds. Boost, draft, beat your best.", time: "3 min", hue: "#c9bcff" },
+  { id: "race", title: "Slipstream", tag: "Race", sub: "Race through space, warp down to Earth, Mars, the Moon and Jupiter.", time: "3 min", hue: "#c9bcff" },
   { id: "greenhouse", title: "Red Harvest", tag: "Grow", sub: "Grow real space crops, fill the crew's orders, build your base.", time: "any time", hue: "#ff9a6b" },
 ];
 
