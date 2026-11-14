@@ -23,7 +23,7 @@ const COL = { brain:'#ff8fa6', eyes:'#8fe3ff', heart:'#ff2e4a', lungs:'#5fb2ff',
 const ZONE = { heart:['heart'], lungs:['lungs','airway'], head:['brain'], eyes:['eyes'], gut:['stomach','intestines','liver','pancreas_spleen'] };
 const lit = focus ? ZONE[focus] || [focus] : null;
 const bodyFile = sex === 'male' ? 'human.glb' : 'human_female.glb';
-const [body, anat] = await Promise.all([L.loadAsync('../assets/body3d/' + bodyFile), L.loadAsync(`../assets/body3d/anatomy_${sex}.glb`)]);
+const [body, anat] = await Promise.all([L.loadAsync('../assets/body3d/' + bodyFile), L.loadAsync((q.get('adir') || '../assets/body3d/') + `anatomy_${sex}.glb`)]);
 body.scene.traverse(o => { if (o.isMesh) { o.material = fres(mode === 'radiograph' ? '#9fb9d6' : '#4f9dff', 2.0, 0.02, 0.35, true); o.renderOrder = 10; } });
 const names = [];
 anat.scene.traverse(o => { if (!o.isMesh) return; const g = o.name; names.push(g);

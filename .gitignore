@@ -12,3 +12,4 @@ video/
 models/
 tests/screenshots/**/*.png
 tests/screenshots/**/*.jpg
+tests/screenshots/**/*.webm
