@@ -22,6 +22,7 @@ export function evidenceHTML(sci, id, { compact = false } = {}) {
       <p class="sci-used"><span>In the game</span>${esc(e.used)}</p>
       <p class="sci-cite">${e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.cite)}</a>` : esc(e.cite)}</p>
     </li>`).join("")}</ol>
+    ${a.note ? `<p class="sci-honest">${esc(a.note)}</p>` : ""}
     <p class="sci-honest">${esc(sci.honesty)}</p>
   </div>`;
 }

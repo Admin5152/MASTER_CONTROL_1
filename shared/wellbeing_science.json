@@ -103,6 +103,20 @@
           "url": "https://doi.org/10.1371/journal.pone.0103138"
         }
       ]
+    },
+    "grounding": {
+      "title": "Grounding",
+      "mechanism": "Naming what your senses notice right now pulls attention out of a spiral of worry and back to the present moment.",
+      "evidence": [
+        {
+          "id": "hofmann_2010",
+          "finding": "A meta-analysis of 39 studies found mindfulness-based therapy, which trains present-moment attention, moderately reduced anxiety and improved mood.",
+          "used": "Grounding uses the same move: attention on what is here, now, without judging it.",
+          "cite": "Hofmann SG, Sawyer AT, Witt AA, Oh D (2010). The effect of mindfulness-based therapy on anxiety and depression: a meta-analytic review. Journal of Consulting and Clinical Psychology 78(2):169-183.",
+          "url": "https://doi.org/10.1037/a0018555"
+        }
+      ],
+      "note": "The 5-4-3-2-1 exercise itself is a widely taught coping technique but has not been tested on its own in a clinical trial."
     }
   }
 }

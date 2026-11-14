@@ -639,3 +639,31 @@
   .farm-seed { top: calc(400px + env(safe-area-inset-top)); }
 }
 
+
+/* ---------- Grounding (5-4-3-2-1) ---------- */
+.gr { position: absolute; inset: 0; overflow-y: auto; display: grid; place-items: center; padding: calc(72px + env(safe-area-inset-top)) var(--gutter) calc(32px + env(safe-area-inset-bottom));
+  background: radial-gradient(70% 60% at 50% 30%, rgba(143, 227, 122, 0.08), transparent 60%), linear-gradient(180deg, #071018, #03050a); --ink: #eef2f8; --ink-2: rgba(238, 242, 248, 0.68); --ink-3: rgba(238, 242, 248, 0.44); color: var(--ink); }
+.gr-card, .gr-step { display: grid; justify-items: center; gap: var(--s-4); text-align: center; max-width: 640px; }
+.gr h1 { font-size: clamp(1.7rem, 3.6vw, 2.6rem); font-weight: 200; letter-spacing: -0.015em; line-height: 1.2; }
+.gr-lede { color: var(--ink-2); font-size: var(--fs-md); line-height: 1.55; max-width: 52ch; }
+.gr-q { font-size: var(--fs-md); margin-top: var(--s-2); }
+.gr-actions { display: flex; gap: var(--s-4); flex-wrap: wrap; justify-content: center; margin-top: var(--s-2); }
+.gr-track { list-style: none; display: flex; gap: 10px; padding: 0; margin: 0 0 var(--s-3); }
+.gr-track li { display: grid; justify-items: center; gap: 2px; width: 54px; padding: 8px 0; border-radius: 14px; background: rgba(255, 255, 255, 0.05); color: var(--ink-3); transition: background 300ms, color 300ms; }
+.gr-track li span { font-size: 18px; font-weight: 300; } .gr-track li small { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; }
+.gr-track li.is-now { background: rgba(143, 227, 122, 0.14); color: #b6f2a4; } .gr-track li.is-done { color: var(--ink-2); }
+.gr-icon { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 50%; background: rgba(143, 227, 122, 0.1); }
+.gr-icon svg { width: 30px; height: 30px; fill: none; stroke: #b6f2a4; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.gr-hint { color: var(--ink-3); font-size: var(--fs-sm); font-style: italic; }
+.gr-dots { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin: var(--s-3) 0; }
+.gr-dots button { width: 64px; height: 64px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.04); color: var(--ink-2); font: inherit; font-size: 20px; cursor: pointer; transition: transform 160ms, background 200ms, border-color 200ms; }
+.gr-dots button:hover { transform: scale(1.05); border-color: #b6f2a4; }
+.gr-dots button.is-on { background: #8fe37a; border-color: #8fe37a; color: #06210a; font-weight: 700; transform: scale(1); }
+.gr-say { font-size: var(--fs-xs); color: var(--ink-3); }
+/* ranking */
+.wb2-best { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 10px; background: rgba(143, 227, 122, 0.14); color: #b6f2a4; }
+.wb2-row { gap: 8px; flex-wrap: wrap; }
+.iv-rank { padding: 12px 14px; margin-bottom: var(--s-4); border-radius: 14px; background: var(--surface-sunk); }
+.iv-rank h3 { font-size: var(--fs-sm); margin-bottom: 6px; }
+.iv-rank ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.iv-rank li { display: flex; justify-content: space-between; gap: 10px; font-size: var(--fs-sm); } .iv-rank li span { color: var(--ink-3); font-size: var(--fs-xs); }

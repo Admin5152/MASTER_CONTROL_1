@@ -8,6 +8,7 @@ import { api } from "../../core/api.js";
 import { cue } from "../../core/sound.js";
 import { greenhouseCalm } from "../logic.js";
 import { moodRow, scienceDrawer } from "../science.js";
+import { finishSupport, startSupport } from "../support.js";
 import { createMarsBase } from "./base3d.js";
 import * as F from "./farm.js";
 import { cropIcon } from "./plants.js";
@@ -437,8 +438,10 @@ export function renderGreenhouse(el, ctx) {
   $("[data-lamp]").addEventListener("click", () => { if (F.useSunlamp(f, nowS())) { cue.wake(); toast(`Sunlamp on: crops grow twice as fast for ${F.SUNLAMP_S} seconds.`, "is-od"); save(id, f); drawAll(); } });
 
   // ---------- start and finish ----------
+  let flow = null;
   const begin = (m) => {
     moodBefore = m;
+    if (!flow) flow = startSupport("greenhouse", m, "isolation");
     const ov = $("[data-over]");
     ov.classList.add("is-out"); setTimeout(() => { ov.hidden = true; }, 450);
     startedAt = performance.now();
@@ -465,6 +468,7 @@ export function renderGreenhouse(el, ctx) {
       const after = Number(b.dataset.ma);
       ov.querySelectorAll("[data-ma]").forEach((x) => { x.disabled = true; x.setAttribute("aria-pressed", String(x === b)); });
       const change = moodBefore != null ? after - moodBefore : null;
+      finishSupport(flow, after, { orders: session.orders });
       ov.querySelector("[data-res]").textContent = change != null ? `Mood ${moodBefore} before, ${after} after (${change >= 0 ? "+" : ""}${change}). Saved to your wellbeing log.` : `Mood ${after}. Saved to your wellbeing log.`;
       try {
         await api.log(id, "session.greenhouse_minutes", Math.round(minutes * 10) / 10, "user");

@@ -17,6 +17,7 @@ import { invalidateSparks, mountTiles, refreshSparks, renderTiles } from "./inte
 import { renderRace } from "./experience/race/race.js";
 import { renderGreenhouse } from "./experience/mars/greenhouse.js";
 import { renderWellbeing } from "./experience/wellbeing.js";
+import { renderGrounding } from "./experience/grounding.js";
 import { renderHardware } from "./experience/hardware.js";
 import { INTERVENTIONS, renderConnection, renderEarth, renderMenu, renderMusic } from "./experience/interventions.js";
 import { greenhouseDay, routineComplete } from "./experience/logic.js";
@@ -182,6 +183,7 @@ async function mountApp() {
   registerScreen("race", { title: "Slipstream", full: true, render: renderRace });
   registerScreen("greenhouse", { title: "Red Harvest", full: true, render: renderGreenhouse });
   registerScreen("wellbeing", { title: "Wellbeing", full: true, render: renderWellbeing });
+  registerScreen("grounding", { title: "Grounding", full: true, render: renderGrounding });
   registerScreen("hardware", { title: "Sentinel Skin", badge: "DESIGNED", render: renderHardware });
   registerScreen("interventions", { title: "Suggestions", render: (el, c, arg) => renderMenu(el, c, arg) });
   registerScreen("earth_window", { title: "Earth window", badge: "SIM", render: renderEarth });
@@ -566,7 +568,7 @@ async function enrol(id, statusEl) {
 }
 
 function openIntervention(name) {
-  const map = { breathing: "orb_calm", aurora_run: "race", earth_window: "earth_window", music: "music", connection: "connection" };
+  const map = { breathing: "orb_calm", aurora_run: "race", grounding: "grounding", greenhouse: "greenhouse", earth_window: "earth_window", music: "music", connection: "connection" };
   screens.open(map[name] || "interventions");
 }
 

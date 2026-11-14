@@ -11,6 +11,7 @@ import { api } from "../../core/api.js";
 import * as L from "./logic.js";
 import { audioContext, isMuted } from "../../core/sound.js";
 import { scienceDrawer } from "../science.js";
+import { finishSupport, startSupport } from "../support.js";
 import { Lensflare, LensflareElement } from "three/addons/objects/Lensflare.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { createFx, flareTextures, makeAsteroid, makeBeacon, makeBoostRing } from "./fx.js";
@@ -347,8 +348,10 @@ export function renderRace(el, ctx) {
       $("[data-menu]").innerHTML = `<p class="note">The race could not start: ${esc(e.message)}</p>`;
     });
   }
+  let flow = null;
   async function startRace(mp = null) {
     clearInterval(lobbyIv);
+    flow = startSupport("race", moodBefore, "boredom");
     $("[data-menu]").innerHTML = `<p class="label">Loading the course…</p>`;
     let a;
     try { a = await loadAssets(); } catch (e) {
@@ -1030,6 +1033,7 @@ export function renderRace(el, ctx) {
       end.querySelectorAll("[data-ma]").forEach((b) => b.addEventListener("click", async () => {
         const after = Number(b.dataset.ma);
         const s = L.raceSession({ moodBefore, moodAfter: after, time: me.finished, position: pos, minutes });
+        finishSupport(flow, after, { position: pos });
         end.querySelector("[data-res]").textContent = `Mood ${moodBefore} before, ${after} after (${s.mood_change >= 0 ? "+" : ""}${s.mood_change}). Saved to the wellbeing log.`;
         end.querySelectorAll("[data-ma]").forEach((x) => { x.disabled = true; x.setAttribute("aria-pressed", String(x === b)); });
         const id = v.crewId;

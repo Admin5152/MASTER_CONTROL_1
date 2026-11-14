@@ -36,6 +36,7 @@ export const SCREEN_WORDS = {
   cognitive: ["cognitive check", "cognitive test", "reaction test", "reaction game", "cognitive"],
   orb_calm: ["orb calm", "breathing exercise", "calm session"],
   race: ["slipstream", "slip stream", "space race", "racing game", "race", "racer", "the game", "a game", "aurora run", "aurora"],
+  grounding: ["grounding", "ground me", "5 4 3 2 1", "five four three", "panic", "anxious", "anxiety"],
   greenhouse: ["red harvest", "the farm", "mars farm", "greenhouse", "my plant", "the plant"],
   hardware: ["hardware", "wearable", "the device", "sentinel skin", "the suit"],
   crew: ["crew list", "crew", "who is on board", "enrol", "enroll"],

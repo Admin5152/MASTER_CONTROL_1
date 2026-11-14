@@ -7,6 +7,7 @@ import { audioContext, cue, isMuted } from "../core/sound.js";
 import { badgeFor, badgeHTML } from "../interface/readings.js";
 import { CALM_HOLD_SEC, PATTERNS, PHASE_WORD, breathAt, calmSummary, createCalm, greenhouseCalm, updateCalm } from "./logic.js";
 import { moodRow, scienceDrawer } from "./science.js";
+import { finishSupport, startSupport } from "./support.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const PREF = "sentinel.calm.pref";
@@ -84,6 +85,7 @@ export function renderOrbCalm(el, ctx) {
   }
 
   function run(moodBefore) {
+    const flow = startSupport("orb_calm", moodBefore, "stress");
     const pattern = PATTERNS[pref.pattern] || PATTERNS.sigh;
     const total = pref.minutes * 60;
     const s0 = ctx.view.state;
@@ -206,6 +208,7 @@ export function renderOrbCalm(el, ctx) {
         const after = Number(b.dataset.ma);
         root.querySelectorAll("[data-ma]").forEach((x) => { x.disabled = true; x.setAttribute("aria-pressed", String(x === b)); });
         const change = moodBefore != null ? after - moodBefore : null;
+        finishSupport(flow, after, { recovery_s: session.recoverySec });
         root.querySelector("[data-res]").textContent = change != null ? `Mood ${moodBefore} before, ${after} after (${change >= 0 ? "+" : ""}${change}). Saved.` : `Mood ${after}. Saved.`;
         try {
           await api.log(id, "session.calm_mood_after", after, "user");

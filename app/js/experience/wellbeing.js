@@ -3,6 +3,7 @@
 // The research sits behind "Why it works"; the crew member's own logged results sit on each card.
 import { evidenceHTML, loadScience, personalStat, scienceDrawer } from "./science.js";
 import { prefetchRace } from "./race/race.js";
+import { rankTools } from "./support.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const sign = (x) => (x > 0 ? "+" : x < 0 ? "−" : "±") + Math.abs(x).toFixed(1);
@@ -73,7 +74,7 @@ export function renderWellbeing(el, ctx) {
       </div>
     </article>`).join("")}</div>
     <nav class="wb2-more" aria-label="More for the mind">
-      ${[["cognitive", "Reaction test"], ["measures", "Weekly measures"], ["exam", "Guided exam"], ["ground", "Message ground"], ["interventions", "Suggestions"]].map(([k, t]) => `<button type="button" data-go="${k}">${esc(t)}</button>`).join("")}
+      ${[["grounding", "Grounding · 5-4-3-2-1"], ["cognitive", "Reaction test"], ["measures", "Weekly measures"], ["exam", "Guided exam"], ["ground", "Message ground"], ["interventions", "Suggestions"]].map(([k, t]) => `<button type="button" data-go="${k}">${esc(t)}</button>`).join("")}
     </nav>
   </div>`;
   const root = el.querySelector(".wb2");
@@ -106,6 +107,12 @@ export function renderWellbeing(el, ctx) {
 
   setTimeout(() => prefetchRace(ctx.world), 600);   // the course is usually ready before Play is pressed
   let alive = true;
+  rankTools(crewId).then((rank) => {
+    const best = rank[0];
+    if (!alive || !best || best.n < 2 || !(best.mean > 0)) return;
+    const card = el.querySelector(`[data-game="${best.id}"] .wb2-row`);
+    if (card) card.insertAdjacentHTML("beforeend", `<span class="wb2-best">Works best for you · ${best.mean > 0 ? "+" : ""}${best.mean.toFixed(1)} mood</span>`);
+  });
   loadScience().then((sci) => {
     if (!alive) return;
     for (const g of GAMES) {

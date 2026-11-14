@@ -200,3 +200,12 @@ test("race: slipstream, near miss and PB delta", () => {
   assert.equal(R.pbDelta([50, 50], [52, 51, 50]), -3);
   assert.equal(R.pbDelta([50], null), null);
 });
+
+// ---------- tool ranking ----------
+import { rankRows } from "../../app/js/experience/support.js";
+test("ranking: tools with 2+ sessions by mean mood change; the rest after", () => {
+  const r = rankRows([
+    { id: "a", n: 5, mean: 0.4 }, { id: "b", n: 1, mean: 3 }, { id: "c", n: 3, mean: 1.2 }, { id: "d", n: 0, mean: null }, { id: "e", n: 4, mean: 1.2 },
+  ]);
+  assert.deepEqual(r.map((x) => x.id), ["e", "c", "a", "b", "d"]);
+});

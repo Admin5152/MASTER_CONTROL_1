@@ -1,10 +1,13 @@
 // Intervention menu: breathing (Orb Calm), Aurora Run, Earth window, music, connection nudge.
 import { audioContext, isMuted } from "../core/sound.js";
 import { esc } from "../interface/readings.js";
+import { rankTools } from "./support.js";
 
 export const INTERVENTIONS = [
   { id: "breathing", label: "Stillpoint (breathing)", why: "Slow breathing guided by the orb, tracked against your heart rate." },
   { id: "aurora_run", label: "Slipstream (racing)", why: "A three-lap race past five worlds: a short break from boredom or stress, with your mood logged before and after." },
+  { id: "grounding", label: "Grounding (5-4-3-2-1)", why: "Name what your senses notice, one step at a time. For anxious or racing moments." },
+  { id: "greenhouse", label: "Red Harvest", why: "Tend a Mars greenhouse and feed the crew. Caring for living things eases isolation." },
   { id: "earth_window", label: "Earth window", why: "A slow view of home. A short break for tired eyes and mind." },
   { id: "music", label: "Ambient sound", why: "A generated ambient pad to wind down." },
   { id: "connection", label: "Message a crewmate", why: "Isolation is one of NASA's five hazards; a short message helps." },
@@ -15,6 +18,16 @@ export function renderMenu(el, ctx, chosen) {
   el.innerHTML = `<p class="note">Sentinel's rules choose a suggestion from your current state${sel ? `: <strong>${esc(INTERVENTIONS.find((i) => i.id === sel)?.label || sel)}</strong>` : ""}. You can pick any of them.</p>
     <div class="form-grid">${INTERVENTIONS.map((i) => `<button class="pill pill-block ${i.id === sel ? "pill-dark" : "pill-ghost"}" type="button" data-iv="${i.id}">${esc(i.label)}</button><p class="note">${esc(i.why)}</p>`).join("")}</div>`;
   el.querySelectorAll("[data-iv]").forEach((b) => b.addEventListener("click", () => ctx.openIntervention(b.dataset.iv)));
+  // what has actually helped this person, from their own before/after log
+  const IVMAP = { orb_calm: "breathing", race: "aurora_run", greenhouse: "greenhouse", grounding: "grounding" };
+  rankTools(ctx.view.crewId).then((rank) => {
+    const known = rank.filter((r) => r.n >= 2);
+    if (!el.isConnected) return;
+    el.insertAdjacentHTML("afterbegin", `<section class="iv-rank"><h3>What helps you</h3>${known.length
+      ? `<ol>${known.map((r) => `<li><button type="button" class="link-btn" data-iv="${IVMAP[r.id]}">${esc(r.name)}</button><span>${r.mean >= 0 ? "+" : ""}${r.mean.toFixed(1)} mood · ${r.n} sessions</span></li>`).join("")}</ol>`
+      : `<p class="note">After two sessions of a tool, Sentinel ranks the tools by how much your mood actually changed.</p>`}</section>`);
+    el.querySelectorAll(".iv-rank [data-iv]").forEach((b) => b.addEventListener("click", () => ctx.openIntervention(b.dataset.iv)));
+  });
 }
 
 export function renderEarth(el) {
