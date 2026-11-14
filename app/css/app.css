@@ -71,7 +71,17 @@ body.offline .stages { filter: grayscale(0.85) opacity(0.8); }
 
 /* ---------- intro ---------- */
 .intro { position: fixed; inset: 0; z-index: var(--z-start); display: grid; place-items: end center; padding: 0 var(--gutter) max(var(--s-6), env(safe-area-inset-bottom)); cursor: pointer; }
-.intro-copy { display: grid; justify-items: center; gap: var(--s-4); text-align: center; max-width: 520px; padding-bottom: 3vh; opacity: 0; visibility: hidden; cursor: auto; }
+.intro-copy { position: absolute; left: 50%; top: 62vh; transform: translateX(-50%); width: min(520px, calc(100vw - 2 * var(--gutter))); display: grid; justify-items: center; gap: clamp(18px, 3vh, 28px); text-align: center; opacity: 0; visibility: hidden; cursor: auto; }
+.intro-hello .ch { display: inline-block; will-change: transform, filter, opacity; }
+/* Begin: a soft halo that breathes and a light sweep across the pill */
+#start-btn { position: relative; overflow: hidden; }
+#start-btn.is-live { animation: begin-breathe 3.2s ease-in-out infinite; }
+#start-btn::after { content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(100deg, transparent, rgba(111, 208, 255, 0.45), transparent); transform: skewX(-20deg); opacity: 0; }
+#start-btn.is-live::after { animation: begin-sweep 3.2s ease-in-out infinite; }
+#start-btn:hover { transform: translateY(-2px); }
+@keyframes begin-breathe { 0%, 100% { box-shadow: 0 0 0 0 rgba(111, 208, 255, 0.0), 0 10px 30px rgba(0, 0, 0, 0.35); } 50% { box-shadow: 0 0 0 10px rgba(111, 208, 255, 0.12), 0 0 46px rgba(111, 208, 255, 0.35); } }
+@keyframes begin-sweep { 0%, 55% { left: -60%; opacity: 0; } 60% { opacity: 1; } 85%, 100% { left: 130%; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #start-btn.is-live, #start-btn.is-live::after { animation: none; } }
 .intro-copy .pill-xl { margin-top: var(--s-2); }
 .intro-foot { display: grid; justify-items: center; gap: var(--s-2); margin-top: var(--s-2); }
 .intro-key { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2) var(--s-5); font-size: var(--fs-xs); color: var(--ink-3); }

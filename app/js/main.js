@@ -63,15 +63,28 @@ async function boot() {
   ctx.stages = stages;
   world.orbTo({ x: innerWidth / 2, y: innerHeight / 2, size: 0, opacity: 0 }, 0);
   await world.show("intro", { fade: false });
+  // the orb and the welcome form one centred group: title and Begin sit just under the orb's pedestal
+  const introOrb = () => { const size = Math.min(innerHeight * 0.3, innerWidth * 0.34, 260); return { x: innerWidth / 2, y: innerHeight * 0.5 - size * 0.04 - 87, size, opacity: 1 }; };   // orb + title + button centred as one group
+  const placeCopy = () => { const o = introOrb(); document.querySelector(".intro-copy").style.top = `${Math.round(o.y + o.size * 0.78 + 24)}px`; };
+  placeCopy();
+  addEventListener("resize", placeCopy);
   const ready = () => {
     $("start-screen").classList.add("is-ready");
-    if (window.gsap) window.gsap.fromTo(".intro-copy", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 1.1, ease: "power2.out" });
-    else document.querySelector(".intro-copy").style.opacity = 1;
+    const copy = document.querySelector(".intro-copy"), h = $("intro-hello"), btn = $("start-btn");
+    if (!h.dataset.split) {   // letters rise in one by one
+      h.dataset.split = "1"; h.setAttribute("aria-label", h.textContent);
+      h.innerHTML = [...h.textContent].map((ch) => `<span class="ch" aria-hidden="true">${ch === " " ? "&nbsp;" : ch}</span>`).join("");
+    }
+    const g = window.gsap;
+    if (!g || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { copy.style.opacity = 1; btn.classList.add("is-live"); return; }
+    g.set(copy, { opacity: 1 });
+    g.fromTo(h.querySelectorAll(".ch"), { opacity: 0, y: 26, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.9, stagger: 0.035, ease: "expo.out" });
+    g.fromTo(btn, { opacity: 0, y: 18, scale: 0.86 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, delay: 0.55, ease: "back.out(1.7)", onComplete: () => btn.classList.add("is-live") });
   };
   const form = () => {
     stages.setOrbMode("intro", 0);
     world.orbTo({ x: innerWidth / 2, y: innerHeight / 2, size: 0, opacity: 1 }, 0);
-    const t = { x: innerWidth / 2, y: innerHeight * 0.3, size: Math.min(innerHeight * 0.27, innerWidth * 0.3, 240), opacity: 1 };
+    const t = introOrb();
     orb.burst();
     world.orbTo(t, 1.6, "expo.out");
     setTimeout(ready, 900);
