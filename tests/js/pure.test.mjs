@@ -295,3 +295,60 @@ test("VAD caps an utterance at 15 s and keeps a pause inside a sentence", () => 
   const paused = segment(synth([{ s: 0.5 }, { s: 0.8, kind: "voice", amp: 0.2 }, { s: 0.35 }, { s: 0.8, kind: "voice", amp: 0.2 }, { s: 1.2 }], rate), rate);
   assert.equal(paused.length, 1);
 });
+
+// ---------- space race (replaces the Aurora Run tests; brief section 7 item 4) ----------
+import * as race from "../../app/js/experience/race/logic.js";
+
+test("race power-ups: each planet's effect and duration", () => {
+  const r = race.createRacer({ baseSpeed: 20 });
+  assert.equal(race.speedMultiplier(r, 0), 1);
+  race.activate(r, "mars", 10);
+  assert.equal(race.speedMultiplier(r, 11), 1.6);
+  assert.equal(race.speedMultiplier(r, 13.01), 1, "boost lasts 3 s");
+  race.activate(r, "saturn", 20);
+  assert.equal(race.speedMultiplier(r, 20.5), 2.6);
+  assert.equal(race.speedMultiplier(r, 20.81), 1, "ring dash lasts 0.8 s");
+  race.activate(r, "jupiter", 30);
+  assert.equal(race.speedMultiplier(r, 31), 1.25, "slingshot kick");
+  assert.equal(race.speedMultiplier(r, 33), 1, "kick ends after 2 s");
+  assert.equal(race.pickupRadius(r, 35), 7, "magnet for 6 s");
+  assert.equal(race.pickupRadius(r, 36.1), race.PICKUP_RADIUS);
+  race.activate(r, "moon", 40);
+  assert.equal(race.rivalTimeScale(r, 44), 0.6);
+  assert.equal(race.rivalTimeScale(r, 45.1), 1, "low gravity lasts 5 s");
+  race.activate(r, "earth", 50);
+  assert.equal(race.hitObstacle(r, 55), "absorbed");
+  assert.equal(race.hitObstacle(r, 56.5), "slowed", "shield lasts 6 s");
+  assert.equal(race.speedMultiplier(r, 57), 0.6, "a hit slows, never crashes");
+  assert.equal(race.speedMultiplier(r, 57.6), 1);
+  assert.deepEqual(race.activeEffects(r, 40.5).map((e) => e.planet), ["moon"]);
+});
+
+test("race laps and checkpoint splits are timed exactly", () => {
+  const r = race.createRacer({ baseSpeed: 10, trackLength: 100, laps: 2, gates: 4 });
+  const evs = [];
+  let t = 0;
+  for (let i = 0; i < 400 && r.finished == null; i++) { t += 0.1; evs.push(...race.advance(r, 0.1, t)); }
+  const gates = evs.filter((e) => e.type === "gate");
+  assert.equal(gates.length, 8);
+  assert.ok(Math.abs(gates[0].time - 2.5) < 1e-6, `first split ${gates[0].time}`);
+  assert.deepEqual(evs.filter((e) => e.type === "lap").map((e) => e.lap), [1, 2]);
+  assert.ok(Math.abs(r.lapTimes[0] - 10) < 1e-6 && Math.abs(r.lapTimes[1] - 10) < 1e-6);
+  assert.ok(Math.abs(r.finished - 20) < 1e-6);
+  assert.equal(race.lapOf(r), 2);
+  assert.deepEqual(race.advance(r, 0.1, 30), [], "a finished racer stops");
+});
+
+test("race standings, focus bonus and the mood log", () => {
+  const a = race.createRacer({ name: "you" }), b = race.createRacer({ name: "Vega" }), c = race.createRacer({ name: "Orion" });
+  a.dist = 300; b.dist = 500; c.finished = 80;
+  assert.deepEqual(race.standings([a, b, c]), ["Orion", "Vega", "you"]);
+  assert.equal(race.focusBonus(62, 64), 1.15);
+  assert.equal(race.focusBonus(90, 64), 1);
+  assert.equal(race.focusBonus(null, 64), 1);
+  const s = race.raceSession({ moodBefore: 2, moodAfter: 4, time: 121.26, position: 2, minutes: 2.6 });
+  assert.equal(s.mood_change, 2);
+  assert.equal(s.time_s, 121.3);
+  assert.equal(race.ordinal(1), "1st"); assert.equal(race.ordinal(2), "2nd"); assert.equal(race.ordinal(3), "3rd"); assert.equal(race.ordinal(4), "4th");
+  assert.equal(race.fmtTime(83.45), "1:23.5");
+});

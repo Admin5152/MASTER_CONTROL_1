@@ -31,7 +31,9 @@ ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
 HISTORY_BASELINE_FIELDS = ["manual.bp_systolic", "manual.glucose_mgdl", "manual.temp_c", "manual.sleep_hours", "manual.mood"]
 LOG_FIELDS = {"session.calm_start_hr", "session.calm_end_hr", "session.calm_recovery_s",
               "session.aurora_mood_before", "session.aurora_mood_after", "session.aurora_mood_change",
-              "session.aurora_start_hr", "session.aurora_end_hr", "session.reaction_false_starts"}
+              "session.aurora_start_hr", "session.aurora_end_hr", "session.reaction_false_starts",
+              "session.race_mood_before", "session.race_mood_after", "session.race_mood_change",
+              "session.race_time_s", "session.race_position", "session.race_minutes"}
 
 
 def now_iso() -> str:

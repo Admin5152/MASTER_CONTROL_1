@@ -31,7 +31,9 @@ def main() -> None:
         b = p.chromium.launch(channel="msedge", headless=True, args=ARGS)
         ctx = b.new_context(viewport={"width": W, "height": H}, ignore_https_errors=True, permissions=["camera", "microphone"])
         page = ctx.new_page()
+        page.set_default_timeout(120000)
         # software GL renders a few fps; GSAP lag smoothing would then slow every timeline to a crawl
+        page.add_init_script("try { localStorage.setItem('sentinel:listen', 'ptt'); } catch (e) {}")
         page.add_init_script("(function w(){ if (window.gsap) gsap.ticker.lagSmoothing(0); else setTimeout(w, 20); })()")
         errs: list[str] = []
         page.on("console", lambda m: (errs.append(f"{m.type}: {m.text}"[:240]) if len(errs) < 400 else None) if m.type in ("error", "warning") else None)
