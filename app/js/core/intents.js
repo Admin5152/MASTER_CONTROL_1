@@ -87,8 +87,37 @@ export function findZones(text) {
 /** Who is speaking, from what they said: "I'm Seth", "this is Annie", "switch to Stanley", "Gadiel here".
  *  A name that is also an everyday word (like "Sad") needs an unambiguous phrase, so "I'm sad" stays a feeling.
  *  bare: also accept the name on its own (used while the "Who are you?" chooser is open). Returns a crew_id or null. */
+// how speech recognition tends to spell each crew name (Whisper writes "Elijah" for Eliah, "Gabriel" for Gadiel)
+const NAME_ALIASES = {
+  eliah: ["elijah", "elia", "eliya", "eliyah", "ilya", "elya", "ilia", "eleah", "elyah", "aliyah", "eliahs"],
+  annie: ["anne", "ann", "anny", "ani", "annies"],
+  seth: ["sett", "seths"],
+  sad: ["saad", "sahd", "saud", "sa'ad"],
+  stanley: ["stanly", "standley", "stanleys", "stan"],
+  gadiel: ["gadeel", "gaddiel", "godiel", "gadiyel", "gadyel", "gabriel", "gadielle", "gadeal"],
+};
+function editDistance(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+/** Rewrite heard spellings of a crew name to the name itself: "I'm Elijah" -> "I'm eliah". */
+function canonicalNames(t, crew) {
+  const names = (crew || []).map((c) => String(c.display_name || "").toLowerCase()).filter(Boolean);
+  return t.replace(/[a-z']+/g, (w) => {
+    if (names.includes(w)) return w;
+    for (const n of names) {
+      if ((NAME_ALIASES[n] || []).includes(w)) return n;
+      if (n.length >= 5 && w.length >= 5 && editDistance(w, n) <= 1) return n;   // one wrong letter on a longer name
+    }
+    return w;
+  });
+}
+
 export function crewFromSpeech(text, crew, { bare = false } = {}) {
-  const t = ` ${String(text || "").toLowerCase().replace(/[^a-z' ]+/g, " ").replace(/\s+/g, " ").trim()} `;
+  const t = canonicalNames(` ${String(text || "").toLowerCase().replace(/[^a-z' ]+/g, " ").replace(/\s+/g, " ").trim()} `, crew);
   const COMMON = new Set(["sad", "will", "may", "mark", "grace", "joy", "hope"]);
   for (const c of crew || []) {
     const n = String(c.display_name || "").toLowerCase();

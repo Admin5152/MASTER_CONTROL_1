@@ -179,3 +179,17 @@ def test_a_promised_action_without_a_command_line_still_happens():
     assert llm.infer_commands("why is the sky on mars red", "Dust scatters the light.") == []
     assert llm.infer_commands("how is my heart", "Your heart rate is 51, a little under your usual.") == []
     assert llm.validate_commands(llm.infer_commands("open the mars farm", "Opening the farm.")) == [{"cmd": "open_screen", "name": "greenhouse"}]
+
+
+def test_health_questions_carry_the_matching_nasa_mrids():
+    """A body question brings its NASA documents into the prompt; small talk brings none; MRID ids pass the number guard."""
+    from brain import llm, mrid
+    assert "MEDB 1.10" in [d["id"] for d in mrid.relevant("what happens to your eyes in space")]
+    assert "MEDB 1.8" in [d["id"] for d in mrid.relevant("my ears are ringing")]
+    assert "MR084L" not in [d["id"] for d in mrid.relevant("how is my heart")]      # "heart" is not "hear"
+    assert mrid.relevant("tell me a joke") == []
+    msgs = llm.build_messages({"crew_id": "x"}, "how are my bones")
+    assert "NASA MRID EVIDENCE" in msgs[-1]["content"] and "MEDB 1.11" in msgs[-1]["content"]
+    assert "NASA MRID EVIDENCE" not in llm.build_messages({"crew_id": "x"}, "tell me a joke")[-1]["content"]
+    ev = llm.evidence_for("how are my bones")
+    assert llm.numbers_ok("NASA scans bone density before and after flight, MEDB 1.11.", {}, "how are my bones " + ev)

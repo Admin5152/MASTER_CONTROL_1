@@ -506,3 +506,15 @@ test("SpaceWear by voice: open, pick a device, explode, zoom, turn; the body kee
   assert.equal(c("what does the watch measure"), undefined);
   assert.equal(c("explode it"), undefined);   // nothing open, nothing named
 });
+
+test("crew by speech: Whisper's spellings of the names still sign you in", async () => {
+  const { crewFromSpeech } = await import("../../app/js/core/intents.js");
+  const crew = [["james", "Eliah"], ["amara", "Annie"], ["kenji", "Seth"], ["sofia", "Sad"], ["lukas", "Stanley"], ["priya", "Gadiel"]].map(([crew_id, display_name]) => ({ crew_id, display_name }));
+  for (const [said, id] of [["I'm Elijah.", "james"], ["I'm Eliah", "james"], ["It's Elia", "james"], ["This is Ilya", "james"], ["I am Gabriel", "priya"], ["I'm Gadiel", "priya"],
+    ["Switch to Stan", "lukas"], ["I'm Stanly", "lukas"], ["This is Anne", "amara"], ["My name is Saad", "sofia"], ["Seth here", "kenji"]]) {
+    assert.equal(crewFromSpeech(said, crew), id, said);
+  }
+  assert.equal(crewFromSpeech("Elijah", crew, { bare: true }), "james");
+  assert.equal(crewFromSpeech("I'm sad", crew), null);            // a feeling, not Sad
+  assert.equal(crewFromSpeech("I'm feeling okay", crew), null);
+});

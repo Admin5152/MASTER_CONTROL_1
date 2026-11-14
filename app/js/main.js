@@ -621,6 +621,7 @@ async function handleCommand(text, meta = {}) {
   interacted = true;
   const who = crewFromSpeech(text, view.crew, { bare: choosing });
   if (who && (choosing || who !== view.crewId)) { chooseCrew(who); return; }
+  if (who) { say(`You're signed in as ${view.state?.display_name || "you"}. Say another name to switch.`, { source: "local" }); return; }
   if (choosing && meta.via === "voice") {   // heard something while the chooser is up that is not a name: stay put, say how
     caption(`I heard “${text}”. Say a name: ${view.crew.map((c) => c.display_name).join(", ")}.`, "");
     return;

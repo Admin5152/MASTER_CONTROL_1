@@ -75,6 +75,13 @@ There are two kinds of question.
 Always: plain spoken English, no markdown, no lists, no emoji, no symbols that cannot be read aloud.
 You cannot raise alerts or change medical actions.
 
+NASA evidence: when the message includes NASA MRID EVIDENCE, end your answer with one short sentence on how NASA
+monitors this, naming the most relevant document by its ID (for example "On the station NASA tracks this with a
+resting ECG before and after flight, MEDB 1.6."). Use only what the evidence says; never invent an MRID, a schedule
+or a number.
+
+Names: spell the crew member's name exactly as STATE.display_name has it.
+
 You run the whole interface. STATE.app says what is on screen now (screen, theme) and who the crew are. When they
 ask to see, open, start, play, go to, check, change or close something, DO it with a command and say so in a
 few words ("Opening your vitals."); do not describe how they could do it themselves. When your answer is about
@@ -418,10 +425,18 @@ def _state_for_prompt(state: dict) -> dict:
     return {k: v for k, v in state.items() if k not in ("timestamp", "body_model", "identity", "crew_id")}
 
 
+def evidence_for(transcript: str) -> str:
+    """The NASA MRIDs that match a health or body question (shared/nasa_mrid.json), or ''."""
+    from brain import mrid
+    return mrid.context(transcript)
+
+
 def build_messages(state: dict, transcript: str, history: list[dict] | None = None) -> list[dict]:
     msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
     msgs += history or []
-    msgs.append({"role": "user", "content": "STATE:\n" + json.dumps(_state_for_prompt(state), separators=(",", ":")) + "\n\nCREW SAID:\n" + transcript})
+    ev = evidence_for(transcript)
+    evidence = f"\n\nNASA MRID EVIDENCE (the team's dataset, NASA JSC 28913):\n{ev}" if ev else ""
+    msgs.append({"role": "user", "content": "STATE:\n" + json.dumps(_state_for_prompt(state), separators=(",", ":")) + evidence + "\n\nCREW SAID:\n" + transcript})
     return msgs
 
 
@@ -556,7 +571,7 @@ def chat(state: dict, transcript: str, post=None, crew_id: str | None = None) ->
         reply, cmds = parse_llm_content(content)
         if not reply:
             raise ValueError("empty reply")
-        if health and not numbers_ok(reply, state, transcript):
+        if health and not numbers_ok(reply, state, transcript + " " + evidence_for(transcript)):
             raise ValueError("reply cites a number that is not in the state")
         out = {"reply": reply, "commands": cmds, "source": "llm", "kind": "health" if health else "general"}
     except Exception:
@@ -573,6 +588,7 @@ def chat_stream(state: dict, transcript: str, crew_id: str | None = None,
     failure before anything was said) the rules reply is used instead."""
     cid = crew_id or state.get("crew_id", "")
     health = is_health_question(transcript)
+    allowed_text = transcript + " " + evidence_for(transcript)   # MRID ids and schedules the evidence states may be repeated
     stream = stream or stream_llm
     spoken: list[str] = []
     buf = ""
@@ -590,7 +606,7 @@ def chat_stream(state: dict, transcript: str, crew_id: str | None = None,
                 s, buf = clean_reply(buf[: m.start()]), buf[m.end():]
                 if not s:
                     continue
-                if health and not numbers_ok(s, state, transcript):
+                if health and not numbers_ok(s, state, allowed_text):
                     raise ValueError("number not in state")
                 spoken.append(s)
                 yield {"type": "sentence", "text": s, "source": "llm"}
@@ -599,7 +615,7 @@ def chat_stream(state: dict, transcript: str, crew_id: str | None = None,
             s = clean_reply(s)
             if not s:
                 continue
-            if health and not numbers_ok(s, state, transcript):
+            if health and not numbers_ok(s, state, allowed_text):
                 raise ValueError("number not in state")
             spoken.append(s)
             yield {"type": "sentence", "text": s, "source": "llm"}
