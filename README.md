@@ -106,6 +106,7 @@ No internet, camera or mic? The demo panel (`D`, or the sliders button) runs the
 | `pytest` | **45 passed** (brain, systems, radiation, voice and brain v2, ground link). The local-Whisper test skips itself with a stated reason if the machine is short of memory (it did once on this laptop with many apps open) |
 | `node --test tests/js` | **28 passed** (wake phrase, pitch, WAV, rPPG, intents incl. isolate and X-ray styles, validator, scan order, Orb Calm, greenhouse, VAD, race logic, range bars, PVT) |
 | Playwright (Edge, software WebGL), 1366×768 | every main screen in both themes (`tests/layout_shots.py both`), the body X-ray, zone check and pointing (`tests/body_shots.py`), the race from menu to saved mood (`tests/race_check.py`); no page errors |
+| Real GPU (installed Chrome, Intel Iris Xe, `tests/gpu_check.py`) | 60 fps on home, body, X-ray, vitals, mission and the race; 52 fps during the heart check (mesh sweep + X-ray); no page errors |
 | Live keys | brain, Groq Whisper and ElevenLabs as above |
 | Secret scan | no Groq (`gsk_`) or ElevenLabs keys anywhere in the git history; `.env`, `certs/`, `models/`, `data/` never committed |
 
@@ -113,7 +114,7 @@ Screenshots: `tests/screenshots/v2/dark/`, `tests/screenshots/v2/light/`, `tests
 
 ### Not verified (needs a person)
 
-- A real face on the webcam (face mesh, pulse accuracy), the real microphone (VAD tuning on a real room, wake phrase, push-to-talk), how the voice sounds and its latency through speakers, the Samsung tablet (layout, touch, tilt in the race, Chrome speech), frame rate on a real GPU (Playwright used software WebGL at 1–4 fps).
+- A real face on the webcam (face mesh, pulse accuracy), the real microphone (VAD tuning on a real room, wake phrase, push-to-talk), how the voice sounds and its latency through speakers, the Samsung tablet (layout, touch, tilt in the race, Chrome speech), frame rate on the tablet GPU.
 - `tests/browser_check.py`, `tests/offline_check.py` and `tests/resource_check.py` are the v1 browser scripts; they were not re-run against the v2 interface.
 
 ## Human checklist
