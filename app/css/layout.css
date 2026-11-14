@@ -217,3 +217,4 @@ body.is-pointing .zone .zchip { opacity: 0; }
 .sys-panel, .sheet-body { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); padding-bottom: 36px; }
 .stage-vitals { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); padding-bottom: 28px; }
 .sheet.is-full .sheet-body, .sheet.is-orb .sheet-body { -webkit-mask-image: none; mask-image: none; padding-bottom: 0; }
+.bubble.is-tucked { display: none; }

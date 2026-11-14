@@ -222,6 +222,8 @@ async function mountApp() {
   on("offline", () => { document.body.classList.add("offline"); $("sb-link").textContent = "Brain offline: last known values"; $("sb-link").title = "Brain offline: showing last known values"; });
   on("online", () => { document.body.classList.remove("offline"); $("sb-link").textContent = "Brain online"; $("sb-link").title = "Brain online"; });
   on("zone:open", (z) => screens.zone(z));
+  on("screen:open", () => { placeSubtitle(); setTimeout(placeSubtitle, 650); });
+  on("screen:close", () => setTimeout(placeSubtitle, 50));
   on("body:zone", (z) => selectSystem(z));   // the right panel follows what Sentinel is checking or pointing at
   on("vision:open", () => vision.start());
   on("intervention:open", openIntervention);
@@ -405,18 +407,30 @@ function caption(text, source) {
     b.innerHTML = `${esc(text)}${source ? `<span class="src">${esc(source)}</span>` : ""}`;
     b.hidden = false;
     b.classList.add("is-subtitle");
-    const host = stages.current === "body" ? $("body-host").getBoundingClientRect() : null;
-    let left = host && host.width > 50 ? host.left : 0, right = host && host.width > 50 ? host.right : window.innerWidth;
-    const sh = $("sheet");
-    if (!sh.hidden && !sh.classList.contains("is-full") && !sh.classList.contains("is-orb")) right = Math.min(right, sh.getBoundingClientRect().left - 8);
-    if (right - left < 260) { left = 0; }
-    const cx = (left + right) / 2;
-    const w = Math.min(560, right - left - 16);
-    b.style.left = `${cx}px`; b.style.maxWidth = `${w}px`;
-    b.style.right = "auto"; b.style.bottom = "auto"; b.style.top = "";
+    placeSubtitle();
   }
   captionTimer = setTimeout(resetCaption, Math.min(16000, 5000 + text.length * 70));
 }
+/** The subtitle lane: centred over the 3D area that is actually visible, never over an open sheet. */
+function placeSubtitle() {
+  const b = $("bubble");
+  if (b.hidden || !b.classList.contains("is-subtitle")) return;
+  const host = stages.current === "body" ? $("body-host").getBoundingClientRect() : null;
+  let left = host && host.width > 50 ? host.left : 0, right = host && host.width > 50 ? host.right : window.innerWidth;
+  const sh = $("sheet");
+  if (!sh.hidden && !sh.classList.contains("is-full") && !sh.classList.contains("is-orb")) {
+    const r = sh.getBoundingClientRect();
+    if (r.left > window.innerWidth * 0.3) right = Math.min(right, r.left - 12);   // a right sheet: use the area beside it
+    else { b.classList.add("is-tucked"); return; }                                  // a wide sheet leaves no room: speech and the log carry it
+  }
+  b.classList.remove("is-tucked");
+  if (right - left < 240) { b.classList.add("is-tucked"); return; }
+  b.style.left = `${(left + right) / 2}px`;
+  b.style.maxWidth = `${Math.min(560, right - left - 8)}px`;
+  b.style.right = "auto"; b.style.bottom = "auto"; b.style.top = "";
+}
+ctx.placeSubtitle = placeSubtitle;
+
 function resetCaption() {
   if (voiceMod.voice.speaking) { captionTimer = setTimeout(resetCaption, 2000); return; }
   $("bubble").hidden = true;
