@@ -325,7 +325,10 @@ async function transcribe(audio) {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 20000);
-    const r = await fetch("../api/stt", { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
+    // privacy: until someone addresses Sentinel (wake word, mic tap, reply window), speech is transcribed on this
+    // laptop and nothing leaves it; addressed speech goes to the faster cloud service
+    const addressed = ptt || awaiting || openMic();
+    const r = await fetch(`../api/stt${addressed ? "" : "?prefer=local"}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
     clearTimeout(t);
     if (!r.ok) throw new Error(`stt ${r.status}`);
     const d = await r.json();

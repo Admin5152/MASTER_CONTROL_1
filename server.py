@@ -158,6 +158,14 @@ def health():
     }
 
 
+@app.get("/api/pin")
+def pin(request: Request):
+    """The pairing PIN, for this laptop only (shown in the demo panel)."""
+    if (request.client.host if request.client else "") not in LOOPBACK:
+        raise HTTPException(403, "shown on the laptop only")
+    return {"pin": PAIR_PIN}
+
+
 @app.get("/api/crew")
 def crew():
     return store.crew()
@@ -567,6 +575,10 @@ async def scenario(name: str, speed: float = 1.0, crew_id: str | None = None):
         raise HTTPException(404, f"unknown scenario {name}; one of {SCENARIO_NAMES}")
     if crew_id:
         _need(crew_id)
+    if name == "reset":   # a clean, calm demo: every crew member at their own baseline, nothing left switched on
+        global ops, suits
+        ops, suits = Ops(), Suits()
+        audit.record("brain", "demo.reset", None)
     return scenarios.start(name, crew_id, speed)
 
 
@@ -641,6 +653,36 @@ def race_state(code: str, body: dict = Body(...)):
 def race_leave(code: str, body: dict = Body(...)):
     race_rooms.leave(code.upper(), str(body.get("id", ""))[:40])
     return {"ok": True}
+
+
+# Pairing (critique: the API was open to the whole network). A device other than this laptop must pair once with
+# the 6-digit PIN shown on the laptop (demo panel and the console); the pairing is a cookie, valid until restart.
+import secrets as _secrets  # noqa: E402
+PAIR_PIN = os.getenv("SENTINEL_PIN") or f"{_secrets.randbelow(10**6):06d}"
+PAIR_TOKEN = _secrets.token_urlsafe(24)
+LOOPBACK = {"127.0.0.1", "::1", "localhost", "testclient"}
+OPEN = ("/api/health", "/api/pair")
+print(f"[sentinel] tablet pairing PIN: {PAIR_PIN}", flush=True)
+
+
+@app.post("/api/pair")
+def pair(request: Request, body: dict = Body(...)):
+    if str(body.get("pin", "")).strip() != PAIR_PIN:
+        audit.record("brain", "pair.refused", None, {"from": request.client.host if request.client else "?"})
+        raise HTTPException(401, "wrong PIN")
+    r = JSONResponse({"ok": True})
+    r.set_cookie("sentinel_pair", PAIR_TOKEN, httponly=True, secure=request.url.scheme == "https", samesite="strict", max_age=12 * 3600)
+    audit.record("brain", "pair.accepted", None, {"from": request.client.host if request.client else "?"})
+    return r
+
+
+@app.middleware("http")
+async def require_pairing(request, call_next):
+    host = request.client.host if request.client else ""
+    path = request.url.path
+    if path.startswith("/api") and not path.startswith(OPEN) and host not in LOOPBACK and request.cookies.get("sentinel_pair") != PAIR_TOKEN:
+        return JSONResponse({"detail": "pair this device: enter the PIN shown on the Sentinel laptop", "pair": True}, status_code=401)
+    return await call_next(request)
 
 
 @app.middleware("http")

@@ -13,6 +13,7 @@ export function createDemoPanel(ctx) {
       <h2>Demo panel <span class="badge badge-sim">SIM</span> <button class="pill pill-ghost" type="button" data-close style="margin-left:auto">Close</button></h2>
       <p class="note">Everything set here is simulated and shows a SIM badge on the main screen.</p>
       <h3>Tablet URL</h3><p class="demo-url">${esc(h.tablet_url || "—")}</p>
+      <h3>Tablet pairing PIN</h3><p class="demo-url" data-pin>…</p>
       <h3>Subsystems</h3>
       <p class="note">LLM: ${h.llm ? `on (${esc(h.llm_model)})` : "off, rules replies"} · Speaker ID: ${h.speaker_id ? `on (${(h.voiceprints || []).length} enrolled)` : "off, manual selector"} · Space weather: ${esc(h.spaceweather || "—")}</p>
       <h3>Crew member</h3>
@@ -55,6 +56,7 @@ export function createDemoPanel(ctx) {
     el.querySelector("[data-hrrelease]").addEventListener("click", () => { ctx.view.hrOverride = false; });
     el.querySelector("[data-close]").addEventListener("click", toggle);
     el.querySelector("[data-crew]").addEventListener("change", (e) => ctx.setCrew(e.target.value, "manual"));
+    api.pin().then((r) => { const p = el.querySelector("[data-pin]"); if (p) p.textContent = r.pin; }).catch(() => {});
     el.querySelectorAll("[data-blackout]").forEach((b) => b.addEventListener("click", () => api.ops(ctx.view.crewId, { blackout_min: Number(b.dataset.blackout) }).catch(() => {})));
     el.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => ctx.setMode?.(b.dataset.mode)));
     el.querySelector("[data-send-digest]")?.addEventListener("click", () => ctx.sendDigest?.());

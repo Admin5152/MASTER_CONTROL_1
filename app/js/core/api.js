@@ -1,4 +1,23 @@
 // Backend calls. All URLs are relative so the page works from any host.
+let pairing = null;
+/** Ask for the PIN shown on the Sentinel laptop; resolves true once paired. One prompt for all waiting requests. */
+function pairDevice() {
+  if (pairing) return pairing;
+  pairing = new Promise((resolve) => {
+    const el = document.createElement("section"); el.className = "pair"; el.setAttribute("role", "dialog");
+    el.innerHTML = `<form class="pair-card"><h2>Pair this device</h2><p>Enter the 6-digit PIN shown on the Sentinel laptop (demo panel, or the window where Sentinel started).</p>
+      <input inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required aria-label="Pairing PIN"><button class="pill pill-light">Pair</button><p class="pair-msg" aria-live="polite"></p></form>`;
+    document.body.appendChild(el);
+    const f = el.querySelector("form"), inp = el.querySelector("input"); inp.focus();
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const r = await fetch("../api/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin: inp.value }) });
+      if (r.ok) { el.remove(); pairing = null; resolve(true); } else { el.querySelector(".pair-msg").textContent = "That PIN didn't match. Check the laptop."; inp.select(); }
+    });
+  });
+  return pairing;
+}
+
 async function req(method, url, body, opts = {}) {
   const init = { method, headers: {} };
   if (body instanceof Blob || body instanceof ArrayBuffer) {
@@ -12,8 +31,12 @@ async function req(method, url, body, opts = {}) {
   const t = setTimeout(() => ctrl.abort(), opts.timeout ?? 8000);
   init.signal = ctrl.signal;
   try {
-    const r = await fetch(url, init);
-    const data = await r.json().catch(() => ({}));
+    let r = await fetch(url, init);
+    let data = await r.json().catch(() => ({}));
+    if (r.status === 401 && data.pair && await pairDevice()) {   // this device is not paired yet: ask for the PIN once
+      r = await fetch(url, { ...init, signal: undefined });
+      data = await r.json().catch(() => ({}));
+    }
     if (!r.ok) {
       const e = new Error(data.detail || `HTTP ${r.status}`);
       e.status = r.status;
@@ -27,6 +50,7 @@ async function req(method, url, body, opts = {}) {
 
 export const api = {
   health: () => req("GET", "../api/health"),
+  pin: () => req("GET", "../api/pin"),
   crew: () => req("GET", "../api/crew"),
   state: (id) => req("GET", `../api/state/${id}`, undefined, { timeout: 3000 }),
   aux: (id) => req("GET", `../api/aux/${id}`, undefined, { timeout: 3000 }),
