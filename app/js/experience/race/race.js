@@ -157,6 +157,44 @@ function createRaceScene(world, tex) {
   const guideGeo = new THREE.BufferGeometry().setFromPoints(curve.getSpacedPoints(1200));
   const guide = new THREE.LineLoop(guideGeo, new THREE.LineBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
   scene.add(guide);
+  guide.visible = false;   // replaced by the lane below
+
+  // the racing lane: a translucent energy track with glowing edges and chevrons streaming forward
+  const laneU = { time: { value: 0 }, uSpeed: { value: 1 } };
+  {
+    const N = 1600, W = TUBE * 1.05, pos = [], uv = [], idx = [];
+    for (let i = 0; i <= N; i++) {
+      const f = frameAt(i / N), dn = new THREE.Vector3().copy(f.up).multiplyScalar(-1.4);   // the lane sits just under the flight line
+      for (const s of [-1, 1]) { const p = f.p.clone().add(dn).addScaledVector(f.side, s * W); pos.push(p.x, p.y, p.z); uv.push((s + 1) / 2, (i / N) * length / 6); }
+      if (i < N) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+    const lane = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: laneU, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+      vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+      fragmentShader: `uniform float time, uSpeed; varying vec2 vUv;
+        void main(){
+          float x = vUv.x, y = vUv.y;
+          float edge = (smoothstep(0.025, 0.0, x) + smoothstep(0.975, 1.0, x)) * 0.8;
+          float sideLine = smoothstep(0.012, 0.0, abs(x - 0.5)) * 0.25 * step(0.5, fract(y * 1.2 - time * 2.0));
+          float chev = abs(x - 0.5) * 1.4; float c = fract(y * 0.5 + chev * 0.35 - time * 0.9 * uSpeed);
+          float chevron = smoothstep(0.0, 0.05, c) * smoothstep(0.16, 0.08, c) * smoothstep(0.48, 0.2, abs(x - 0.5));
+          float floorGlow = 0.05 + 0.04 * sin(y * 0.6 - time);
+          vec3 col = vec3(0.35, 0.8, 1.0) * (edge * 0.7 + floorGlow * 0.7) + vec3(0.55, 0.9, 1.0) * chevron * 0.22 + vec3(1.0) * sideLine * 0.6;
+          gl_FragColor = vec4(col, 1.0); }` }));
+    lane.renderOrder = -1; scene.add(lane);
+  }
+  // nebula clouds far out, for depth and colour
+  {
+    const mk = (r, g, b) => { const c = document.createElement("canvas"); c.width = c.height = 256; const x = c.getContext("2d");
+      for (let k = 0; k < 40; k++) { const px = 128 + (Math.random() - 0.5) * 90, py = 128 + (Math.random() - 0.5) * 90, rr = 20 + Math.random() * 40; const gr = x.createRadialGradient(px, py, 0, px, py, rr); gr.addColorStop(0, `rgba(${r},${g},${b},0.08)`); gr.addColorStop(1, `rgba(${r},${g},${b},0)`); x.fillStyle = gr; x.fillRect(0, 0, 256, 256); }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+    const tex = [mk(120, 90, 255), mk(255, 110, 170), mk(80, 190, 255)];
+    for (let i = 0; i < 9; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex[i % 3], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.32, fog: false }));
+      const a = (i / 9) * Math.PI * 2; sp.position.set(Math.cos(a) * 900, (Math.random() - 0.5) * 500, Math.sin(a) * 900); sp.scale.setScalar(700 + Math.random() * 500);
+      scene.add(sp);
+    }
+  }
 
   // planets beside the course (real textures); each has a beacon on the course for its power-up
   const planets = [];
@@ -187,10 +225,19 @@ function createRaceScene(world, tex) {
       const cl = new THREE.Mesh(new THREE.SphereGeometry(d.r * 1.012, 48, 24), new THREE.MeshStandardMaterial({ map: tex("earth_clouds.jpg"), transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
       m.add(cl);
     }
+    // an atmosphere: a fresnel shell in the planet's colour (none on the airless Moon)
+    const ATM = { earth: 0x6fb2ff, mars: 0xffa070, jupiter: 0xffd2a0, saturn: 0xf3e0b0 };
+    if (ATM[d.id]) {
+      const a = new THREE.Mesh(new THREE.SphereGeometry(d.r * 1.06, 48, 24), new THREE.ShaderMaterial({ uniforms: { c: { value: new THREE.Color(ATM[d.id]) } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide,
+        vertexShader: "varying vec3 vN; varying vec3 vV; void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position,1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }",
+        fragmentShader: "uniform vec3 c; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2); gl_FragColor = vec4(c * f * 1.1, 1.0); }" }));
+      m.add(a);
+    }
+    if (d.id === "earth") { m.material.emissiveMap = tex("earth_night.jpg"); m.material.emissive = new THREE.Color(0xffd9a0); m.material.emissiveIntensity = 0.55; }
     planets.push({ ...d, mesh: m, dist: d.u * length });
   }
 
-  return { scene, camera, length, at, frameAt, planets, guide, sun, update: null, resize(w, h) { camera.aspect = w / h; camera.updateProjectionMatrix(); } };
+  return { scene, camera, length, at, frameAt, planets, guide, sun, laneU, update: null, resize(w, h) { camera.aspect = w / h; camera.updateProjectionMatrix(); } };
 }
 
 export function renderRace(el, ctx) {
@@ -231,6 +278,7 @@ export function renderRace(el, ctx) {
       <div class="hud-mid"><span class="label">Lap</span><span class="hud-lap" data-lap>1 / ${LAPS}</span><span class="hud-time num" data-time>0:00.0</span></div>
       <div class="hud-right" data-power></div>
       <div class="hud-count" data-count></div>
+      <aside class="hud-world" data-world hidden></aside>
       <div class="hud-toast" data-toast></div>
       <div class="hud-boost"><span class="label">Boost</span><span class="boost-bar"><i data-boost></i></span><span class="hud-chip" data-draft>Slipstream</span></div>
       <div class="hud-touch" data-touch><button type="button" data-tilt class="pill pill-ghost">Use tilt</button><button type="button" class="boost-btn" data-boostbtn>BOOST</button></div>
@@ -381,7 +429,7 @@ export function renderRace(el, ctx) {
       rings.push({ dist, x, y, mesh: m, lapTaken: 0 });
     }
     // ---- the portal: fly through it to warp down to the surface of Mars for a canyon run ----
-    const PORTAL_D = R.length * 0.56;
+    const PORTAL_D = R.length * 0.56, PORTAL_D2 = R.length * 0.33;
     const portalU = { time: { value: 0 }, uOpen: { value: 1 } };
     const portal = new THREE.Group();
     { const fr = R.at(PORTAL_D, 0, 0); portal.position.copy(fr.pos); portal.up.copy(fr.up); portal.lookAt(fr.pos.clone().add(fr.t)); }
@@ -395,6 +443,8 @@ export function renderRace(el, ctx) {
           c += vec3(1.0, 0.95, 0.85) * exp(-r * r * 9.0) * 0.8;
           gl_FragColor = vec4(c * uOpen, 1.0); }` })));
     R.scene.add(portal);
+    const portal2 = portal.clone(); { const fr = R.at(PORTAL_D2, 0, 0); portal2.position.copy(fr.pos); portal2.up.copy(fr.up); portal2.lookAt(fr.pos.clone().add(fr.t)); }
+    R.scene.add(portal2);
     // the surface: a canyon on Mars far below the course (same scene, its own sky and haze). Real ground
     // texture (Poly Haven, CC0, recoloured), rugged rock walls, rust-red pillars rooted in the floor to weave
     // between, and a line of glowing coins that shows the racing line.
@@ -472,22 +522,192 @@ export function renderRace(el, ctx) {
     for (let i = 0; i < sdN; i++) sdP.set([(Math.random() - 0.5) * 22, Math.random() * 8 - 2, -Math.random() * SURF_LEN], i * 3);
     const sdG = new THREE.BufferGeometry(); sdG.setAttribute("position", new THREE.BufferAttribute(sdP, 3));
     const surfDust = new THREE.Points(sdG, new THREE.PointsMaterial({ color: 0xf0d2b0, size: 0.08, transparent: true, opacity: 0.6, depthWrite: false })); surf.add(surfDust);
-    let surfFrom = null, coinCount = 0, portalLap = 0;
-    function enterSurface() {
-      surfFrom = me.dist; portalLap = L.lapOf(me);
-      R.scene.fog.density = 0.016;
+    // ---- more worlds behind the portal: lap 2 the Moon, lap 3 Jupiter's cloud tops ----
+    function addCoins(group, lineFn, yFn, step = 3.2) {
+      const out = [];
+      for (let sd = 16; sd < SURF_LEN - 12; sd += step) {
+        if (Math.floor(sd / 26) % 2 === 1 && (sd % 26) > 14) continue;
+        const x = lineFn(sd), y = yFn(sd);
+        const m = new THREE.Mesh(coinGeo, coinMat); m.rotation.x = Math.PI / 2; m.position.set(x, y, -sd);
+        const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowMap, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); g.scale.setScalar(1.3); m.add(g);
+        group.add(m); out.push({ s: sd, x, y, mesh: m, taken: -1 });
+      }
+      return out;
+    }
+    function addExit(group) {
+      const r = portal.children[0].clone(); r.position.set(0, 0, -SURF_LEN); group.add(r);
+      const d = portal.children[1].clone(); d.position.set(0, 0, -SURF_LEN); group.add(d);
+    }
+    function addDust(group, color, n = 220, spread = 22) {
+      const P = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) P.set([(Math.random() - 0.5) * spread, Math.random() * 8 - 2, -Math.random() * SURF_LEN], i * 3);
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(P, 3));
+      const pts = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 0.08, transparent: true, opacity: 0.6, depthWrite: false })); group.add(pts);
+      return pts;
+    }
+
+    // the Moon: grey regolith pocked with craters, black sky, Earth over the horizon, boulders, floating coins
+    const moonO = new THREE.Vector3(7000, -2600, 0);
+    const moon = new THREE.Group(); moon.position.copy(moonO); R.scene.add(moon);
+    const moonLine = (sd) => Math.sin(sd * 0.05 + 1) * 2.4;
+    const moonWorld = { name: "the Moon", SO: moonO, fog: 0x000000, density: 0, coins: [], spires: [] };
+    {
+      const L_ = SURF_LEN + 200;
+      const mg = new THREE.PlaneGeometry(90, L_, 90, 300); mg.rotateX(-Math.PI / 2);
+      const craters = Array.from({ length: 34 }, (_, k) => ({ x: ((k * 53) % 70) - 35, z: -((k * 37) % (L_ - 20)) + 60, r: 2 + ((k * 7) % 9) }));
+      const P = mg.attributes.position;
+      for (let i = 0; i < P.count; i++) {
+        const x = P.getX(i), z = P.getZ(i);
+        let y = -2.5 + Math.sin(x * 0.3 + z * 0.07) * 0.15 + Math.max(0, Math.abs(x) - 16) * 0.12;
+        for (const c of craters) { const d = Math.hypot(x - c.x, z - c.z) / c.r; if (d < 1.25) y += d < 1 ? -0.9 * (1 - d * d) * (c.r / 6) : 0.35 * (1 - (d - 1) / 0.25) * (c.r / 6); }
+        P.setY(i, y);
+      }
+      mg.computeVertexNormals();
+      const moonMat = new THREE.MeshStandardMaterial({ color: 0x5e5c5a, roughness: 1 });
+      world.loader.load("assets/mars/ground_nor_gl.jpg", (t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(12, 40); moonMat.normalMap = t; moonMat.normalScale.set(1.8, 1.8); moonMat.needsUpdate = true; });
+      const ground = new THREE.Mesh(mg, moonMat); ground.position.z = -SURF_LEN / 2; moon.add(ground);
+      const earth = new THREE.Mesh(new THREE.SphereGeometry(60, 48, 32), new THREE.MeshStandardMaterial({ map: tex("earth_day.jpg"), roughness: 1 }));
+      earth.position.set(-140, 60, -420); moon.add(earth);
+      const sl = new THREE.DirectionalLight(0xffffff, 2.0); sl.position.set(60, 22, -20); moon.add(sl); moon.add(sl.target); sl.target.position.set(0, 0, -SURF_LEN / 2);
+      moon.add(new THREE.AmbientLight(0x303644, 0.25));
+      const boulderMat = new THREE.MeshStandardMaterial({ color: 0x4e4c4a, roughness: 1 });
+      world.loader.load("assets/mars/ground_nor_gl.jpg", (t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 2); boulderMat.normalMap = t; boulderMat.normalScale.set(2.2, 2.2); boulderMat.needsUpdate = true; });
+      for (let k = 0; k < 12; k++) {
+        const sd = 24 + k * 11.5, x = moonLine(sd) + (k % 2 ? 1 : -1) * (1.9 + (k % 3) * 0.6);
+        const b = makeAsteroid(70 + k, boulderMat); const sc = 1.0 + (k % 3) * 0.35; b.scale.set(sc * 1.2, sc, sc * 1.1); b.position.set(x, -1.6 + sc * 0.4, -sd); moon.add(b);
+        moonWorld.spires.push({ s: sd, x, y: 0, mesh: b, hit: -10 });
+      }
+      moonWorld.coins = addCoins(moon, moonLine, (sd) => 0.6 + Math.abs(Math.sin(sd * 0.12)) * 1.6, 3.6);   // low gravity: coins float in arcs
+      addExit(moon);
+      moonWorld.dust = addDust(moon, 0xc8c8c8, 120, 30);
+    }
+
+    // Jupiter: dive between two cloud decks, dodge spinning storms, lightning in the clouds
+    const jupO = new THREE.Vector3(-7000, -2600, 0);
+    const jup = new THREE.Group(); jup.position.copy(jupO); R.scene.add(jup);
+    const jupLine = (sd) => Math.sin(sd * 0.06) * 2.8;
+    const jupWorld = { name: "Jupiter's cloud tops", SO: jupO, fog: 0x9a6a44, density: 0.012, coins: [], spires: [] };
+    const cloudU = { time: { value: 0 }, map: { value: tex("jupiter.jpg") } };
+    const lightning = new THREE.PointLight(0xdfe8ff, 0, 60, 1.5); lightning.position.set(0, 4, -40); jup.add(lightning);
+    {
+      const deckMat = (flip) => new THREE.ShaderMaterial({ uniforms: cloudU, side: THREE.DoubleSide, fog: false,
+        vertexShader: "varying vec2 vUv; varying float vZ; void main(){ vUv = uv; vec4 w = modelViewMatrix * vec4(position,1.0); vZ = -w.z; gl_Position = projectionMatrix * w; }",
+        fragmentShader: `uniform sampler2D map; uniform float time; varying vec2 vUv; varying float vZ;
+          void main(){ vec2 uv = vec2(vUv.x * 0.6 + 0.2 + sin(vUv.y * 9.0 + time * 0.3) * 0.015, vUv.y * 3.0 - time * 0.02);
+            float detail = texture2D(map, uv * vec2(1.0, 2.0)).r;
+            float y = vUv.y * 46.0 + sin(vUv.x * 7.0 + vUv.y * 20.0 + time * 0.2) * 0.9 + detail * 1.6;
+            float k = 0.5 + 0.5 * sin(y);
+            vec3 cream = vec3(0.93, 0.85, 0.72), ochre = vec3(0.82, 0.58, 0.34), rust = vec3(0.62, 0.30, 0.16), brown = vec3(0.40, 0.24, 0.15);
+            vec3 c = mix(mix(brown, rust, k), mix(ochre, cream, k), 0.25 + 0.4 * (0.5 + 0.5 * sin(y * 0.37 + 1.3)));
+            c *= (0.8 + 0.4 * detail) * ${flip ? "0.42" : "0.6"};
+            float haze = 1.0 - exp(-vZ * 0.008); c = mix(c, vec3(0.50, 0.34, 0.22), haze * 0.6);
+            gl_FragColor = vec4(c, 1.0); }` });
+      for (const [y, flip] of [[-4.2, false], [9, true]]) {
+        const g = new THREE.PlaneGeometry(160, SURF_LEN + 220, 60, 120); g.rotateX(-Math.PI / 2);
+        const P = g.attributes.position; for (let i = 0; i < P.count; i++) { const x = P.getX(i), z = P.getZ(i); P.setY(i, (flip ? -1 : 1) * (Math.sin(x * 0.12 + z * 0.05) * 1.2 + Math.sin(z * 0.2) * 0.5)); }
+        const deck = new THREE.Mesh(g, deckMat(flip)); deck.position.set(0, y, -SURF_LEN / 2); jup.add(deck);
+      }
+      // storm vortices: spinning discs with a swirl shader
+      const vortexU = { time: cloudU.time };
+      const vMat = new THREE.ShaderMaterial({ uniforms: vortexU, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+        fragmentShader: `uniform float time; varying vec2 vUv;
+          void main(){ vec2 p = (vUv - 0.5) * 2.0; float r = length(p); if (r > 1.0) discard; float a = atan(p.y, p.x);
+            float sw = 0.5 + 0.5 * sin(a * 3.0 + r * 12.0 - time * 4.0);
+            float eye = smoothstep(0.25, 0.0, r);
+            vec3 c = mix(vec3(0.45, 0.14, 0.07), vec3(0.92, 0.66, 0.46), sw * (1.0 - r * 0.5)) * (0.55 + 0.45 * (1.0 - r)) + vec3(0.3, 0.08, 0.04) * eye;
+            gl_FragColor = vec4(c, smoothstep(1.0, 0.55, r) * 0.92); }` });
+      for (let k = 0; k < 11; k++) {
+        const sd = 26 + k * 12, x = jupLine(sd) + (k % 2 ? 1 : -1) * (2.0 + (k % 3) * 0.5), y = ((k * 7) % 3 - 1) * 1.1;
+        const v = new THREE.Mesh(new THREE.CircleGeometry(1.5, 48), vMat); v.position.set(x, y, -sd); jup.add(v);
+        jupWorld.spires.push({ s: sd, x, y, mesh: v, hit: -10, spin: true });
+      }
+      jup.add(new THREE.HemisphereLight(0xffe0c0, 0x6a3a20, 1.1));
+      // a cloud sky all round, so no space shows between the decks
+      const jsky = new THREE.Mesh(new THREE.SphereGeometry(300, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
+        vertexShader: "varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+        fragmentShader: "varying vec3 vD; void main(){ float b = 0.5 + 0.5 * sin(vD.y * 26.0 + sin(vD.x * 6.0) * 1.2); vec3 c = mix(vec3(0.55,0.36,0.24), vec3(0.86,0.72,0.56), b) * (0.75 + 0.25 * (1.0 - abs(vD.y))); gl_FragColor = vec4(c, 1.0); }" }));
+      jsky.position.z = -SURF_LEN / 2; jup.add(jsky);
+      jupWorld.coins = addCoins(jup, jupLine, (sd) => Math.sin(sd * 0.09) * 1.4, 3.2);
+      addExit(jup);
+      jupWorld.dust = addDust(jup, 0xf5dcc0, 200, 26);
+    }
+    // real figures (NASA Planetary Fact Sheet): gravity drives how the ship flies there
+    moonWorld.data = { g: 0.165, lines: ["Gravity 1.62 m/s² · 0.17 g", "−173 to 127 °C", "Almost no atmosphere"], fact: "A lunar day lasts about 29.5 Earth days." };
+    jupWorld.data = { g: 2.53, lines: ["Gravity 24.79 m/s² · 2.53 g", "Cloud tops about −110 °C", "Hydrogen and helium"], fact: "The Great Red Spot is a storm wider than Earth." };
+    const marsData = { g: 0.38, lines: ["Gravity 3.71 m/s² · 0.38 g", "Average about −65 °C", "95% CO₂, under 1% of Earth's pressure"], fact: "A Martian day (sol) lasts 24 h 39 min." };
+    const earthO = new THREE.Vector3(0, -2600, 7000);
+    const earthG = new THREE.Group(); earthG.position.copy(earthO); R.scene.add(earthG);
+    const earthLine = (sd) => Math.sin(sd * 0.055 + 2) * 2.5;
+    const earthWorld = { name: "Earth", SO: earthO, fog: 0x9cc3e6, density: 0.0045, coins: [], spires: [],
+      data: { g: 1.0, lines: ["Gravity 9.81 m/s² · 1 g", "Average about 15 °C", "78% nitrogen, 21% oxygen"], fact: "About 71% of Earth's surface is ocean." } };
+    const seaU = { time: { value: 0 } };
+    {
+      const sky = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
+        vertexShader: "varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+        fragmentShader: `varying vec3 vD; void main(){ float h = clamp(vD.y, 0.0, 1.0); vec3 c = mix(vec3(0.72,0.84,0.95), vec3(0.22,0.45,0.78), pow(h, 0.5));
+          vec3 sd = normalize(vec3(0.4, 0.3, -1.0)); float s = max(dot(vD, sd), 0.0); c += vec3(1.0,0.95,0.85) * (pow(s, 800.0) * 3.0 + pow(s, 12.0) * 0.25); gl_FragColor = vec4(c, 1.0); }` }));
+      sky.position.z = -SURF_LEN / 2; earthG.add(sky);
+      // ocean: moving waves with a sun glint
+      const og = new THREE.PlaneGeometry(400, SURF_LEN + 400, 120, 200); og.rotateX(-Math.PI / 2);
+      const sea = new THREE.Mesh(og, new THREE.ShaderMaterial({ uniforms: seaU, fog: false,
+        vertexShader: `uniform float time; varying vec3 vW; varying vec3 vN; void main(){ vec3 p = position;
+          float w = sin(p.x * 0.35 + time * 1.6) * 0.18 + sin(p.z * 0.27 - time * 1.2) * 0.22 + sin((p.x + p.z) * 0.9 + time * 2.4) * 0.05;
+          p.y += w; vec3 n = normalize(vec3(-cos(p.x * 0.35 + time * 1.6) * 0.06, 1.0, cos(p.z * 0.27 - time * 1.2) * 0.06));
+          vN = n; vec4 wp = modelMatrix * vec4(p, 1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+        fragmentShader: `varying vec3 vW; varying vec3 vN; void main(){ vec3 v = normalize(cameraPosition - vW); vec3 n = normalize(vN);
+          float fres = pow(1.0 - max(dot(n, v), 0.0), 4.0);
+          vec3 sd = normalize(vec3(0.4, 0.3, -1.0)); float spec = pow(max(dot(reflect(-sd, n), v), 0.0), 120.0);
+          vec3 deep = vec3(0.02, 0.12, 0.22), sky = vec3(0.55, 0.72, 0.9);
+          vec3 c = mix(deep, sky, fres * 0.7) + vec3(1.0, 0.96, 0.88) * spec * 0.7;
+          float d = length(cameraPosition - vW); c = mix(c, vec3(0.62,0.76,0.9), 1.0 - exp(-d * 0.0035));
+          gl_FragColor = vec4(c, 1.0); }` }));
+      sea.position.set(0, -2.4, -SURF_LEN / 2); earthG.add(sea);
+      // sea stacks: tall rock columns with green tops, off the racing line
+      const stackMat = new THREE.MeshStandardMaterial({ color: 0x5f574e, roughness: 0.95 });
+      world.loader.load("assets/mars/ground_nor_gl.jpg", (t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 3); stackMat.normalMap = t; stackMat.normalScale.set(2, 2); stackMat.needsUpdate = true; });
+      const grass = new THREE.MeshStandardMaterial({ color: 0x4f7a3a, roughness: 1 });
+      for (let k = 0; k < 11; k++) {
+        const sd = 26 + k * 12.5, x = earthLine(sd) + (k % 2 ? 1 : -1) * (2.2 + (k % 3) * 0.5);
+        const g = new THREE.CylinderGeometry(0.8, 1.3, 9, 20, 16), P = g.attributes.position, v = new THREE.Vector3();
+        for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); const a = Math.atan2(v.z, v.x), r = Math.hypot(v.x, v.z) * (1 + 0.16 * Math.sin(a * 4 + k) + 0.1 * Math.sin(v.y * 1.8 + k)); P.setXYZ(i, Math.cos(a) * r, v.y, Math.sin(a) * r); }
+        g.computeVertexNormals();
+        const st = new THREE.Mesh(g, stackMat); st.position.set(x, 1.6, -sd); earthG.add(st);
+        const top = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), grass); top.scale.set(1, 0.4, 1); top.position.set(x, 6.1, -sd); earthG.add(top);
+        earthWorld.spires.push({ s: sd, x, y: 0, mesh: st, hit: -10 });
+      }
+      // a few soft clouds drifting past
+      const cloudTex = glowMap;
+      for (let k = 0; k < 14; k++) { const c = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false })); c.scale.set(30, 10, 1); c.position.set((Math.random() - 0.5) * 120, 18 + Math.random() * 12, -Math.random() * (SURF_LEN + 100)); earthG.add(c); }
+      const sl = new THREE.DirectionalLight(0xfff4e0, 2.2); sl.position.set(30, 25, -60); earthG.add(sl); earthG.add(sl.target); sl.target.position.set(0, 0, -SURF_LEN / 2);
+      earthG.add(new THREE.HemisphereLight(0xcfe4ff, 0x2a4a5a, 0.8));
+      earthWorld.coins = addCoins(earthG, earthLine, (sd) => 0.3 + Math.sin(sd * 0.2) * 0.6, 3.2);
+      addExit(earthG);
+      earthWorld.dust = addDust(earthG, 0xffffff, 90, 30);
+    }
+    const marsWorld = { name: "Mars", data: marsData, SO, fog: 0xc99a74, density: 0.016, coins, spires, dust: surfDust };
+    const WORLDS = [earthWorld, marsWorld, moonWorld, jupWorld];
+    let cw = null;
+    let surfFrom = null, coinCount = 0, portalLap = "";
+    function enterSurface(lapNow, k) {
+      surfFrom = me.dist; portalLap = `${lapNow}-${k}`;
+      cw = WORLDS[((lapNow - 1) * 2 + k) % WORLDS.length];     // a race visits Earth, Mars, the Moon and Jupiter
+      R.scene.fog.color.set(cw.fog); R.scene.fog.density = cw.density;
       flash("fx-warp");
-      coins.forEach((c) => { c.taken = -1; c.mesh.visible = true; });
+      cw.coins.forEach((c) => { c.taken = -1; c.mesh.visible = true; });
       el.querySelector(".race-ui").style.setProperty("--fx", "#ff9a5a");
       fovKick = 22; fx.addTrauma(0.3); cueTone(220, 0.5, 0, "sine"); cueTone(440, 0.4, 0.15);
-      toast("Warp: the surface of Mars. Grab the coins!", "#ffb070");
+      toast(`Warp: ${cw.name}. Grab the coins!`, "#ffb070");
+      const card = $("[data-world]");
+      card.innerHTML = `<p class="label">${esc(cw.name)} · real data</p>${cw.data.lines.map((l) => `<span>${esc(l)}</span>`).join("")}<small>${esc(cw.data.fact)}</small><small class="src">NASA Planetary Fact Sheet</small>`;
+      card.hidden = false;
     }
     function exitSurface() {
-      surfFrom = null; R.scene.fog.density = 0; flash("fx-warp"); fovKick = 16; cueTone(660, 0.3); cueTone(990, 0.3, 0.1);
+      surfFrom = null; R.scene.fog.density = 0; flash("fx-warp"); $("[data-world]").hidden = true; fovKick = 16; cueTone(660, 0.3); cueTone(990, 0.3, 0.1);
       toast(`Back to orbit · ${coinCount} coins`, "#ffd84a");
     }
     function placeSurf(obj, sd, x, y, bank = 0) {
-      const pos = new THREE.Vector3(SO.x + x, SO.y + y, SO.z - sd);
+      const O = (cw || marsWorld).SO, pos = new THREE.Vector3(O.x + x, O.y + y, O.z - sd);
       obj.position.copy(pos); obj.up.set(0, 1, 0); obj.lookAt(pos.x, pos.y, pos.z - 1); obj.rotateZ(bank);
       return { pos, p: pos, t: new THREE.Vector3(0, 0, -1), up: new THREE.Vector3(0, 1, 0), side: new THREE.Vector3(1, 0, 0) };
     }
@@ -596,7 +816,9 @@ export function renderRace(el, ctx) {
         if (input.tilt) { ix += input.tilt.x; iy -= input.tilt.y; }
         const accel = 26 * focus, damp = Math.pow(0.02 / focus, dt);
         vx = (vx + ix * accel * dt) * damp; vy = (vy + iy * accel * dt) * damp;
+        if (surfFrom != null && cw?.data) vy -= (cw.data.g - 0.1) * 2.2 * dt;   // real gravity: floaty on the Moon, heavy on Jupiter
         px += vx * dt; py += vy * dt;
+        if (surfFrom != null && py < -1.7) { py = -1.7; vy = Math.max(0, vy); }   // skim the surface, never sink into it
         const r = Math.hypot(px, py);
         if (r > TUBE - 0.6) { px *= (TUBE - 0.6) / r; py *= (TUBE - 0.6) / r; vx *= 0.5; vy *= 0.5; }
         // boost and slipstream
@@ -621,18 +843,21 @@ export function renderRace(el, ctx) {
           }
           // the portal and the planet run
           const d = me.dist % R.length;
-          if (surfFrom == null && portalLap !== L.lapOf(me) && Math.abs(d - PORTAL_D) < 1.6 && Math.hypot(px, py) < 2.9) enterSurface();
+          if (surfFrom == null && Math.hypot(px, py) < 2.9) {
+            const lapNow = L.lapOf(me);
+            for (const [k, pd] of [[0, PORTAL_D2], [1, PORTAL_D]]) if (Math.abs(d - pd) < 1.6 && portalLap !== `${lapNow}-${k}`) { enterSurface(lapNow, k); break; }
+          }
           if (surfFrom != null) {
             const sd = me.dist - surfFrom;
-            for (const c of coins) {
+            for (const c of cw.coins) {
               if (c.taken >= 0 || Math.abs(sd - c.s) > 0.9 || Math.hypot(px - c.x, py - c.y) > 1.1) continue;
               c.taken = t; c.mesh.visible = false; coinCount++;
               L.chargeBoost(boost, 0.06);
               fx.burst(c.mesh.getWorldPosition(new THREE.Vector3()), 0xffd84a, 24, 6, 0.5);
               cueTone(1046 + (coinCount % 5) * 110, 0.09);
             }
-            for (const k of spires) {
-              if (t - k.hit < 1.2 || Math.abs(sd - k.s) > 1.1 || Math.abs(px - k.x) > 1.15) continue;
+            for (const k of cw.spires) {
+              if (t - k.hit < 1.2 || Math.abs(sd - k.s) > 1.1 || (k.spin ? Math.hypot(px - k.x, py - k.y) > 1.35 : Math.abs(px - k.x) > 1.15)) continue;
               k.hit = t;
               const absorbed = L.hitObstacle(me, t) === "absorbed";
               if (!absorbed) me.slowUntil += DIFF[diffKey].slow;
@@ -694,10 +919,14 @@ export function renderRace(el, ctx) {
         // place everything
         const speedM = L.speedMultiplier(me, Math.max(0, t));
         const f = surfFrom != null ? placeSurf(player, me.dist - surfFrom, px, py, -vx * 0.09) : place(player, me.dist, px, py, -vx * 0.09);
-        portalU.time.value = t; portal.rotation.z += dt * 0.6;
+        portalU.time.value = t; portal.rotation.z += dt * 0.6; portal2.rotation.z -= dt * 0.6;
+        R.laneU.time.value = t; R.laneU.uSpeed.value = speedM * boostMul;
         if (surfFrom != null) {
-          for (const c of coins) if (c.mesh.visible) c.mesh.rotation.z += dt * 3;
-          const DP = surfDust.geometry.attributes.position; for (let i = 0; i < DP.count; i++) { let x = DP.getX(i) + dt * 2.2; if (x > 11) x -= 22; DP.setX(i, x); } DP.needsUpdate = true;
+          for (const c of cw.coins) if (c.mesh.visible) c.mesh.rotation.z += dt * 3;
+          for (const k of cw.spires) if (k.spin) k.mesh.rotation.z -= dt * 1.5;
+          cloudU.time.value = t; seaU.time.value = t;
+          if (cw === jupWorld) { lightning.intensity *= 0.82; if (Math.random() < dt * 0.35) { lightning.position.set((Math.random() - 0.5) * 30, 6, -(me.dist - surfFrom) - 20 - Math.random() * 30); lightning.intensity = 60; flash("fx-ring"); cueTone(90, 0.4, 0, "sawtooth"); } }
+          const DP = cw.dust.geometry.attributes.position; for (let i = 0; i < DP.count; i++) { let x = DP.getX(i) + dt * 2.2; if (x > 11) x -= 22; DP.setX(i, x); } DP.needsUpdate = true;
         }
         rivals.forEach((rv, i) => {
           rv.x = Math.sin(t * 0.6 + rv.phase) * 2.2 + (i - 1) * 0.8; rv.y = Math.cos(t * 0.45 + rv.phase) * 1.2;
