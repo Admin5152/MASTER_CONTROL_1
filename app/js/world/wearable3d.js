@@ -2,6 +2,7 @@
 // This is illustrative geometry only: it is not connected hardware or a sensor reading.
 import * as THREE from "three";
 import { on } from "../core/bus.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 function roundedPanel(width, height, radius, depth, material) {
   const x = -width / 2, y = -height / 2;
@@ -11,7 +12,7 @@ function roundedPanel(width, height, radius, depth, material) {
   shape.lineTo(x + width, y + height - radius); shape.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
   shape.lineTo(x + radius, y + height); shape.quadraticCurveTo(x, y + height, x, y + height - radius);
   shape.lineTo(x, y + radius); shape.quadraticCurveTo(x, y, x + radius, y);
-  return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.018, bevelThickness: 0.014, curveSegments: 8 });
+  return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSegments: 6, steps: 1, bevelSize: Math.min(0.018, width * 0.18, height * 0.18), bevelThickness: Math.min(0.014, depth * 0.6 + 0.004), curveSegments: 16 });
 }
 
 function shieldPanel(width, height, depth, material) {
@@ -29,115 +30,90 @@ function shieldPanel(width, height, depth, material) {
   return geom;
 }
 
-function wovenTexture(repeatX, repeatY) {
-  const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128;
-  const g = canvas.getContext("2d");
-  g.fillStyle = "#7d8a99"; g.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 128; i += 4) {
-    g.fillStyle = i % 8 === 0 ? "rgba(235,242,250,.16)" : "rgba(0,0,0,.22)";
-    g.fillRect(i, 0, 1, 128); g.fillRect(0, i, 128, 1);
-    g.fillStyle = "rgba(255,255,255,.025)"; g.fillRect(i + 1, 1, 1, 126);
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeatX, repeatY);
-  texture.anisotropy = 4;
-  return texture;
+// ---------- product models: built to read like studio renders (reflections come from a room environment) ----------
+
+/** A rounded rectangle extruded with a deep, smooth bevel: the body of a device. */
+function roundedSlab(w, h, r, depth, bevel = 0.04, segs = 10) {
+  const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+  s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.absarc(x + w - r, y + r, r, -Math.PI / 2, 0);
+  s.lineTo(x + w, y + h - r); s.absarc(x + w - r, y + h - r, r, 0, Math.PI / 2);
+  s.lineTo(x + r, y + h); s.absarc(x + r, y + h - r, r, Math.PI / 2, Math.PI);
+  s.lineTo(x, y + r); s.absarc(x + r, y + r, r, Math.PI, Math.PI * 1.5);
+  const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelSegments: segs, bevelSize: bevel, bevelThickness: bevel, curveSegments: 28 });
+  g.translate(0, 0, -depth / 2); g.computeVertexNormals();
+  return g;
+}
+
+/** A strap: a rounded-rectangle cross-section swept along a curve. */
+function strap(points, width, thick) {
+  const curve = new THREE.CatmullRomCurve3(points);
+  const s = new THREE.Shape(), r = thick / 2;
+  s.moveTo(-width / 2 + r, -r); s.lineTo(width / 2 - r, -r); s.absarc(width / 2 - r, 0, r, -Math.PI / 2, Math.PI / 2);
+  s.lineTo(-width / 2 + r, r); s.absarc(-width / 2 + r, 0, r, Math.PI / 2, Math.PI * 1.5);
+  const g = new THREE.ExtrudeGeometry(s, { steps: 80, bevelEnabled: false, extrudePath: curve, curveSegments: 10 });
+  g.computeVertexNormals();
+  return g;
+}
+
+function fabricTexture(color = "#3d4954", line = "rgba(255,255,255,.07)") {
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const g = c.getContext("2d"); g.fillStyle = color; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 256; i += 3) { g.fillStyle = i % 6 ? "rgba(0,0,0,.10)" : line; g.fillRect(0, i, 256, 1); }
+  for (let i = 0; i < 256; i += 8) { g.fillStyle = "rgba(255,255,255,.025)"; g.fillRect(i, 0, 1, 256); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
 }
 
 function makeWatch(parent) {
-  const figure = new THREE.Group();
-  parent.add(figure);
-  figure.rotation.x = -0.08;
-  figure.rotation.y = -0.22; // Start with the glass face and crown visible.
+  const figure = new THREE.Group(); parent.add(figure);
+  figure.rotation.set(-0.12, -0.38, 0);
+  const titanium = new THREE.MeshPhysicalMaterial({ color: 0x9aa0a6, metalness: 1, roughness: 0.28, clearcoat: 0.3, clearcoatRoughness: 0.2 });
+  const darkTi = new THREE.MeshPhysicalMaterial({ color: 0x3a3f45, metalness: 1, roughness: 0.35 });
+  const silicone = new THREE.MeshPhysicalMaterial({ color: 0x1f2a33, roughness: 0.62, metalness: 0, sheen: 0.6, sheenColor: new THREE.Color(0x5a7080), sheenRoughness: 0.7 });
+  const glassBlack = new THREE.MeshPhysicalMaterial({ color: 0x020304, roughness: 0.04, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, reflectivity: 0.6 });
+  const accent = new THREE.MeshStandardMaterial({ color: 0xff7a2f, roughness: 0.4, metalness: 0.2 });
+  const glow = new THREE.MeshStandardMaterial({ color: 0x0a2a1c, emissive: 0x29ff8a, emissiveIntensity: 1.6, roughness: 0.3 });
 
-  const strapMat = new THREE.MeshStandardMaterial({ color: 0x3a4d5e, map: wovenTexture(1.5, 7), roughness: 0.82, metalness: 0.02 });
-  const edgeMat = new THREE.MeshStandardMaterial({ color: 0xb4c4cf, roughness: 0.24, metalness: 0.72 });
-  const caseMat = new THREE.MeshStandardMaterial({ color: 0x263340, roughness: 0.25, metalness: 0.62 });
-  const blackCeramic = new THREE.MeshStandardMaterial({ color: 0x080c11, roughness: 0.22, metalness: 0.28 });
-  const glow = new THREE.MeshStandardMaterial({ color: 0x78f4e7, emissive: 0x12b8a7, emissiveIntensity: 1.35, roughness: 0.22, metalness: 0.3 });
-  const quiet = new THREE.MeshStandardMaterial({ color: 0x69b7d1, emissive: 0x12627b, emissiveIntensity: 0.55, roughness: 0.3, metalness: 0.42 });
-
-  // Continuous black loop band, shaped in depth so the watch reads like a product render without an arm.
-  const strapShape = new THREE.Shape();
-  strapShape.absellipse(0.34, 0, 0.7, 1.08, 0, Math.PI * 2, false, 0);
-  const strapOpening = new THREE.Path();
-  strapOpening.absellipse(0.34, 0, 0.56, 0.91, 0, Math.PI * 2, true, 0);
-  strapShape.holes.push(strapOpening);
-  const strapGeometry = new THREE.ExtrudeGeometry(strapShape, { depth: 0.38, bevelEnabled: true, bevelSegments: 4, bevelSize: 0.018, bevelThickness: 0.018, curveSegments: 48 });
-  strapGeometry.rotateY(Math.PI / 2); strapGeometry.translate(-0.19, 0, 0);
-  figure.add(new THREE.Mesh(strapGeometry, strapMat));
-  // Adjustment slots on the lower section of the band.
-  const slotMat = new THREE.MeshBasicMaterial({ color: 0x05080b });
-  for (const [y, z] of [[-0.43, 0.235], [-0.55, 0.19], [-0.67, 0.135], [-0.78, 0.075]]) {
-    const slot = new THREE.Mesh(roundedPanel(0.09, 0.042, 0.02, 0.008), slotMat);
-    slot.position.set(0, y, z); figure.add(slot);
-  }
-
-  // CanvasTexture is mapped onto the existing inset display mesh. Data is refreshed from ctx.view below.
+  // case, then the black glass front, then the lit screen just above it
+  const body = new THREE.Mesh(roundedSlab(0.5, 0.6, 0.13, 0.16, 0.045), titanium); figure.add(body);
+  const front = new THREE.Mesh(roundedSlab(0.5, 0.6, 0.12, 0.012, 0.012, 6), glassBlack); front.position.z = 0.135; figure.add(front);
   const face = document.createElement("canvas"); face.width = 512; face.height = 640;
-  const g = face.getContext("2d");
-  g.scale(2, 2);
+  const g = face.getContext("2d"); g.scale(2, 2);
   if (typeof g.roundRect !== "function") {
-    g.roundRect = function (x, y, w, h, r) {
-      const radius = Math.min(r, w / 2, h / 2);
-      this.moveTo(x + radius, y); this.arcTo(x + w, y, x + w, y + h, radius);
-      this.arcTo(x + w, y + h, x, y + h, radius); this.arcTo(x, y + h, x, y, radius);
-      this.arcTo(x, y, x + w, y, radius); this.closePath();
-    };
+    g.roundRect = function (x, y, w, h, r) { const q = Math.min(r, w / 2, h / 2); this.moveTo(x + q, y); this.arcTo(x + w, y, x + w, y + h, q); this.arcTo(x + w, y + h, x, y + h, q); this.arcTo(x, y + h, x, y, q); this.arcTo(x, y, x + w, y, q); this.closePath(); };
   }
-  const display = new THREE.CanvasTexture(face); display.colorSpace = THREE.SRGBColorSpace;
-  const glassMat = new THREE.MeshBasicMaterial({ map: display, transparent: true, toneMapped: false });
-
-  // Rounded polished housing, fine bezel, and inset touchscreen glass.
-  const housing = new THREE.Mesh(roundedPanel(0.66, 0.8, 0.15, 0.15), caseMat);
-  housing.position.set(0, 0.02, 0.28); figure.add(housing);
-  const rearPlate = new THREE.Mesh(roundedPanel(0.59, 0.72, 0.13, 0.012), blackCeramic);
-  rearPlate.rotation.y = Math.PI; rearPlate.position.set(0, 0.02, 0.265); figure.add(rearPlate);
-  const bezel = new THREE.Mesh(roundedPanel(0.6, 0.74, 0.125, 0.024), edgeMat);
-  bezel.position.set(0, 0.02, 0.432); figure.add(bezel);
-  const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.65), glassMat);
-  glass.position.set(0, 0.02, 0.474); figure.add(glass);
-  const reflection = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.65), new THREE.MeshPhysicalMaterial({
-    color: 0xb9e9ff, transparent: true, opacity: 0.055, roughness: 0.12, metalness: 0.18,
-    clearcoat: 1, clearcoatRoughness: 0.08, depthWrite: false,
-  }));
-  reflection.position.set(0, 0.02, 0.475); figure.add(reflection);
-
-  for (const y of [-0.47, 0.47]) {
-    const lug = new THREE.Mesh(roundedPanel(0.35, 0.105, 0.045, 0.105), edgeMat);
-    lug.position.set(0, y, 0.30); figure.add(lug);
-  }
-
-  // Physical side controls and a hint of the optical sensor cluster under the case.
-  const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.058, 0.1, 24), edgeMat);
-  crown.rotation.z = Math.PI / 2; crown.position.set(0.37, 0.12, 0.34); figure.add(crown);
-  const crownRing = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.007, 8, 32), blackCeramic);
-  crownRing.rotation.y = Math.PI / 2; crownRing.position.set(0.423, 0.12, 0.34); figure.add(crownRing);
-  const button = new THREE.Mesh(new THREE.CylinderGeometry(0.037, 0.037, 0.08, 20), caseMat);
-  button.rotation.z = Math.PI / 2; button.position.set(0.365, -0.14, 0.34); figure.add(button);
-  const sensorRing = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.035, 40), edgeMat);
-  sensorRing.rotation.x = Math.PI / 2; sensorRing.position.set(0, 0.02, 0.255); figure.add(sensorRing);
-  const sensor = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.04, 40), glow);
-  sensor.rotation.x = Math.PI / 2; sensor.position.set(0, 0.02, 0.231); figure.add(sensor);
-  for (let i = 0; i < 4; i++) {
-    const led = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), quiet);
-    const a = i * Math.PI / 2;
-    led.position.set(Math.cos(a) * 0.065, 0.02 + Math.sin(a) * 0.065, 0.232); figure.add(led);
-  }
+  const display = new THREE.CanvasTexture(face); display.colorSpace = THREE.SRGBColorSpace; display.anisotropy = 4;
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.55), new THREE.MeshBasicMaterial({ map: display, transparent: true, toneMapped: false }));
+  screen.position.z = 0.156; figure.add(screen);
+  const sheen = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.57), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.06, roughness: 0.05, metalness: 0, clearcoat: 1, depthWrite: false }));
+  sheen.position.z = 0.158; figure.add(sheen);
+  // digital crown (knurled), side button, orange action ring
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.07, 36, 1), darkTi);
+  crown.rotation.z = Math.PI / 2; crown.position.set(0.3, 0.1, 0.02); figure.add(crown);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.006, 10, 36), accent); ring.rotation.y = Math.PI / 2; ring.position.set(0.335, 0.1, 0.02); figure.add(ring);
+  const button = new THREE.Mesh(roundedSlab(0.03, 0.12, 0.014, 0.03, 0.008, 4), titanium); button.position.set(0.285, -0.1, 0.02); button.rotation.y = Math.PI / 2; figure.add(button);
+  // optical sensor on the back: a dark glass dome with green LEDs
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.15, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), glassBlack);
+  dome.rotation.x = -Math.PI / 2; dome.scale.set(1, 1, 0.22); dome.position.z = -0.115; figure.add(dome);
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; const led = new THREE.Mesh(new THREE.CircleGeometry(0.014, 16), glow); led.position.set(Math.cos(a) * 0.06, Math.sin(a) * 0.06, -0.148); led.rotation.y = Math.PI; figure.add(led); }
+  // the sport band: two silicone straps that leave the lugs and curve back round the wrist
+  const up = strap([new THREE.Vector3(0, 0.28, 0), new THREE.Vector3(0, 0.52, -0.06), new THREE.Vector3(0, 0.66, -0.3), new THREE.Vector3(0, 0.6, -0.58)], 0.4, 0.055);
+  const down = strap([new THREE.Vector3(0, -0.28, 0), new THREE.Vector3(0, -0.52, -0.06), new THREE.Vector3(0, -0.66, -0.3), new THREE.Vector3(0, -0.6, -0.58)], 0.4, 0.055);
+  figure.add(new THREE.Mesh(up, silicone), new THREE.Mesh(down, silicone));
+  for (const y of [-0.5, -0.4]) { const hole = new THREE.Mesh(new THREE.CircleGeometry(0.018, 18), new THREE.MeshBasicMaterial({ color: 0x07090b })); hole.position.set(0, y - 0.04, -0.045); hole.rotation.x = 0.35; figure.add(hole); }
   return { figure, glow, face, display };
 }
 
 function makeChestHub(parent) {
   const unit = new THREE.Group();
   parent.add(unit);
-  const fabric = new THREE.MeshStandardMaterial({ color: 0x3c596c, map: wovenTexture(2, 5), roughness: 0.88, metalness: 0.04 });
-  const trim = new THREE.MeshStandardMaterial({ color: 0xa4b6c5, roughness: 0.3, metalness: 0.72 });
-  const shell = new THREE.MeshStandardMaterial({ color: 0x253341, roughness: 0.22, metalness: 0.58 });
-  const groove = new THREE.MeshBasicMaterial({ color: 0x080b12 });
-  const stitch = new THREE.MeshStandardMaterial({ color: 0x7790a0, roughness: 0.9 });
-  const violet = new THREE.MeshStandardMaterial({ color: 0x70e9e3, emissive: 0x0b9d9b, emissiveIntensity: 1.45, roughness: 0.22, metalness: 0.26 });
+  const fabric = new THREE.MeshPhysicalMaterial({ map: fabricTexture("#4a5763"), roughness: 0.82, sheen: 0.8, sheenColor: new THREE.Color(0x8fa3b5), sheenRoughness: 0.55 });
+  fabric.map.repeat.set(1, 4);
+  const trim = new THREE.MeshPhysicalMaterial({ color: 0xa9afb5, metalness: 1, roughness: 0.26 });
+  const shell = new THREE.MeshPhysicalMaterial({ color: 0x1c232b, metalness: 0.15, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.06 });
+  const groove = new THREE.MeshStandardMaterial({ color: 0x07090c, roughness: 0.6 });
+  const stitch = new THREE.MeshStandardMaterial({ color: 0x9fb0be, roughness: 0.9 });
+  const violet = new THREE.MeshStandardMaterial({ color: 0x0b2b2b, emissive: 0x4ef0e6, emissiveIntensity: 1.6, roughness: 0.25 });
   const strapL = new THREE.Mesh(roundedPanel(0.16, 0.78, 0.075, 0.055), fabric);
   strapL.rotation.z = -0.29; strapL.position.set(-0.22, 0.1, -0.08); unit.add(strapL);
   const strapR = strapL.clone(); strapR.rotation.z = 0.29; strapR.position.x = 0.22; unit.add(strapR);
@@ -161,7 +137,7 @@ function makeChestHub(parent) {
   rim.position.z = 0.01; unit.add(rim);
   const hub = new THREE.Mesh(shieldPanel(0.68, 0.65, 0.12), shell);
   hub.position.set(0, 0.015, 0.12); unit.add(hub);
-  const inset = new THREE.Mesh(roundedPanel(0.45, 0.29, 0.09, 0.012), new THREE.MeshBasicMaterial({ color: 0x090c14 }));
+  const inset = new THREE.Mesh(roundedPanel(0.45, 0.29, 0.09, 0.012), new THREE.MeshPhysicalMaterial({ color: 0x05070a, roughness: 0.05, clearcoat: 1 }));
   inset.position.set(0, 0.095, 0.245); unit.add(inset);
   const labelCanvas = document.createElement("canvas"); labelCanvas.width = 384; labelCanvas.height = 96;
   const labelCtx = labelCanvas.getContext("2d");
@@ -198,21 +174,26 @@ function makeChestHub(parent) {
 }
 
 function makePatchSensor(parent) {
-  const patch = new THREE.Group();
-  parent.add(patch);
-  const pad = new THREE.MeshStandardMaterial({ color: 0x202631, roughness: 0.88, metalness: 0.02 });
-  const rim = new THREE.MeshStandardMaterial({ color: 0x728092, roughness: 0.32, metalness: 0.68 });
-  const center = new THREE.MeshStandardMaterial({ color: 0x293648, roughness: 0.2, metalness: 0.32, emissive: 0x12304a, emissiveIntensity: 0.45 });
-  const adhesive = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.045, 48), pad);
-  adhesive.rotation.x = Math.PI / 2; patch.add(adhesive);
-  const shell = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.205, 0.095, 48), rim);
-  shell.rotation.x = Math.PI / 2; shell.position.z = 0.045; patch.add(shell);
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.125, 32, 24), center);
-  dome.scale.z = 0.28; dome.position.z = 0.105; patch.add(dome);
-  const led = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.008, 8, 40), new THREE.MeshBasicMaterial({ color: 0x62d7ff }));
-  patch.add(led);
-  patch.scale.setScalar(1.0);
-  patch.rotation.y = -0.18;
+  const patch = new THREE.Group(); parent.add(patch);
+  patch.rotation.set(1.05, 0, -0.2);   // the top (channels and reader) faces the viewer
+  // the adhesive: printed microfluidic channels that fill with sweat (the colours a hydration patch shows)
+  const c = document.createElement("canvas"); c.width = c.height = 512;
+  const g = c.getContext("2d");
+  g.fillStyle = "#aeb5bb"; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.05})`; g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2); }
+  const chan = (r, col, a0, a1) => { g.strokeStyle = col; g.lineWidth = 10; g.lineCap = "round"; g.beginPath(); g.arc(256, 256, r, a0, a1); g.stroke(); };
+  chan(150, "#3fa8ff", -2.6, 0.9); chan(180, "#ff8a3d", -0.4, 2.2); chan(205, "#7ad36b", 1.4, 3.6); chan(122, "#c9a3ff", 2.6, 4.6);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const adhesive = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.012, 96), [
+    new THREE.MeshStandardMaterial({ color: 0x9aa1a7, roughness: 0.9 }), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.82 }), new THREE.MeshStandardMaterial({ color: 0x969da3, roughness: 0.9 })]);
+  patch.add(adhesive);
+  // the reader puck: graphite, glossy, with a light ring
+  const puck = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.165, 0.07, 64), new THREE.MeshPhysicalMaterial({ color: 0x23282e, roughness: 0.2, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08 }));
+  puck.position.y = 0.04; patch.add(puck);
+  const lightRing = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.006, 10, 64), new THREE.MeshStandardMaterial({ color: 0x062026, emissive: 0x3ce3ff, emissiveIntensity: 1.6 }));
+  lightRing.rotation.x = Math.PI / 2; lightRing.position.y = 0.076; patch.add(lightRing);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.1, 48, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0x2c333a, roughness: 0.25, metalness: 0.3, clearcoat: 1 }));
+  cap.scale.y = 0.25; cap.position.y = 0.075; patch.add(cap);
   return patch;
 }
 
@@ -351,38 +332,34 @@ const DEVICES = {
 const fmt = (v) => (v == null || !Number.isFinite(Number(v)) ? "—" : Number(v) >= 100 ? String(Math.round(v)) : String(Math.round(Number(v) * 10) / 10));
 const srcBadge = (v, src) => (v == null ? `<span class="badge badge-designed">NO SENSOR</span>` : src === "manual" || src === "user" ? `<span class="badge badge-sim">MANUAL</span>` : src && src !== "sim" ? `<span class="badge badge-live">LIVE</span>` : `<span class="badge badge-sim">SIM</span>`);
 
-export function mountWearableFigure(host, body3d, world, ctx) {
-  const panel = host.querySelector("#wearable-host");
+export function mountWearableFigure(panel, ctx) {
   if (!panel) return () => {};
-  panel.innerHTML = `<header class="wear-head"><div><span class="wear-kicker">SpaceWear</span><small>Crew health hardware</small></div>
-      <span class="badge badge-designed">Concept</span><button class="wear-x" type="button" data-wear-close aria-label="Close SpaceWear">×</button></header>
+  panel.innerHTML = `<header class="wear-head"><div><span class="wear-kicker">SpaceWear</span><small>The hardware that reads these vitals</small></div>
+      <span class="badge badge-designed">Concept</span></header>
     <div class="wear-tabs" role="tablist">${Object.entries(DEVICES).map(([id, d]) => `<button type="button" role="tab" data-part="${id}">${d.name}</button>`).join("")}</div>
-    <div class="wear-viewer"><canvas aria-label="SpaceWear device model: drag to turn"></canvas><span class="wear-hint">Drag to turn</span></div>
-    <div class="wear-info"><strong data-title></strong><p data-copy></p><ul class="wear-rows" data-rows></ul></div>`;
-  const toggle = document.createElement("button");
-  toggle.type = "button"; toggle.className = "pill pill-ghost wear-toggle"; toggle.id = "btn-wear"; toggle.setAttribute("aria-pressed", "false");
-  toggle.innerHTML = `<span class="wear-dot"></span>SpaceWear`;
-  host.querySelector(".body-tools")?.appendChild(toggle);
-
+    <div class="wear-body"><div class="wear-viewer"><canvas aria-label="SpaceWear device model: drag to turn"></canvas><span class="wear-hint">Drag to turn · say "explode it"</span></div>
+    <div class="wear-info"><strong data-title></strong><p data-copy></p><ul class="wear-rows" data-rows></ul></div></div>`;
   const canvas = panel.querySelector("canvas");
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "low-power" });
   } catch (error) {
     console.warn("wearable model could not start", error);
-    toggle.remove();
+    panel.hidden = true;
     return () => {};
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 1.0;
   renderer.setClearColor(0x050912, 0);
   const scene = new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xcfe2ff, 0x1a1f2c, 1.6));
-  const key = new THREE.DirectionalLight(0xfff5e8, 3.2); key.position.set(2.4, 3.0, 4.0); scene.add(key);
-  const fill = new THREE.DirectionalLight(0x9fb6d6, 1.5); fill.position.set(-3, 1.0, 2.0); scene.add(fill);
-  const rim = new THREE.DirectionalLight(0x7fd8ff, 2.4); rim.position.set(-2.2, 2.0, -2.5); scene.add(rim);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.035).texture;   // studio reflections for metal and glass
+  scene.environmentIntensity = 0.85;
+  pmrem.dispose();
+  const key = new THREE.DirectionalLight(0xfff3e6, 1.6); key.position.set(2.2, 3.2, 3.0); scene.add(key);
+  const rim = new THREE.DirectionalLight(0x9fd8ff, 1.4); rim.position.set(-2.6, 1.6, -2.4); scene.add(rim);
   const sceneRoot = new THREE.Group(); scene.add(sceneRoot);
   const chest = makeChestHub(sceneRoot);
   const { figure: wrist, face, display } = makeWatch(sceneRoot);
@@ -395,10 +372,10 @@ export function mountWearableFigure(host, body3d, world, ctx) {
   for (const part of parts) {
     part.object.visible = false;
     const box = new THREE.Box3();
-    part.object.children.forEach((ch) => box.expandByPoint(ch.position));
+    part.object.children.forEach((ch) => { if (!ch.userData.noExplode) box.expandByPoint(ch.position); });
     const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
     const spread = Math.max(size.x, size.y, 0.3);
-    part.pieces = part.object.children.map((ch) => {
+    part.pieces = part.object.children.filter((ch) => !ch.userData.noExplode).map((ch) => {
       const d = ch.position.clone().sub(c);
       // apart in the plane, and much further apart in depth so the layers (glass, bezel, case, sensor) separate
       const off = new THREE.Vector3(d.x * 0.3, d.y * 0.3, d.z * 5.5);
@@ -428,31 +405,15 @@ export function mountWearableFigure(host, body3d, world, ctx) {
   };
   panel.querySelectorAll("[data-part]").forEach((b) => b.addEventListener("click", () => select(b.dataset.part)));
 
-  const frameBody = () => {
-    const hostRect = host.getBoundingClientRect(), r = panel.getBoundingClientRect();
-    body3d.setFrameRect(open ? { left: hostRect.left, top: hostRect.top, width: Math.max(160, r.left - hostRect.left - 12), height: hostRect.height } : null);
-    const w = world.size; body3d.resize(w.W, w.H);
-  };
   const resize = () => {
     if (!open) return;
     const r = canvas.getBoundingClientRect();
     if (r.width < 10 || r.height < 10) return;
     renderer.setSize(r.width, r.height, false);
     fitPartCamera(current, r.width / r.height);
-    frameBody();
   };
-  const setOpen = (v) => {
-    open = !!v;
-    host.classList.toggle("is-wear-open", open);
-    panel.classList.toggle("is-open", open);
-    toggle.setAttribute("aria-pressed", String(open));
-    try { localStorage.setItem("sentinel:wear", open ? "1" : "0"); } catch { /* private mode */ }
-    if (open) { requestAnimationFrame(() => { resize(); renderInfo(); paint(); }); window.gsap?.fromTo(panel, { opacity: 0, x: 24 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }); }
-    else frameBody();
-  };
-  toggle.addEventListener("click", () => setOpen(!open));
-  panel.querySelector("[data-wear-close]").addEventListener("click", () => setOpen(false));
-
+  // on Vitals the card is always there; "open" means the Vitals screen is showing
+  const setOpen = () => { open = true; requestAnimationFrame(() => { resize(); renderInfo(); paint(); }); };
   const ro = new ResizeObserver(resize); ro.observe(panel);
   const stopBodyDrag = (e) => e.stopPropagation();
   ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel"].forEach((name) => canvas.addEventListener(name, stopBodyDrag, { passive: name === "wheel" }));
@@ -484,7 +445,9 @@ export function mountWearableFigure(host, body3d, world, ctx) {
   const draw = (now) => {
     raf = requestAnimationFrame(draw);
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (!open || document.body.dataset.stage !== "body" || document.hidden) return;
+    if (document.body.dataset.stage !== "vitals" || document.hidden) return;
+    const vr = panel.getBoundingClientRect();
+    if (vr.bottom < 0 || vr.top > innerHeight) return;   // scrolled out of view: nothing to draw
     // a slow turntable sway, paused while dragged and for two seconds after
     const k = 1 - Math.exp(-dt * 7);
     explode += (explodeTo - explode) * k; zoom += (zoomTo - zoom) * k;
@@ -507,8 +470,8 @@ export function mountWearableFigure(host, body3d, world, ctx) {
   };
   raf = requestAnimationFrame(draw);
   const offCmd = on("wear:cmd", (c) => {
-    if (c.action === "close") { setOpen(false); return; }
-    if (!open) setOpen(true);
+    if (c.action === "close") return;
+    panel.scrollIntoView({ behavior: "smooth", block: "center" });
     if (c.part && c.part !== current.id) select(c.part);
     const y = current.object.rotation.y;
     switch (c.action) {
@@ -522,10 +485,9 @@ export function mountWearableFigure(host, body3d, world, ctx) {
     }
   });
   select("wrist");
-  let saved = null; try { saved = localStorage.getItem("sentinel:wear"); } catch { /* private mode */ }
-  setOpen(saved === "1");
+  setOpen();
   return () => {
-    cancelAnimationFrame(raf); ro.disconnect(); toggle.remove(); offCmd?.();
+    cancelAnimationFrame(raf); ro.disconnect(); offCmd?.();
     ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel"].forEach((name) => canvas.removeEventListener(name, stopBodyDrag));
     renderer.dispose();
     const textures = new Set();
@@ -538,8 +500,7 @@ export function mountWearableFigure(host, body3d, world, ctx) {
       });
     });
     textures.forEach((t) => t.dispose());
-    panel.innerHTML = ""; host.classList.remove("is-wear-open");
-    body3d.setFrameRect(null);
+    panel.innerHTML = "";
   };
 }
 
@@ -552,7 +513,7 @@ function fitPartCamera(part, aspect) {
   const radius = Math.max(0.25, bounds.getSize(new THREE.Vector3()).length() * 0.5);
   const vertical = THREE.MathUtils.degToRad(camera.fov);
   const horizontal = 2 * Math.atan(Math.tan(vertical * 0.5) * aspect);
-  const distance = radius / Math.sin(Math.min(vertical, horizontal) * 0.5) * 1.18;
+  const distance = radius / Math.sin(Math.min(vertical, horizontal) * 0.5) * 0.86;
   camera.position.set(center.x + 0.04, center.y + 0.025, center.z + distance);
   part.fit = { c: center.clone(), d: distance };
   camera.lookAt(center);

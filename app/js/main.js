@@ -193,6 +193,9 @@ ctx.applyListening = applyListening;
 
 // ---------- app ----------
 async function mountApp() {
+  // SpaceWear, the 3D hardware prototypes, live on Vitals beside the readings they produce (loaded once, off the critical path)
+  import("./world/wearable3d.js").then(({ mountWearableFigure }) => { ctx.wearableDispose = mountWearableFigure($("wearable-host"), ctx); })
+    .catch((e) => console.warn("wearable model failed", e));
   mountTiles($("vitals"), (id) => {
     const t = { dose: "radiation", storm: "radiation" }[id];
     if (t) director.run([{ cmd: "open_screen", name: t }]);
@@ -250,9 +253,6 @@ async function mountApp() {
     world.add("body", b);
     body.setImpl(b);
     ctx.body3d = b;
-    import("./world/wearable3d.js").then(({ mountWearableFigure }) => {
-      ctx.wearableDispose = mountWearableFigure($("body-host"), b, world, ctx);
-    }).catch((e) => console.warn("wearable model failed", e));
     $("body-loading").hidden = true;
     if (view.aux) body.setZoneStates(zoneStatuses(view.aux.assessment?.zones));
     if (stages.current === "body") world.show("body");
@@ -606,7 +606,7 @@ async function handleCommand(text, meta = {}) {
   }
   // conversation: after Sentinel answers a spoken request, the next thing said needs no wake phrase
   const followUp = () => { if (meta.via === "voice" && settings.get("listen") !== "ptt") voiceMod.expectReply(9000); };
-  const m = matchIntent(text, { wearOpen: !!document.querySelector("#wearable-host.is-open") && stages.current === "body" });
+  const m = matchIntent(text, { wearOpen: stages.current === "vitals" });
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
     if (m.local === "cabin") {

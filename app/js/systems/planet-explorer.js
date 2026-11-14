@@ -15,10 +15,9 @@ export function mountPlanetExplorer(host, profile, crewName = "Selected astronau
   const hotspot = surface ? { name: "High radiation zone", type: "Radiation", lat: base[0] + 17, lon: base[1] - 7, status: "HIGH / simulated relative intensity. Illustrative region only; not a measured surface radiation map." } : null;
   const dialog = document.createElement("section");
   dialog.className = "planet-explorer planet-inline";
-  dialog.innerHTML = `<header><div><h2>${name} explorer</h2><p>${profile === "mars_transit" ? "Destination preview / SIM sites, not current crew positions" : "SIM / fictional crew and shelter locations"}</p></div><span class="label">SURFACE OPERATIONS / SIM</span></header>
-    <p class="planet-help">Drag to explore the surface. Scroll or pinch to move closer. Click a location to fly there; select a marker for details.</p>
-    <div class="planet-workspace"><div class="planet-viewport"><canvas aria-label="Interactive ${name} globe"></canvas><div class="planet-tools"><button type="button" data-zoom-in aria-label="Zoom in">+</button><button type="button" data-zoom-out aria-label="Zoom out">−</button><button type="button" data-reset>Reset view</button></div></div>
-    <aside><p>Green: astronauts. Amber: shelters. Red shaded area: high radiation. All SIM</p><div data-sites></div><p data-selected aria-live="polite">${surface ? "Select an astronaut or shelter." : "Orbit / transit: no surface crew or shelters are shown."}</p></aside></div>`;
+  dialog.innerHTML = `<header><span class="label">Surface operations</span><h2>${name}</h2><p>${profile === "mars_transit" ? "Destination preview. Sites are simulated, not crew positions." : "Simulated crew and shelter sites."}</p></header>
+    <div class="planet-workspace"><div class="planet-viewport"><canvas aria-label="Interactive ${name} globe"></canvas><div class="planet-tools"><button type="button" data-zoom-in aria-label="Zoom in">+</button><button type="button" data-zoom-out aria-label="Zoom out">−</button><button type="button" data-reset>Reset</button><span class="planet-hint">Drag to turn · scroll to zoom · tap a site</span></div></div>
+    <aside><p class="planet-key"><i class="k-crew"></i>Crew <i class="k-shelter"></i>Shelter <i class="k-rad"></i>High radiation <span class="badge badge-sim">SIM</span></p><div data-sites></div><p data-selected aria-live="polite">${surface ? "Select an astronaut or shelter." : "Orbit / transit: no surface crew or shelters are shown."}</p></aside></div>`;
   host.replaceChildren(dialog);
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas: dialog.querySelector("canvas"), antialias: true, alpha: true }); }
@@ -31,18 +30,51 @@ export function mountPlanetExplorer(host, profile, crewName = "Selected astronau
   const desired = { ...view };
   const MIN_ALTITUDE = 0.06, MAX_ALTITUDE = 5;
   renderer.domElement.style.touchAction = "none";
-  const texture = new THREE.TextureLoader().load(`assets/space/${moon ? "moon.jpg" : name === "Mars" ? "mars.jpg" : "earth_day.jpg"}`);
+  const texture = new THREE.TextureLoader().load(`assets/space/${moon ? "moon.jpg" : name === "Mars" ? "mars.jpg" : "earth_day_8k.jpg"}`);
+  texture.anisotropy = 8;
   texture.colorSpace = THREE.SRGBColorSpace;
   const globe = new THREE.Mesh(new THREE.SphereGeometry(1, 192, 96), new THREE.MeshStandardMaterial({ map: texture, roughness: 1 }));
-  scene.add(globe, new THREE.AmbientLight(0xffffff, 2.3));
-  const light = new THREE.DirectionalLight(0xffffff, 2); light.position.set(3, 2, 4); scene.add(light);
+  globe.material.roughness = 0.95; globe.material.metalness = 0;
+  if (name === "Earth") {   // oceans catch the sun; a cloud layer drifts above
+    globe.material.roughness = 0.75; globe.material.metalness = 0.05;
+    const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.008, 128, 64), new THREE.MeshStandardMaterial({ alphaMap: new THREE.TextureLoader().load("assets/space/earth_clouds.jpg"), color: 0xffffff, transparent: true, depthWrite: false, roughness: 1 }));
+    scene.add(clouds); globe.userData.clouds = clouds;
+  }
+  if (name !== "Earth") {   // terrain relief derived from the albedo map: craters and ridges catch the low sun
+    const nrm = new THREE.TextureLoader().load(`assets/space/${moon ? "moon" : "mars"}_normal.jpg`);
+    globe.material.normalMap = nrm; globe.material.normalScale.set(0.7, 0.7); globe.material.needsUpdate = true;
+  }
+  scene.add(globe, new THREE.AmbientLight(0xffffff, moon ? 0.05 : 0.08));
+  const light = new THREE.DirectionalLight(0xfff4e6, 3.4); light.position.set(-3, 0.9, -1.6);   // from behind-left: a real day-night edge across the right of the disc
+  camera.add(light); scene.add(camera);   // the sun sits up and to the left of wherever you look from
+  if (!moon) {
+    // a thin atmosphere: brightest at the limb, gone face-on (Mars: dusty salmon, Earth: blue)
+    const tint = name === "Mars" ? new THREE.Color(0xe9a27c) : new THREE.Color(0x6fb7ff);
+    const atmo = new THREE.Mesh(new THREE.SphereGeometry(1.035, 96, 48), new THREE.ShaderMaterial({
+      uniforms: { tint: { value: tint }, power: { value: name === "Mars" ? 0.35 : 0.8 } },
+      vertexShader: "varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }",
+      fragmentShader: "uniform vec3 tint; uniform float power; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 3.0); gl_FragColor = vec4(tint * f * power, f * power); }",
+      transparent: true, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending,
+    }));
+    scene.add(atmo);
+  }
   const position = (lat, lon, radius = 1.025) => {
     const a = THREE.MathUtils.degToRad(lat), b = THREE.MathUtils.degToRad(lon);
     return new THREE.Vector3(Math.cos(a) * Math.cos(b), Math.sin(a), -Math.cos(a) * Math.sin(b)).multiplyScalar(radius);
   };
+  const pulses = [];
   const markers = points.map((site) => {
     const marker = new THREE.Mesh(site.type === "Shelter" ? new THREE.OctahedronGeometry(0.027) : new THREE.SphereGeometry(0.021, 16, 12), new THREE.MeshBasicMaterial({ color: site.type === "Shelter" ? 0xffbf5a : 0x57f5db }));
-    marker.position.copy(position(site.lat, site.lon)); marker.userData.site = site; scene.add(marker); return marker;
+    marker.material.visible = false;   // this mesh only catches taps
+    marker.position.copy(position(site.lat, site.lon)); marker.userData.site = site; scene.add(marker);
+    // on the ground: a thin ring and a small beacon, lying flat on the terrain like a survey marker
+    const col = site.type === "Shelter" ? 0xffbf5a : 0x57f5db;
+    const pin = new THREE.Group(); pin.position.copy(position(site.lat, site.lon, 1.0015)); pin.lookAt(pin.position.clone().multiplyScalar(2));
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.011, 0.014, 40), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide }));
+    const pulse = new THREE.Mesh(new THREE.RingGeometry(0.012, 0.0135, 40), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+    const core = new THREE.Mesh(new THREE.CircleGeometry(0.004, 20), new THREE.MeshBasicMaterial({ color: col, depthWrite: false }));
+    pin.add(ring, pulse, core); scene.add(pin); pulses.push(pulse);
+    return marker;
   });
   let radiationPatch = null;
   if (hotspot) {
@@ -65,8 +97,8 @@ export function mountPlanetExplorer(host, profile, crewName = "Selected astronau
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); geometry.setIndex(indices);
     radiationPatch = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
-      vertexShader: "varying float radial; void main(){ radial=uv.x; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
-      fragmentShader: "varying float radial; void main(){ float edge=1.0-smoothstep(0.72,1.0,radial); vec3 color=mix(vec3(1.0,0.15,0.08),vec3(1.0,0.55,0.08),radial); gl_FragColor=vec4(color,edge*0.6); }",
+      vertexShader: "varying float radial; varying vec2 vUv; void main(){ radial=uv.x; vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
+      fragmentShader: "varying float radial; varying vec2 vUv; float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); } float n(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(h(i),h(i+vec2(1,0)),f.x), mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x), f.y); } void main(){ float a=vUv.y*6.2831; vec2 q=vec2(cos(a),sin(a))*radial*3.0; float w=0.6*n(q*1.7)+0.4*n(q*4.1); float heat=clamp(1.0-radial*1.15+(w-0.5)*0.55,0.0,1.0); vec3 c=mix(vec3(1.0,0.72,0.25),vec3(1.0,0.2,0.1),heat); float iso=abs(fract(heat*3.0)-0.5); float line=(1.0-smoothstep(0.0,0.06,0.5-iso))*step(0.05,heat)*0.55; float ring=(1.0-smoothstep(0.0,0.012,abs(radial-0.9)))*0.7; gl_FragColor=vec4(c, heat*0.16+line+ring); }",
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
     }));
     radiationPatch.userData.site = hotspot; scene.add(radiationPatch);
@@ -76,18 +108,19 @@ export function mountPlanetExplorer(host, profile, crewName = "Selected astronau
   const labels = [...points, ...(hotspot ? [hotspot] : [])].map(site => {
     const button = document.createElement("button"); button.type = "button";
     button.className = `planet-map-marker marker-${site.type.toLowerCase()}`;
-    button.textContent = `${site.type === "Astronaut" ? "●" : site.type === "Shelter" ? "◆" : "⚠"} ${site.name} / SIM`;
+    button.innerHTML = `<i></i><span>${site.name}</span>`; button.setAttribute("aria-label", `${site.name}, ${site.type}, simulated`);
     button.onclick = () => select(site); labelLayer.append(button);
     return { site, button, point: position(site.lat, site.lon, 1.04) };
   });
   function reset() { Object.assign(desired, { lat: surface ? base[0] : 10, lon: surface ? base[1] : 0, altitude: 2.2 }); }
   function zoom(factor) { desired.altitude = THREE.MathUtils.clamp(desired.altitude * factor, MIN_ALTITUDE, MAX_ALTITUDE); }
   function select(site) {
-    dialog.querySelector("[data-selected]").textContent = `${site.name} / ${site.type} / SIM. ${site.lat.toFixed(4)}° latitude, ${site.lon.toFixed(4)}° longitude. ${site.status}. Fictional demo location, not operational guidance.`;
+    for (const l of labels) l.button.classList.toggle("is-on", l.site === site);
+    dialog.querySelector("[data-selected]").textContent = `${site.name} · ${site.type} · ${site.lat.toFixed(2)}°, ${site.lon.toFixed(2)}° · ${site.status}. Simulated site.`;
     Object.assign(desired, { lat: site.lat, lon: site.lon, altitude: 0.22 });
   }
   for (const site of [...points, ...(hotspot ? [hotspot] : [])]) {
-    const button = document.createElement("button"); button.type = "button"; button.textContent = `${site.type === "Shelter" ? "◆" : "●"} ${site.name} / SIM`; button.onclick = () => select(site); dialog.querySelector("[data-sites]").append(button);
+    const button = document.createElement("button"); button.type = "button"; button.className = `chip-${site.type.toLowerCase()}`; button.textContent = site.name; button.onclick = () => select(site); dialog.querySelector("[data-sites]").append(button);
   }
   const raycaster = new THREE.Raycaster();
   const canvas = renderer.domElement;
@@ -155,6 +188,8 @@ export function mountPlanetExplorer(host, profile, crewName = "Selected astronau
     camera.up.set(0, 1, 0);
     camera.lookAt(normal);
     for (const marker of markers) marker.scale.setScalar(Math.max(0.12, Math.min(1, view.altitude)));
+    const tp = (performance.now() / 2200) % 1;
+    for (const p of pulses) { p.scale.setScalar(1 + tp * 2.4); p.material.opacity = 0.6 * (1 - tp); }
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
     const rect = renderer.domElement.getBoundingClientRect();
@@ -163,8 +198,9 @@ export function mountPlanetExplorer(host, profile, crewName = "Selected astronau
       const facing = point.clone().normalize().dot(camera.position.clone().sub(point)) > 0;
       const visible = facing && projected.z >= -1 && projected.z <= 1 && Math.abs(projected.x) < 0.98 && Math.abs(projected.y) < 0.98;
       button.hidden = !visible;
-      if (visible) { button.style.left = `${(projected.x + 1) * rect.width / 2}px`; button.style.top = `${(1 - projected.y) * rect.height / 2 + (index % 2 ? 18 : -12)}px`; }
+      if (visible) { button.style.left = `${(projected.x + 1) * rect.width / 2}px`; button.style.top = `${(1 - projected.y) * rect.height / 2}px`; }
     }
+    if (globe.userData.clouds) globe.userData.clouds.rotation.y += 0.00012;
     renderer.render(scene, camera);
   });
   let disposed = false;

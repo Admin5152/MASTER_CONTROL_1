@@ -44,3 +44,5 @@ three.js (MIT), GSAP (GreenSock standard licence), Chart.js (MIT), MediaPipe Tas
 ## Mars surface texture
 
 - `app/assets/mars/ground_diff.jpg`, `ground_nor_gl.jpg`, `ground_rough.jpg`: "Aerial Ground Rock" by Amal Kumar, Poly Haven (https://polyhaven.com/a/aerial_ground_rock), CC0. Resized from 2K to 1K.
+- `app/assets/space/mars_normal.jpg`, `moon_normal.jpg`: terrain relief maps generated in this project from `mars.jpg` and `moon.jpg` (a band-pass of the albedo, then a Sobel gradient). Same licence as those textures.
+- `app/assets/brand/*`: the COSMOcare logo, supplied by the team; cut out of its background and recoloured for the dark theme in this project.

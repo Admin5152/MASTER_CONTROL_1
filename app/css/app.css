@@ -547,9 +547,9 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 .brand-logo { height: 22px; width: auto; }
 .brand-word { height: 13px; width: auto; }
 .brand-sub { padding-left: 8px; margin-left: 2px; border-left: 1px solid var(--line-dim); font-size: 9px; color: var(--ink-2); }
-.intro-logo { position: absolute; left: 50%; top: clamp(16px, 3.5vh, 40px); transform: translateX(-50%); width: clamp(104px, 11vw, 150px); opacity: 0; transition: opacity 1.2s ease .3s; pointer-events: none; z-index: 2; }
+.intro-logo { position: absolute; left: 50%; top: clamp(16px, 3.5vh, 40px); transform: translateX(-50%); width: clamp(104px, 11vw, 150px); opacity: 0; animation: logo-in 1.4s ease .2s forwards; pointer-events: none; z-index: 2; }
 .intro-logo img { width: 100%; height: auto; }
-.intro.is-ready .intro-logo { opacity: 0.92; }
+@keyframes logo-in { to { opacity: 0.92; } }   /* from the first frame of the intro, not only once it settles */
 @media (max-width: 760px) { .brand-word, .brand-sub { display: none; } }
 /* Radiation cards flow below the hero so expanded content never overlaps. */
 .stage-radiation {
@@ -702,3 +702,37 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 .stage-radiation .planet-inline .planet-workspace aside { left:20px; right:20px; bottom:16px; max-height:120px; }
 .stage-radiation .planet-tools { bottom:155px; }
 }
+
+/* ---------- Radiation explorer: final layout (one title, dot markers, one row of sites above the ask bar) ---------- */
+.stage-radiation { scrollbar-width: thin; }
+.stage-radiation .planet-inline header { top: 64px; left: 50%; right: auto; transform: translateX(-50%); width: min(420px, 40vw); display: block; text-align: center; padding: 0; }
+.stage-radiation .planet-inline header .label { display: block; font-size: 10px; letter-spacing: .2em; color: var(--ink-3); }
+.stage-radiation .planet-inline header h2 { margin: 2px 0 2px; font-family: var(--font-label); font-size: 22px; letter-spacing: .14em; text-transform: uppercase; font-weight: 400; }
+.stage-radiation .planet-inline header p { margin: 0; font-size: 11px; color: var(--ink-3); }
+.stage-radiation .planet-inline .planet-help { display: none; }
+.stage-radiation .planet-tools { bottom: 222px; display: flex; align-items: center; gap: 6px; }
+.stage-radiation .planet-tools button { min-width: 34px; height: 34px; padding: 0 12px; border-radius: 999px; background: var(--surface-strong); border: 1px solid var(--line-dim); color: var(--ink); font-size: 12px; }
+.planet-hint { margin-left: 8px; font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+.stage-radiation .planet-inline .planet-workspace aside { left: 50%; right: auto; transform: translateX(-50%); width: min(560px, 44vw); bottom: 104px; max-height: none; overflow: visible;
+  padding: 10px 12px; border-radius: 16px; background: var(--surface-strong); border: 1px solid var(--line-dim); gap: 8px; }
+.planet-key { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; font-size: 10.5px !important; color: var(--ink-3); }
+.planet-key i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+.planet-key i:first-child { margin-left: 0; }
+.planet-key .k-crew { background: #57f5db; } .planet-key .k-shelter { background: #ffbf5a; border-radius: 2px; transform: rotate(45deg); } .planet-key .k-rad { background: #ff6a4d; }
+.planet-key .badge { margin-left: auto; font-size: 9px; }
+.stage-radiation .planet-inline .planet-workspace [data-sites] { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; grid-template-columns: none; }
+.stage-radiation .planet-inline .planet-workspace [data-sites] button { flex: 0 0 auto; padding: 6px 12px; border-radius: 999px; font-size: 11px; background: transparent; border: 1px solid var(--line-dim); }
+.stage-radiation [data-sites] .chip-astronaut { border-color: #57f5db66; } .stage-radiation [data-sites] .chip-shelter { border-color: #ffbf5a66; } .stage-radiation [data-sites] .chip-radiation { border-color: #ff6a4d66; }
+.stage-radiation [data-selected] { margin: 0; font-size: 11px !important; color: var(--ink-2); min-height: 1.4em; }
+/* markers: a glowing dot; the name appears on hover, and stays for the selected site */
+.planet-marker-labels .planet-map-marker { transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; box-shadow: none; cursor: pointer; max-width: none; }
+.planet-map-marker i { width: 16px; height: 16px; border-radius: 50%; background: transparent; flex: 0 0 auto; }   /* the marker itself is drawn on the terrain; this is its tap target */
+.planet-map-marker span { margin-left: 2px; padding: 3px 8px; border-radius: 999px; background: #08121ee6; border: 1px solid color-mix(in srgb, currentColor 50%, transparent); color: #e8f1fb; font-size: 10.5px; white-space: nowrap; opacity: 0; transform: translateX(-4px); transition: opacity .2s, transform .2s; pointer-events: none; }
+.planet-map-marker:hover span, .planet-map-marker:focus-visible span, .planet-map-marker.is-on span { opacity: 1; transform: none; }
+.planet-map-marker:focus-visible { outline: none; }
+@media (max-width: 1050px) {
+  .stage-radiation .planet-inline header { top: 70px; width: 80vw; }
+  .stage-radiation .planet-inline .planet-workspace aside { width: min(560px, 92vw); }
+  .planet-hint { display: none; }
+}
+.stage-radiation { background: none; }   /* the planet sits in real space: no painted wash behind it */

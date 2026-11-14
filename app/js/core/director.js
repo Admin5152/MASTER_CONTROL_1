@@ -56,6 +56,8 @@ export function createDirector(deps) {
     }
   };
 
+  const ctxHome = () => (deps.homeStage ? deps.homeStage() : "assistant");
+
   async function toBody() {
     if (stages.current !== "body") await stages.go("body");
     for (let i = 0; i < 40 && !b3(); i++) await sleep(150);
@@ -69,7 +71,8 @@ export function createDirector(deps) {
       case "show_chart": return screens.chart(c.metric);
       case "start_scan": return fullScan(token);
       case "wearable": {
-        if (c.action !== "close") await toBody();
+        if (c.action === "close") { if (stages.current === "vitals") await stages.go(ctxHome()); return; }
+        if (stages.current !== "vitals") { screens.close?.(); await stages.go("vitals"); }
         emit("wear:cmd", c);
         return;
       }
