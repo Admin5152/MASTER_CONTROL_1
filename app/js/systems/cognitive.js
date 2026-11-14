@@ -1,24 +1,25 @@
-// Reaction test screen: a 3-minute psychomotor vigilance test like the ISS Reaction Self Test (logic and
-// sources in ./pvt.js), with a 30-second practice mode for demos. The median reaction time is stored in
+// Reaction test screen: a 30-second check-in test and an optional 3-minute psychomotor vigilance test
+// like the ISS Reaction Self Test (logic and sources in ./pvt.js). The median reaction time is stored in
 // the state (the first three runs set the baseline, as before); lapses and false starts go to the history.
 // Results produced here are LIVE. It tracks a trend; it is not a diagnosis.
 import { api } from "../core/api.js";
+import { emit } from "../core/bus.js";
 import { badgeFor, badgeHTML, esc } from "../interface/readings.js";
 import { PVT, classify, nextWait, sleepNote, summarize, versusBaseline } from "./pvt.js";
 
 export function renderCognitive(el, ctx) {
   const st = ctx.view.state || {};
   const c = st.cognitive || {};
-  let mode = "full";
+  let mode = "brief";
   el.innerHTML = `
     <div class="pvt-intro">
-      <p>Press the pad (or the space bar) as soon as the light comes on. It comes on at random, every 2 to 10 seconds, for 3 minutes. Pressing while it is dark is a false start. Responses slower than half a second count as <strong>lapses</strong>, the usual fatigue marker.</p>
+      <p>Press the pad (or the space bar) as soon as the light comes on. In the 30-second check-in, it appears at random every 1 to 4 seconds. Pressing while it is dark is a false start. Responses slower than half a second count as <strong>lapses</strong>, a fatigue marker.</p>
       <p class="fine">A psychomotor vigilance test like the ISS Reaction Self Test (NASA NTRS 20090029851), used on the station as a fatigue flag since 2009. ${esc(sleepNote(st.manual?.sleep_hours))}</p>
       <p class="note">Your baseline: ${c.baseline_ms ? `<strong class="num">${c.baseline_ms} ms</strong> ${badgeHTML(badgeFor("cognitive.baseline_ms", st, ctx.view.aux))}` : "not set yet; your first three runs set it"}.</p>
-      <div class="seg" role="tablist"><button type="button" data-mode="full" aria-selected="true">3-minute test</button><button type="button" data-mode="practice" aria-selected="false">30 s practice</button></div>
+      <div class="seg" role="tablist"><button type="button" data-mode="brief" aria-selected="true">30-second check-in</button><button type="button" data-mode="full" aria-selected="false">3-minute test</button></div>
     </div>
     <button class="target-pad pvt-pad" type="button" data-pad>Tap to start</button>
-    <div class="pvt-live"><span data-clock class="num">3:00</span><span data-count>0 responses</span></div>
+    <div class="pvt-live"><span data-clock class="num">0:30</span><span data-count>0 responses</span></div>
     <div class="pvt-result" data-res aria-live="polite"></div>`;
   const pad = el.querySelector("[data-pad]"), res = el.querySelector("[data-res]");
   const clock = el.querySelector("[data-clock]"), count = el.querySelector("[data-count]");
@@ -93,6 +94,7 @@ export function renderCognitive(el, ctx) {
       await api.log(id, "session.pvt_mean_ms", s.mean, "user");
       const out = await ctx.patch({ cognitive: { reaction_ms: s.median, updated: new Date().toISOString() } });
       ctx.onCheckin?.("cognitive");
+      emit("checkin.complete", { crewId: id, summary: { manual: ctx.view.state?.manual || {}, reaction_ms: s.median, lapses: s.lapses, false_starts: s.falseStarts } });
       const item = out.drift.items.find((i) => i.metric === "cognitive.reaction_ms");
       ctx.say(item ? `Reaction time is ${Math.round(item.delta_pct)} percent slower than your baseline, with ${s.lapses} lapse${s.lapses === 1 ? "" : "s"}. Worth a rest and a recheck later.`
         : `Reaction time is within your usual range, with ${s.lapses} lapse${s.lapses === 1 ? "" : "s"}.`);

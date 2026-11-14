@@ -5,6 +5,7 @@
 // Sources: https://ntrs.nasa.gov/citations/20090029851 , https://pmc.ncbi.nlm.nih.gov/articles/PMC8919197
 
 export const PVT = {
+  brief: { seconds: 30, minWait: 1000, maxWait: 4000 },
   full: { seconds: 180, minWait: 2000, maxWait: 10000 },
   practice: { seconds: 30, minWait: 1000, maxWait: 4000 },
   lapseMs: 500,

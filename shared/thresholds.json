@@ -189,6 +189,13 @@
       "zone": "heart",
       "levels": [
         {
+          "severity": "alert",
+          "above": 179,
+          "kind": "demo_placeholder",
+          "note": "Sentinel recheck alert used for SV1 demonstration; not a NASA medical limit.",
+          "source": { "title": "Sentinel demo setting (SV1 acceptance scenario)", "url": "" }
+        },
+        {
           "severity": "watch",
           "above": 129,
           "kind": "clinical_reference",
@@ -215,6 +222,13 @@
       "unit": "mmHg",
       "zone": "heart",
       "levels": [
+        {
+          "severity": "alert",
+          "above": 109,
+          "kind": "demo_placeholder",
+          "note": "Sentinel recheck alert used for SV1 demonstration; not a NASA medical limit.",
+          "source": { "title": "Sentinel demo setting (SV1 acceptance scenario)", "url": "" }
+        },
         {
           "severity": "watch",
           "above": 79,

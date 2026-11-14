@@ -7,10 +7,12 @@ let ctxRef = null, raf = 0, phase = 0, last = 0, hr = 60;
 const PLAN = [
   { h: 8, label: "Morning vitals", screen: "health_log" },
   { h: 10, label: "Exercise block", note: "per crew schedule" },
+  { h: 12, label: "Hydration and meals", screen: "health_log" },
   { h: 13, label: "Reaction test", screen: "cognitive", note: "3 min" },
   { h: 16, label: "Weekly measures", screen: "measures" },
   { h: 19, label: "Mood and sleep log", screen: "health_log" },
-  { h: 21, label: "Guided exam", screen: "exam", note: "weekly" },
+  { h: 21, label: "Sleep wind-down", screen: "health_log" },
+  { h: 22, label: "Guided exam", screen: "exam", note: "weekly" },
 ];
 
 export function mountVitals(ctx) {
