@@ -604,6 +604,12 @@ def chat_stream(state: dict, transcript: str, crew_id: str | None = None,
     Health replies are checked sentence by sentence against the state; on the first bad number (or any
     failure before anything was said) the rules reply is used instead."""
     cid = crew_id or state.get("crew_id", "")
+    from brain import safety
+    if safety.concern(transcript):   # W14: fixed lines only, never generated counselling
+        for line in (safety.LINES["first"],):
+            yield {"type": "sentence", "text": line, "source": "safety"}
+        yield {"type": "final", "reply": safety.LINES["first"], "commands": [{"cmd": "open_screen", "name": "grounding"}], "source": "safety", "kind": "safety"}
+        return
     health = is_health_question(transcript)
     allowed_text = transcript + " " + evidence_for(transcript)   # MRID ids and schedules the evidence states may be repeated
     stream = stream or stream_llm

@@ -1,0 +1,54 @@
+[
+ [
+  "I want to die",
+  "self_harm"
+ ],
+ [
+  "I don't want to be alive anymore",
+  "self_harm"
+ ],
+ [
+  "I'm going to hurt myself",
+  "self_harm"
+ ],
+ [
+  "I want to hurt him",
+  "harm_others"
+ ],
+ [
+  "I'm having a panic attack",
+  "severe_distress"
+ ],
+ [
+  "I can't cope anymore",
+  "severe_distress"
+ ],
+ [
+  "this mission is killing me",
+  null
+ ],
+ [
+  "my knee hurts",
+  null
+ ],
+ [
+  "I could die for a coffee",
+  null
+ ],
+ [
+  "I'm sad",
+  null
+ ],
+ [
+  "kill the music",
+  null
+ ],
+ [
+  "end the EVA",
+  null
+ ],
+ [
+  "I'm so tired I could die",
+  null
+ ]
+]

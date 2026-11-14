@@ -43,6 +43,7 @@ export const api = {
   ops: (cid, body) => req("POST", `../api/ops/${cid}`, body),
   readiness: (cid) => req("GET", `../api/ops/${cid}/readiness`),
   digest: (cid, note = "") => req("POST", `../api/digest/${cid}`, { note }),
+  safety: (cid, category) => req("POST", `../api/safety/${cid}`, { category }),
   spaceweather: () => req("GET", "../api/spaceweather"),
   clock: (hours) => req("POST", "../api/clock", { advance_hours: hours }),
   json: (path) => req("GET", path),

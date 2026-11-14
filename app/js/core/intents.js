@@ -162,6 +162,19 @@ export function wearIntent(text, { open = false } = {}) {
   return { intent: `wear_${c.action}`, action: "control_wearable", target: c.part || "wearable", commands: [c] };
 }
 
+// W14 urgent wellbeing concern: the same DRAFT list as brain/safety.py (clinician review required before real use).
+// Checked first, before any other intent, and it never reaches the language model.
+const CONCERN = {
+  self_harm: [/\b(kill|hurt|harm|cut) (myself|my self)\b/, /\bend (my|it all|my life)\b/, /\b(want|wanna|going) to die\b/, /\bdon t want to (live|be alive|be here|wake up)\b/, /\bdo not want to (live|be alive|be here)\b/, /\bsuicid/, /\bbetter off dead\b/, /\bno reason to live\b/, /\btake my (own )?life\b/, /\bnot worth living\b/],
+  harm_others: [/\b(kill|hurt|harm|attack) (him|her|them|someone|somebody|my crewmate|the crew|everyone)\b/, /\bwant to hurt (people|someone|somebody)\b/],
+  severe_distress: [/\bpanic attack\b/, /\bi m panicking\b/, /\bi am panicking\b/, /\bi can t (cope|take it|go on|do this) any ?more\b/, /\bi can t go on\b/, /\b(having|have) a breakdown\b/, /\bi m losing it\b/, /\bi can t stop shaking\b/],
+};
+export function wellbeingConcern(text) {
+  const t = String(text || "").toLowerCase().replace(/['’]/g, " ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  for (const cat of ["self_harm", "harm_others", "severe_distress"]) if (CONCERN[cat].some((re) => re.test(t))) return cat;
+  return null;
+}
+
 export function matchIntent(text, ctx = {}) {
   const t = norm(text);
   if (t.trim() === "") return null;

@@ -29,6 +29,7 @@ from brain import llm, speech  # noqa: E402
 from brain.ground import Ground  # noqa: E402
 from brain.suit import Suits, REGIONS as SUIT_REGIONS, region_from_text  # noqa: E402
 from brain.ops import Ops, MODES as OPS_MODES  # noqa: E402
+from brain import safety  # noqa: E402
 from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
@@ -220,6 +221,22 @@ def digest_send(cid: str, body: dict = Body(default={})):
     d = ops.digest(cid, store.get(cid), store.assessment(cid), suits.status(cid), str(body.get("note", ""))[:200])
     p = ground.send(cid, "digest", f"Digest: {d['priority']}", {"text": d["text"]}, d["priority"], ops.hold_until())
     return {**d, "packet": p}
+
+
+@app.post("/api/safety/{cid}")
+def safety_alert(cid: str, body: dict = Body(default={})):
+    """W14 urgent wellbeing concern: alert the buddy and the commander (SIM) and queue an URGENT message for the
+    flight surgeon or psychologist. Only the category travels, never the person's words."""
+    _need(cid)
+    cat = str(body.get("category", "severe_distress"))
+    if cat not in safety.PATTERNS:
+        raise HTTPException(400, "unknown category")
+    who = safety.people(store.crew(), cid)
+    name = store.get(cid).get("display_name", cid)
+    p = ground.send(cid, "crisis", "Urgent wellbeing concern", {
+        "text": f"URGENT wellbeing concern | crew: {name} | category: {cat.replace('_', ' ')} | buddy alerted: {who['buddy']} | "
+                f"commander alerted: {who['commander']} | onboard: safety script and grounding screen. Please contact the crew."}, "URGENT", ops.hold_until())
+    return {"category": cat, "label": "SIM", **who, "lines": [safety.LINES["first"], safety.LINES["then"].format(buddy=who["buddy"])], "packet": p}
 
 
 @app.post("/api/suit/{cid}")

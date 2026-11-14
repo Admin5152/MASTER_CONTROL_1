@@ -10,7 +10,7 @@
 import { emit } from "../core/bus.js";
 import { audioContext, unlockAudio } from "../core/sound.js";
 import { matchWake } from "./wake.js";
-import { matchIntent } from "../core/intents.js";
+import { matchIntent, wellbeingConcern } from "../core/intents.js";
 import { medianPitch, rms, talkTime } from "./pitch.js";
 import { encodeWav, resample } from "./wav.js";
 import { createVad } from "./vad.js";
@@ -364,7 +364,7 @@ function handleText(text, audio, { ptt = false, awaiting = false } = {}) {
       onCommand(w.command, { via: "voice", heard: text });
     }
     else { awaitingUntil = Date.now() + 8000; emit("voice:open", 8000); onCommand("", { via: "voice", heard: text, wakeOnly: true }); }
-  } else if (ptt || awaiting || Date.now() < awaitingUntil || openMic() || isClearCommand(text)) {
+  } else if (ptt || awaiting || Date.now() < awaitingUntil || openMic() || isClearCommand(text) || wellbeingConcern(text)) {   // someone in distress need not say the wake word
     const open = !(ptt || awaiting || Date.now() < awaitingUntil);
     awaitingUntil = 0;
     if (audio) onUtteranceAudio(audio);

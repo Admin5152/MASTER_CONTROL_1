@@ -2,7 +2,7 @@
 import { api } from "./core/api.js";
 import { emit, on } from "./core/bus.js";
 import { createDirector } from "./core/director.js";
-import { crewFromSpeech, matchIntent } from "./core/intents.js";
+import { crewFromSpeech, matchIntent, wellbeingConcern } from "./core/intents.js";
 import { audioContext, cue, setMuted, isMuted } from "./core/sound.js";
 import { createStages } from "./core/stages.js";
 import { patch, pollOnce, setCrew, startPolling, view } from "./core/state.js";
@@ -628,8 +628,38 @@ function showNotice(text) {
 ctx.showNotice = showNotice;
 
 // ---------- commands ----------
+// ---------- W14 urgent wellbeing concern: fixed lines, people brought in, grounding open ----------
+let safetyOn = false;
+const SAFETY_FIRST = "I'm here. Please call a crewmate now. I'm letting them know.";
+async function safetyFlow(category) {
+  safetyOn = true;
+  voiceMod.stopSpeaking(); director.cancel?.();
+  say(SAFETY_FIRST, { source: "safety", interrupt: true });
+  let who = { buddy: "your crewmate", commander: "the commander", lines: [] };
+  try { who = await api.safety(view.crewId, category); } catch { /* offline: the words and the screen still stand */ }
+  let el = document.getElementById("safety");
+  if (!el) { el = document.createElement("section"); el.id = "safety"; el.className = "safety"; el.setAttribute("role", "alertdialog"); el.setAttribute("aria-modal", "true"); document.body.appendChild(el); }
+  el.innerHTML = `<div class="safety-card">
+      <p class="safety-big">I'm here.</p>
+      <p>Please call a crewmate now. ${esc(who.buddy)} and the commander, ${esc(who.commander)}, are being told, and a priority message is going to the flight surgeon.</p>
+      <div class="safety-actions"><button type="button" class="pill pill-light" data-call>Call ${esc(who.buddy)} now</button><button type="button" class="pill pill-ghost" data-ground>Breathe with me</button><button type="button" class="pill pill-ghost" data-with>Someone is with me</button></div>
+      <p class="fine">Crew alerts and the message to ground are simulated in this build (SIM). This wording is a draft for clinician review.</p></div>`;
+  el.hidden = false;
+  el.querySelector("[data-call]").addEventListener("click", (e) => { e.currentTarget.textContent = `Calling ${who.buddy}… (SIM)`; });
+  el.querySelector("[data-ground]").addEventListener("click", () => { screens.open("grounding"); el.querySelector(".safety-card").classList.add("is-small"); });
+  el.querySelector("[data-with]").addEventListener("click", () => { el.hidden = true; safetyOn = false; screens.open("grounding"); });
+  setTimeout(() => { if (safetyOn) say(`You're not alone. ${who.buddy} and the commander are being told. Let's breathe together.`, { source: "safety", append: true }); }, 400);
+}
+
 async function handleCommand(text, meta = {}) {
   answering = false;   // a new request outranks the last answer
+  const concernCat = text ? wellbeingConcern(text) : null;
+  if (concernCat) { if (meta.heard) logLine("You", meta.heard); await safetyFlow(concernCat); return; }
+  if (safetyOn && text) {   // during the safety flow: only fixed lines, never a generated reply
+    if (meta.heard) logLine("You", meta.heard);
+    say("I'm here with you. Is a crewmate with you now?", { source: "safety" });
+    return;
+  }
   if (meta.heard) logLine("You", meta.via === "typed" ? text : meta.heard);
   if (meta.wakeOnly || !text) {
     // instant: a chime and the orb leaning in, no spoken "yes?" to wait through. The next thing said is the command.
