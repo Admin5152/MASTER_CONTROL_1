@@ -1,0 +1,3386 @@
+
+FILE cl5yvqhsv2snf01o6bh09ba10.pdf
+PAGE 1
+ 
+MR004L In-flight Radiation Area Monitoring with Dosimeters    
+Page 1 of 7 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                      Documents (MRIDs) JSC28913 
+ 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: 
+MEDICAL REQUIREMENTS OVERVIEW 
+MRID# and Title: 
+ 
+MR004L In-flight Radiation Area Monitoring with Dosimeters 
+Sponsor: 
+ 
+Medical Operations 
+Discipline: 
+ 
+Radiation 
+Category: 
+ 
+Medical Requirements  
+References: 
+ 
+SSP 50260 ISS Medical Operations Requirement Document  
+SSP 50667 Med Vol B, Preflight, In-flight, Postflight Medical Evaluation Document Requirements for Long Duration 
+Crewmembers 
+Purpose/Objectives: 
+ 
+ To monitor and document crew exposure to radiation and to maintain crew exposures “as low as reasonable 
+achievable”.  
+ To perform risk assessment. 
+Measurement Parameters: 
+ 
+Ionizing radiation environment 
+Deliverables: 
+ 
+ Record of radiation doses used to document occupational exposure. 
+ Area dosimeters provide spacecraft location-specific information. 
+ High Rate Dosimeters (HRDs) will provide data during contingencies. 
+ Doses from each mission and accumulated doses shall be used for health risk assessment.  
+Flight Duration: 
+ 
+ All flights 
+Number of Flights: 
+ 
+Every ISS Increment 
+Number and Type of Crew 
+Members Required: 
+ISS crewmembers (Primary and backup will be trained) who are scheduled operators for dosimetry activities. 
+Other Flight 
+Characteristics: 
+ 
+N/A 
+ 
+PAGE 2
+ 
+MR004L In-flight Radiation Area Monitoring with Dosimeters    
+Page 2 of 7 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                      Documents (MRIDs) JSC28913 
+ 
+3.3  Preflight Training 
+ 
+TABLE 3.3: PREFLIGHT TRAINING 
+Preflight Training Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+Training will be covered in the following lessons and documents. 
+EHS Radiation Operations: 
+Dosimeter Deployment –Crewmembers who are scheduled operators for dosimetry activities.  
+These sessions will familiarize the crew with the dosimeters. The use and deployment will be discussed. 
+Duration:  Schedule: Flexibility: Personnel Required: 
+EHS Radiation Operations:       45 minutes 
+ 
+L-19 months 
+ 
+N/A 
+ 
+Crew/Instructors 
+ 
+Training for Dosimeter Deployment:      60 minutes L-3 months N/A Operator 
+Ground Support Requirements: 
+Hardware/Software 
+Preflight Hardware:  Preflight Software: Test Location: 
+Radiation Area Monitors (RAMs) 
+New RAM Location Subpack 
+High Rate Dosimeters (HRDs) 
+N/A U.S. 
+Training Facilities: Minimum Room 
+Dimensions:  
+Number of Electrical 
+Outlets: 
+Temperature 
+Requirements: 
+Special Lighting: 
+Conference Room N/A Ambient N/A 
+Hot or Cold Running 
+Water:  
+Privacy Requirements: Other: 
+N/A N/A Overhead projector, access to ISS mockups 
+Constraints/Special Requirements: Station crewmembers will be trained to install/deploy and retrieve RAMs on ISS (every crew rotation). 
+Launch Delay Requirements: Training will be repeated if requested by the crewmember. If a launch delay of more than 90 days occurs Space 
+Radiation Analysis Group (SRAG) will decide whether to refurbish, replace or take no action. 
+Notes: None 
+ 
+ 
+  
+PAGE 3
+ 
+MR004L In-flight Radiation Area Monitoring with Dosimeters    
+Page 3 of 7 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                      Documents (MRIDs) JSC28913 
+ 
+3.4  Preflight Activities  
+ 
+TABLE 3.4 PREFLIGHT ACTIVITIES 
+Preflight Activity 
+Description: 
+ 
+Schedule: 
+No crew activities 
+Duration: Schedule: Flexibility: Personnel Required: 
+N/A N/A N/A N/A 
+Ground Support Requirements: 
+Hardware/Software 
+Preflight Hardware: Preflight Software: Test Location: 
+N/A N/A N/A 
+Constraints/Special Requirements: When transporting hardware to launch location, hardware should not be x-rayed or stowed/shipped with radioactive 
+material. Dosimeters should be transported inside lead-lined bags. If X-ray is necessary for security, the dosimeters 
+must be kept inside the lead-lined bags and the number of X-rays should be recorded. 
+Notes: N/A 
+Data Delivery: None  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+PAGE 4
+ 
+MR004L In-flight Radiation Area Monitoring with Dosimeters    
+Page 4 of 7 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                      Documents (MRIDs) JSC28913 
+ 
+ 
+ 
+ 
+3.5 In-Flight Activities 
+ 
+TABLE 3.5.1:  IN-FLIGHT ACTIVITIES 
+In-Flight Activity 
+ 
+Description: 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+Radiation Area Monitors (RAMs) are deployed at designated locations on ISS after arrival on launch vehicle. The deployment location is 
+identified and the dosimeter placed in that location. RAMs will be retrieved to be returned approximately 6 months later on the next 
+available returning vehicle. The dosimeters are color-coded and carry a flight identifier. 
+A set of 2 High Rate Dosimeters (HRDs) will be powered on and values recorded every 2 years in order to assess background trend 
+rates variations and update parameters in the radiation console procedure to evaluate future HRD readings.  
+Activity: Duration: Schedule: Flexibility: Personnel Required: 
+RAM–
+Deployment/Retrieval 
+RAM Swap:                       4 minutes/per location 
+ 
+Only Deploy new RAM:     2 minutes/per location 
+ 
+Only Retrieve old RAM:     2 minutes/per location 
+ 
+Deploy single RAM with imagery:       10 minutes 
+ 
+If imagery of each individual RAM is scheduled in 
+parallel, add 30 minutes to activity. 
+ 
+If just one photo is necessary as part of RAM 
+activity, add 10 minutes to activity. 
+ 
+ 
+ 
+ 
+Once/ 6 
+months  
+or as part of 
+any crew 
+rotation 
+N/A 1 Crewmember 
+High Rate Dosimeters 
+Data Take 
+40 minutes Once/ 2 
+years 
++/- 2 
+months 
+1 Crewmember 
+  
+PAGE 5
+ 
+MR004L In-flight Radiation Area Monitoring with Dosimeters    
+Page 5 of 7 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                      Documents (MRIDs) JSC28913 
+ 
+Procedures: All in-flight procedures are developed in-house and contained within the System Operations Data file (SODF) Med 
+Ops book. 
+ 
+Constraints / Special Requirements: Scrub turnaround = If a launch delay of more than 90 days occurs, Space Radiation Analysis Group (SRAG) will 
+decide whether to refurbish, replace or take no action. 
+ 
+RAM dosimeters will be deployed to designated ISS locations. For new deployment sites, the crew may deploy the 
+New RAM Location Subpack including ISS location label decal and tether.    
+ 
+The HRDs will remain in their ISS stowage location and will be read during the HRD Data Take activity or during 
+radiation contingencies. 
+Photo / TV Requirements: Photos are required for each RAM deployment to document: 
+a.) The surroundings of each deploy location 
+b.) Any changes that may have occurred since the last deployment (e.g. stowage configuration changes 
+resulting in more or less shielding) 
+Cold Stowage Requirements: N/A 
+Mission Extension Requirements: N/A 
+Notes: Replaced as required. 
+Landing Wave-Off Requirements: N/A 
+Data Delivery: HRDs readings will be called down by the crew or recorded in the XML procedure for retrieval by ground controllers. 
+ 
+ 
+TABLE 3.5.2: IN-FLIGHT HARDWARE 
+ 
+Hardware/Software Name 
+Radiation Area Monitors (RAM) 
+New RAM Location Subpack 
+High Rate Dosimeter (HRD) 
+ 
+  
+PAGE 6
+ 
+MR004L In-flight Radiation Area Monitoring with Dosimeters    
+Page 6 of 7 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                      Documents (MRIDs) JSC28913 
+ 
+ 
+3.6 Postflight Activities 
+ 
+TABLE 3.6: POSTFLIGHT ACTIVITIES   
+Postflight Activity 
+Description: 
+ 
+Schedule: 
+RAMs are retrieved from vehicle on R+0 and forwarded to JSC SRAG for processing via Bond 421.   
+Duration: Schedule: Flexibility: Personnel Required:  
+N/A R+0 days N/A Flight Crew Systems suit 
+technicians 
+Ground Support Requirements: 
+Hardware/Software 
+Postflight Hardware: Postflight Software: Test Location: 
+N/A N/A N/A 
+Constraints/Special Requirements: Upon the return of hardware, hardware should not be x-rayed or stowed/shipped with radioactive material. 
+Dosimeters should be transported inside lead-lined bags. If X-ray is necessary for security, the dosimeters must be 
+kept inside the lead-lined bags and the number of X-rays should be recorded. 
+Early Destow / Early Return: N/A 
+Notes: N/A 
+Data Delivery: A final report containing analytical results of RAMs will be delivered to the Radiation Health Officer (RHO) 60 days 
+after the RAMs are received at the Space Radiation Dosimetry Laboratory (SRDL). 
+ 
+The RHO will submit a preliminary or final mission dosimetry and risk report to the Flight Surgeon and Medical 
+Operations at R+ 60 days If physical dosimetry data is not available within R+60, a preliminary report will be issued. 
+Once physical dosimetry data are received, a final report will be issued within 14 days of receipt.  
+Data Archives:  Astronaut Radiation Exposure Assessment System (AREAS) and SRAG Internal Web. 
+ 
+PAGE 7
+ 
+MR004L In-flight Radiation Area Monitoring with Dosimeters    
+Page 7 of 7 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                      Documents (MRIDs) JSC28913 
+ 
+3.7 Summary Schedule 
+ 
+TABLE 3.7: SUMMARY SCHEDULE 
+ACTIVITY: DURATION: SCHEDULE: FLEXIBILITY: PERSONNEL 
+REQUIRED: 
+CONSTRAINTS: 
+Preflight Training: 
+EHS Radiation Operations   45 minutes L-19 months N/A Crew/ 
+Instructors 
+ 
+None 
+Training for Dosimeter 
+Deployment      
+60 minutes L-3 months N/A Operator None 
+Preflight: N/A 
+In-Flight: 
+RAM– Deployment/Retrieval RAM Swap:                      4 minutes/per location 
+ 
+Only Deploy new RAM:     2 minutes/per location 
+ 
+Only Retrieve old RAM:     2 minutes/per location 
+ 
+Deploy single RAM with imagery:   10 minutes 
+ 
+If imagery of each individual RAM is scheduled in 
+parallel, add 30 minutes to activity. 
+ 
+If just one photo is necessary as part of RAM 
+activity, add 10 minutes to activity. 
+ 
+Once/ 6 
+months or as 
+part of any 
+Crew 
+Rotation  
+N/A 1 Crewmember New RAMs should be 
+deployed within X days 
+of their arrival on ISS 
+and old RAMs should 
+be packed for return 
+within Y days prior to 
+Soyuz undocking, such 
+that: X + Y ≤ 14 days. 
+ 
+HRD Data Take 40 minutes Once/ 2 years +/- 2 months 1 Crewmember None 
+Postflight: 
+Report containing analytical 
+results to RHO 
+N/A R+60 N/A SRDL 
+personnel 
+None 
+Mission Dosimetry and Risk 
+Report to Flight Surgeon/Crew 
+N/A R+60 N/A RHO None 
+Postflight Debrief: 
+Debrief:  N/A ~R+30 days N/A Crewmembers/
+Radiation Team 
+Included as part of the 
+Med Ops overall 
+debrief 
+ 
+
+FILE cl5yvqhsv2snj01o6c5fjglma (1).pdf
+PAGE 1
+ 
+ 
+MR004S In-Flight Radiation Monitoring with Passive Dosimeters  MR004S 
+   SM-FI-004 
+  Page 1 of 7   Medical RequirementsIntegration 
+Approved 02/03/01   Documents (MRIDs) JSC28913 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: MMEEDDIICCAALL  RREEQQUUIIRREEMMEENNTTSS  OOVVEERRVVIIEEWW  
+MRID# and Title: 
+ 
+MR004S In-Flight Radiation Monitoring with Passive Dosimeters 
+Sponsor: 
+ 
+Medical Operations 
+IPT: 
+ 
+Radiation 
+Category: 
+ 
+Medical Requirements (MR) 
+References: 
+ 
+Medical Operations Requirements Document (MORD) for Space Shuttle, Rev G 
+Section 4.5– Radiation Safety 
+Purpose/Objectives: 
+ 
+To monitor and document crew exposure to radiation in compliance with Federal Regulations.  Results from the radiation monitoring serve as 
+the basis for postflight evaluation and documentation of individual cumulative risk from radiation exposure. 
+Measurement Parameters: 
+ 
+Radiation exposure (exposed dose) 
+Deliverables: 
+ 
+A record of radiation exposure that will document occupational exposure from various dosimeters. 
+ Crew Passive Dosimeter (CPD) provides individual exposure information 
+ Passive Radiation Dosimeter (PRD) provides spacecraft location-specific information. 
+ Pocket Ion Chambers all provide a means to perform onboard evaluation of exposures during contingencies, and are located in the 
+Radiation Dosimeter Assembly (RDA) pouch.  These include: 
+ Pocket Dosimeter, Low (PDL) – scale range of 0-200 millirads 
+ Pocket Dosimeter, High (PDH) – scale range of 0-20 rads 
+ High Rate Dosimeter (HRD) – scale range of 0-600 rads 
+ Area Passive Dosimeter (APD) – contains different passive radiation sensitive materials that are used to make unique 
+radiation measurements.  The sensor material selected varies with each flight.  It remains within the kit throughout each 
+mission. 
+The Crew Passive Dosimeter measurements from each mission shall be used for health risk assessment and recorded in crewmembers’ medical 
+records.   
+Flight Duration: 
+ 
+< 30 days  
+Number of Flights: 
+ 
+All Shuttle flights 
+Number and Type of Crew 
+Members Required: 
+All Shuttle crewmembers 
+Other Flight Characteristics: 
+ 
+N/A 
+PAGE 2
+ 
+ 
+MR004S In-Flight Radiation Monitoring with Passive Dosimeters  MR004S 
+   SM-FI-004 
+  Page 2 of 7   Medical RequirementsIntegration 
+Approved 02/03/01   Documents (MRIDs) JSC28913 
+ 
+3.3  Preflight Training 
+ 
+TTAABBLLEE  33..33::  PPRREEFFLLIIGGHHTT  TTRRAAIINNIINNGG  
+Preflight Training Activity 
+Description: 
+ 
+ 
+ 
+Schedule: 
+At L-10 days the crew is informed of all projected exposures, ranges for RDA components, as well as current and projected space 
+weather conditions. 
+The Space Radiation Analysis Group (SRAG) conducts a briefing on wearing the CPD and reading the pocket ion chambers. 
+Duration: 
+ 
+Schedule: Personnel Required: 
+Radiation Familiarization                 5 min 
+ 
+Medical Refresher 4101                 15 min 
+Provided during ASCAN training 
+ 
+L-10 days 
+ASCAN/Trainers 
+ 
+Shuttle Crew/Trainers 
+Ground Support Requirements 
+Hardware/Software 
+ 
+Preflight Hardware: 
+ 
+Preflight Software: Test Location: 
+Crew Passive Dosimeter (CPD) 
+Passive Radiation Dosimeter (PRD) 
+Radiation Dosimeter Assembly (RDA) Pouch 
+which contains: 
+     Pocket Dosimeter, Low (PDL) 
+     Pocket Dosimeter, High (PDH) 
+     High Rate Dosimeter (HRD) 
+     Area Passive Dosimeter (APD) 
+N/A U.S. 
+Training Facilities Minimum Room Dimensions: 
+ 
+Number of Electrical Outlets: Temperature Requirements: Special Lighting: 
+8' x 10'  None Ambient N/A 
+Hot or Cold Running Water: 
+ 
+Privacy Requirements: Other: 
+N/A N/A 1 table, enough chairs to accommodate crewmembers 
+Constraints/Special Requirements: None 
+Launch Delay Requirements: Refresher training will be provided if requested by crewmember. 
+Notes: None 
+ 
+PAGE 3
+ 
+ 
+MR004S In-Flight Radiation Monitoring with Passive Dosimeters  MR004S 
+   SM-FI-004 
+  Page 3 of 7   Medical RequirementsIntegration 
+Approved 02/03/01   Documents (MRIDs) JSC28913 
+3.4  Preflight Activities 
+ 
+TTAABBLLEE  33..44::  PPRREEFFLLIIGGHHTT  AACCTTIIVVIITTIIEESS  ––  NNoo  PPrreefflliigghhtt  AAccttiivviittiieess  
+Preflight Activity                    Description: N/A 
+Duration: 
+ 
+Schedule: Flexibility: Personnel Required: 
+N/A N/A N/A N/A 
+Constraints/Special Requirements: N/A 
+Launch Delay Requirements: If the launch is delayed >45 days, all dosimetry may need to be re-supplied.  The Space Radiation Analysis Group (SRAG) should 
+be consulted prior to hardware manifest changes. 
+ 
+Notes: At 45 days prior to launch an evaluation by SRAG will be performed to determine whether to replace the dosimeters or allow them 
+to remain.  This decision point is addressed in document JSC 17763 Space Shuttle Program Launch Delay Action Requirements 
+Document. 
+ 
+Data Delivery Data/Report to Designated Recipients (Nominal/Contingency): 
+N/A 
+  
+PAGE 4
+ 
+ 
+MR004S In-Flight Radiation Monitoring with Passive Dosimeters  MR004S 
+   SM-FI-004 
+  Page 4 of 7   Medical RequirementsIntegration 
+Approved 02/03/01   Documents (MRIDs) JSC28913 
+3.5 In-Flight Activities 
+ 
+TTAABBLLEE  33..55..11::    IINN--FFLLIIGGHHTT  AACCTTIIVVIITTIIEESS  
+In-Flight Activity 
+Description: 
+ 
+ 
+ 
+ 
+Schedule: 
+The Crew Passive Dosimeters (CPD) are preintegrated into the Launch and Entry Suit (LES) prior to launch.  Once on orbit, 
+crewmembers shall remove the CPD from their LES and transfer it to their on-orbit clothes.  Each crewmember is required to carry/wear 
+their CPD continuously, including during EVAs.  Prior to re-entry, crewmembers are to stow the CPD back into the LES where they will 
+be recovered at landing.  In the event of a contingency, dosimeters ( PDL, PDH, HRD) will be available for real-time readings that will be 
+called-down per ground instruction. 
+Activity Duration Schedule Personnel Required 
+Personal radiation monitoring 
+using Crew Passive Dosimeter  
+(CPD) – transferred from LES 
+(ascent), to flight suit (on-orbit), 
+to LES (descent).  
+Continuous monitoring 
+Crew worn dosimeter - 
+5 min. transfer time 
+Continuous monitoring during ascent, on-
+orbit, EVA, descent 
+Shuttle Crewmembers 
+ 
+Area radiation monitoring using 
+Passive Radiation Dosimeter (PRD)  
+Continuous monitoring 
+No crew time 
+Continuous monitoring None 
+Area monitoring using Area Passive 
+Dosimeter (APD) – remains in RDA 
+Pouch throughout mission. 
+Continuous monitoring 
+No crew time 
+Continuous monitoring None 
+Pocket Dosimeters, Low (PDL) 
+Pocket Dosimeters, High (PDH) 
+High Rate Dosimeters (HRD) 
+As needed Contingency –  to be retrieved from RDA 
+Pouch and read when directed by ground 
+in contingency situations (solar event, etc.) 
+1 Operator 
+Procedures: Procedure for dosimeter (CPD) transfer for EVA is documented in the EVA Checklist. 
+Constraints / Special Requirements: Scrub turnaround = 45 days  
+CPD - Each crewmember will be supplied with a personal dosimeter (CPD) for continuous wear, even during EVAs. 
+PRD – will be deployed prelaunch in fixed locations inside crew compartments. 
+RDA Pouch – will contain the APD, PDL, PDH, and HRD, and shall be readily available to the crew to support radiation enhancement 
+monitoring. 
+Photo / TV Requirements: N/A 
+Notes: Space environmental monitoring shall be performed from L-3 days through EOM. 
+SRAG will immediately notify the Radiation Health Officer & flight surgeon of conditions that have the potential to increase crew 
+exposure above nominal levels, and will provide recommendations to manage crew’s exposure in accordance with federal regulations, 
+including the ALARA (As Low As Reasonably Achievable) concept. 
+Mission Extension Requirements: The CPD continues to remain with the crewmember at all times. 
+Landing Wave-Off Requirements: See above 
+Data Delivery Data/Report to Designated Recipients  (Nominal/Contingency): 
+N/A 
+PAGE 5
+ 
+ 
+MR004S In-Flight Radiation Monitoring with Passive Dosimeters  MR004S 
+   SM-FI-004 
+  Page 5 of 7   Medical RequirementsIntegration 
+Approved 02/03/01   Documents (MRIDs) JSC28913 
+  
+ 
+TTAABBLLEE  33..55..22::  IINN--FFLLIIGGHHTT  HHAARRDDWWAARREE  
+ 
+Hardware/Software 
+Name 
+ 
+ 
+P/N 
+ 
+ 
+Shuttle 
+Location 
+ 
+Vehicle 
+(Up/Dn) 
+ 
+ 
+Category 
+Late 
+Access / 
+Early 
+Return 
+ 
+Flight 
+Ops 
+ 
+Weights 
+(kg) 
+ 
+Volume 
+(cm3) 
+ 
+Dimensions 
+LxWxH (cm) 
+ 
+Power 
+(watts) 
+ 
+ 
+Resupply 
+ 
+Download / 
+Downlink 
+Crew Passive 
+Dosimeter (CPD) 
+SEZ33111519-
+XXX 
+Crew Worn Shuttle N/A L-2 days/ 
+R+48 hrs 
+Yes 0.021 31.6 5.5 x 3.0 x 0.5 N/A None N/A 
+Passive Radiation 
+Dosimeter (PRD) 
+SEZ3111519-
+XXX 
+Fixed 
+locations 
+inside crew 
+compartment 
+Shuttle N/A L-5 days/ 
+R+48 hrs 
+Deployed 
+prelaunch 
+0.0085 8.25 5.5 x 3.0 x 0.5 N/A None N/A 
+Radiation Dosimeter 
+Assemble (RDA) 
+Pouch 
+SED33103036-
+XXX 
+Middeck 
+locker 
+w/SOMS Kit  
+Shuttle N/A L-5 days/ 
+R+48 hrs 
+N/A 0.13 2805 17 x 16.5 x 10 N/A None N/A 
+Area Passive 
+Dosimeter (APD) 
+ 
+SED11100213-
+XXX 
+Middeck 
+locker 
+w/SOMS Kit 
+(in RDA 
+Pouch) 
+Shuttle N/A L-5 days/ 
+R+48 hrs 
+Ground 
+direction 
+only 
+0.137 530 10 x 10 x 5.3 N/A None N/A 
+High Rate Dosimeter 
+(HRD) 
+ 
+SED33101167-
+XXX 
+Middeck 
+locker 
+w/SOMS Kit 
+(in RDA 
+Pouch) 
+Shuttle N/A L-5 days/ 
+R+48 hrs 
+Ground 
+direction 
+only 
+0.055 22 12.5 x 1.5Ø N/A None N/A 
+Pocket Dosimeter, 
+Low (PDL) 
+ 
+SED33101167-
+XXX 
+Middeck 
+locker 
+w/SOMS Kit 
+(in RDA 
+Pouch) 
+Shuttle N/A L-5 days/ 
+R+48 hrs 
+Ground 
+direction 
+only 
+0.0165 19 10.8 x 1.5Ø N/A None N/A 
+Pocket Dosimeter, 
+High (PDH) 
+ 
+SED33101167-
+XXX 
+Middeck 
+locker 
+w/SOMS Kit 
+(in RDA 
+Pouch) 
+Shuttle N/A L-5 days/ 
+R+48 hrs 
+Ground 
+direction 
+only 
+0.035 17 11.3 x 1.4Ø N/A None N/A 
+PAGE 6
+ 
+ 
+MR004S In-Flight Radiation Monitoring with Passive Dosimeters  MR004S 
+   SM-FI-004 
+  Page 6 of 7   Medical RequirementsIntegration 
+Approved 02/03/01   Documents (MRIDs) JSC28913 
+ 
+3.6 Postflight Activities 
+ 
+TTAABBLLEE  33..66::  PPOOSSTTFFLLIIGGHHTT  AACCTTIIVVIITTIIEESS  ––  RReettrriieevvaall  ooff  DDoossiimmeetteerrss  &&  DDaattaa  ddeelliivveerryy  
+Postflight Activity 
+Description: 
+ 
+ 
+Schedule: 
+CPDs are retrieved from the crewmembers on R+0 by the Flight Crew Systems (FCS) suit technicians and forwarded to JSC Space 
+Radiation Analysis Group (SRAG) for processing.  PRD and the RDA pouch are also collected for postflight analysis.   All dosimeters 
+will be retrieved within 48 hours of landing. 
+Duration: Schedule: Flexibility: Personnel Required: 
+ 
+N/A N/A N/A FCS suit technicians 
+Ground Support Requirements 
+Hardware/Software 
+ 
+Postflight Hardware: 
+ 
+Postflight Software: Test Location: 
+N/A N/A N/A 
+Data Delivery Data/Report to Designated Recipients (Nominal/Contingency): Data Archives: 
+A final report containing analytical results of PRD and CPD will be delivered 
+to the Space Radiation Health Officer (SRHO) within 35 days of dosimeter 
+receipt.  Consultation between flight surgeon and SRAG will be performed as 
+needed.   
+ 
+- The SRHO will submit a mission final report 
+30 days thereafter to the flight surgeon and 
+Medical Operations.   Copies of the report 
+without crew measurements are provided to the 
+Astronaut Office and the Shuttle GFE office.  
+  
+- A report containing crew radiation exposures 
+will be distributed to the individual 
+crewmembers’ medical records and the 
+mission-specific medical record. 
+   
+ 
+PAGE 7
+ 
+ 
+MR004S In-Flight Radiation Monitoring with Passive Dosimeters  MR004S 
+   SM-FI-004 
+  Page 7 of 7   Medical RequirementsIntegration 
+Approved 02/03/01   Documents (MRIDs) JSC28913 
+3.7 Summary Schedule 
+ 
+TTAABBLLEE  33..77::  SSUUMMMMAARRYY  SSCCHHEEDDUULLEE  
+ACTIVITY 
+ 
+DURATION SCHEDULE PERSONNEL REQUIRED CONSTRAINTS 
+Preflight Training 
+Radiation Familiarization 
+ 
+Medical Refresher 4101  
+5 min 
+ 
+15 min 
+Provided during ASCAN training 
+ 
+L-10 days 
+ASCAN/Trainers 
+ 
+Shuttle Crew/Trainers 
+None 
+Preflight – N/A 
+In-Flight 
+Personal radiation monitoring using Crew Passive 
+Dosimeter 
+ 
+5 min. transfer time 
+from LES to on-orbit 
+clothes 
+Continuous monitoring during 
+ascent, on-orbit, EVA, descent 
+Shuttle Crewmembers Crew worn 
+Area radiation monitoring using Passive Radiation 
+Dosimeter 
+No crew time Continuous monitoring None Deployed prelaunch 
+Located in fixed location 
+inside crew compartment. 
+Area radiation monitoring using Area Passive 
+Dosimeter 
+No crew time Continuous monitoring None Remains in RDA Pouch 
+throughout mission. 
+Contingency radiation monitoring using Pocket Ion 
+Chambers 
+As needed As needed 1 Operator To be retrieved from RDA 
+Pouch and read when 
+directed by ground in 
+contingency situations (solar 
+event, etc.) 
+Wheels-Stop – N/A 
+Postflight  - N/A 
+Postflight Debrief 
+Debrief 
+ 
+No extra time ~R+30 days Shuttle Crewmembers/ 
+Radiation Team 
+Included as part of the Med 
+Ops overall debrief 
+ 
+
+FILE cl5yvqhsv2snl01o60mwu9p6r.pdf
+PAGE 1
+MR005L In-flight Radiation Monitoring with Tissue Equivalent Proportional Counter (TEPC) for Long 
+Duration Flights    
+Page 1 of 5 
+ 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017      Documents (MRIDs) JSC28913 
+   
+ 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: 
+MEDICAL REQUIREMENTS OVERVIEW 
+MRID# and Title: 
+ 
+MR005L In-flight Radiation Monitoring with Tissue Equivalent Proportional Counter (TEPC) for Long Duration Flights
+ 
+Sponsor: 
+ 
+Medical Operations 
+Discipline: 
+ 
+Radiation 
+Category: 
+ 
+Medical Requirements  
+References: 
+ 
+SSP 50260 ISS Medical Operations Requirements Document   
+Purpose/Objectives: 
+ 
+The purpose of the activity is to collect radiation environment data that will document crew exposure to radiation, perform risk 
+assessment, and manage crew exposures during flight, especially during radiation contingencies. The TEPC collects the 
+surrogate linear energy (y) data for the required linear energy transfer (LET) data and the absorbed dose. The Radiation 
+Health Officer (RHO) will apply physical corrections to convert linear energy (y) spectra obtained with the TEPC to LET –
+spectra for use in determining crew exposures. These corrections must account for the impact parameter distribution, energy 
+straggling, delta-ray effects, and wall effects from both delta-rays and nuclear reactions. 
+Measurement Parameters: 
+ 
+Radiation exposures at the tissue-cell level y-spectra data. 
+Deliverables: 
+ 
+Characterization of the radiation environment for updating exposure records for occupational health risk assessments. 
+Real-time data for use during radiation contingencies. 
+Onboard crew alarm for contingency radiation events 
+Flight Duration: 
+ 
+ 30 days 
+Number of Flights: 
+ 
+Every ISS Increment 
+Number and Type of Crew 
+Members Required: 
+ 
+Designated crewmembers will be assigned as operators. 
+Other Flight Characteristics: 
+ 
+N/A 
+ 
+PAGE 2
+MR005L In-flight Radiation Monitoring with Tissue Equivalent Proportional Counter (TEPC) for Long 
+Duration Flights    
+Page 2 of 5 
+ 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017      Documents (MRIDs) JSC28913 
+   
+ 
+3.3  Preflight Training 
+ 
+TABLE 3.3: PREFLIGHT TRAINING 
+Preflight Training Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+Training will be covered in the following lesson: 
+EHS Radiation Operations 
+ 
+Training classes will introduce the radiation hardware, procedures, and review the radiation environment in space. 
+The location and function of each piece of hardware is detailed. Hands on training will also be provided. 
+Duration:  Schedule: Flexibility: Personnel Required: 
+EHS Radiation Operations:       45 minutes L-19 months N/A Crewmember/Instructors 
+Ground Support Requirements: 
+Hardware/Software 
+Preflight Hardware:  Preflight Software: Test Location: 
+Tissue Equivalent Proportional Counter 
+(TEPC) 
+N/A  U.S. 
+Training Facilities: Minimum Room 
+Dimensions:  
+Number of Electrical 
+Outlets: 
+Temperature 
+Requirements: 
+Special Lighting: 
+8' x 10' 1 Ambient N/A 
+Hot or Cold Running 
+Water:  
+Privacy Requirements: Other: 
+N/A N/A 1 Table, 4-6 Chairs 
+Constraints/Special Requirements: N/A 
+Launch Delay Requirements: Training will be repeated if requested by the crewmember. 
+Notes: N/A 
+ 
+3.4 Preflight Activities - None  
+  
+PAGE 3
+MR005L In-flight Radiation Monitoring with Tissue Equivalent Proportional Counter (TEPC) for Long 
+Duration Flights    
+Page 3 of 5 
+ 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017      Documents (MRIDs) JSC28913 
+   
+ 
+3.5 In-Flight Activities 
+ 
+TABLE 3.5.1:  IN-FLIGHT ACTIVITIES 
+In-Flight Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+ 
+ 
+The TEPC will operate continuously to provide radiation measurements of tissue dose and dose equivalent. The TEPC is 
+permanently located in Service Module (SM) near Panel 327Measured spectra will be downlinked approximately weekly. LET 
+spectra data shall be used to provide an estimate of average quality factor for the mission.  
+Activity: Duration: Schedule: Personnel Required: 
+TEPC 
+Monitoring 
+ None (continuous monitoring) Tissue Dose and Dose Equivalent cyclic data 
+telemetered to the ground near-continuously 
+and monitored by SRAG and BME.  Measured 
+spectra downlinked by BME approximately 
+weekly for SRAG analysis. 
+BME, SRAG 
+Procedures: All in-flight procedures are contained within the System Operations Data file (SODF) Med Ops book. 
+ 
+Constraints / Special 
+Requirements: 
+The TEPC will be secured within the Service Module (SM) via Velcro or Kapton Tape. 
+The TEPC has a local audible alarm that provides information to the crew that the dose rate is high and should be monitored 
+during radiation events where high levels are expected. The TEPC alarm is also tied into the station caution and warning system 
+(class 3 alarm). TEPC’s location must not impede rapid egress or block access to any rack. 
+Photo / TV Requirements: None 
+Cold Stowage 
+Requirements: 
+N/A 
+Mission Extension 
+Requirements: 
+N/A 
+Landing Wave-Off 
+Requirements: 
+N/A 
+Data Delivery: Detailed TEPC spectra shall be downlinked weekly for analysis. Data files are dumped by BME from the TEPC to the Payload MDM, 
+downlinked by MSFC/POD via Ku-band from the Payload MDM to the Payload Information Management System (PIMS) and retrieved by 
+SRAG weekly. A weekly report of TEPC daily dose trends will be provided to the Flight Surgeon via the Internal Flight Note system    
+ 
+ 
+TABLE 3.5.2: IN-FLIGHT HARDWARE 
+ 
+Hardware/Software Name 
+Tissue Equivalent Proportional Counter (TEPC)  Assembly 
+ 
+ 
+PAGE 4
+MR005L In-flight Radiation Monitoring with Tissue Equivalent Proportional Counter (TEPC) for Long 
+Duration Flights    
+Page 4 of 5 
+ 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017      Documents (MRIDs) JSC28913 
+   
+ 
+ 
+3.6 Postflight Activities 
+ 
+TABLE 3.6: POSTFLIGHT ACTIVITIES 
+Postflight Activity 
+Description: 
+Submittal of final mission expedition report. 
+Constraints/Special Requirements: N/A 
+Early Destow / Early Return: N/A 
+Notes: N/A 
+Data Delivery: The TEPC data are reported to the Radiation Health Officer as part of the Crew Passive Dosimeter (CPD) report at 
+R+30 and as part of the Radiation Area Monitor (RAM) dosimetry report at R+60. 
+Data Archives: SRAG Internal Databases and SRAG Internal Web 
+ 
+PAGE 5
+MR005L In-flight Radiation Monitoring with Tissue Equivalent Proportional Counter (TEPC) for Long 
+Duration Flights    
+Page 5 of 5 
+ 
+ 
+     Medical Requirements Integration 
+Revised 06/05/2017      Documents (MRIDs) JSC28913 
+   
+ 
+3.7 Summary Schedule 
+ 
+TABLE 3.7: SUMMARY SCHEDULE 
+ACTIVITY: DURATION: SCHEDULE: FLEXIBILITY: PERSONNEL REQUIRED: CONSTRAINTS: 
+Preflight Training: 
+EHS Radiation 
+Operations 
+45 minutes L-19 months N/A Crewmembers/Instructors None 
+Preflight: N/A 
+In-Flight Activity: 
+TEPC Monitoring Continuous 
+monitoring 
+Tissue Dose and Dose 
+Equivalent cyclic data 
+telemetered to the ground 
+near-continuously and 
+monitored by SRAG and BME.  
+Measured spectra downlinked 
+by BME approximately weekly 
+for SRAG analysis. 
+N/A None BME, SRAG 
+Weekly Flight Note N/A Weekly  SRAG SEO None 
+Postflight: 
+Report containing 
+analytical results to 
+RHO 
+N/A R+30 N/A SRDL personnel None 
+Mission Dosimetry and 
+Risk Report to Flight 
+Surgeon/Crew 
+N/A R+60 N/A RHO None 
+Postflight Debrief: 
+Debrief No extra time ~R+30 days N/A Crewmembers/Radiation 
+Team 
+Included as part of the 
+Med Ops overall debrief. 
+ 
+
+FILE cl5yvqhsv2snn01o69ap47uqd.pdf
+PAGE 1
+ 
+ 
+MR005S Radiation Monitoring Using Shuttle TEPC for Short Duration Flights              MR005S 
+  SM-FI-021 
+Page 1 of 5 
+Approved 04/19/01           Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: MMEEDDIICCAALL  RREEQQUUIIRREEMMEENNTTSS  OOVVEERRVVIIEEWW  
+MRID# and Title: 
+ 
+MR005S Radiation Monitoring using Shuttle TEPC for Short Duration Flights 
+Sponsor: 
+ 
+Medical Operations 
+IPT: 
+ 
+Radiation 
+Category: 
+ 
+Medical Requirements (MR) 
+References: 
+ 
+JSC 13956 STS MORD, Rev G 
+Section 4.5 Radiation Safety  
+ Section 4.5.1 Preflight 
+ Section 4.5.3 In-Flight Monitoring 
+Purpose/Objectives: 
+ 
+To collect radiation environment data that will document crew exposure to radiation, perform risk assessment, and manage crew exposures 
+during flight, especially during radiation contingencies.   
+Measurement Parameters: 
+ 
+Radiation exposures at the tissue level, lineal energy spectral data. 
+Deliverables: 
+ 
+Characterization of the radiation environment for updating exposure records for occupational health risk assessments. 
+Real-time data for use during radiation contingencies. 
+Flight Duration: 
+ 
+ 
+  30 days 
+Number of Flights: 
+ 
+All high altitude/high inclination Shuttle flights 
+Number and Type of Crew 
+Members Required: 
+Designated crewmembers will be assigned as operators.   
+Other Flight Characteristics: 
+ 
+The TEPC shall be supplied for high-altitude (greater than or equal to 205 nautical miles) and/or high-inclination flights (greater than or equal to 
+50 degrees). 
+ 
+PAGE 2
+ 
+ 
+MR005S Radiation Monitoring Using Shuttle TEPC for Short Duration Flights              MR005S 
+  SM-FI-021 
+Page 2 of 5 
+Approved 04/19/01           Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+3.3  Preflight Training 
+ 
+TTAABBLLEE  33..33::  PPRREEFFLLIIGGHHTT  TTRRAAIINNIINNGG  
+Preflight Training Activity 
+Description: 
+ 
+ 
+ 
+Schedule: 
+Training classes will introduce the radiation hardware, procedures and review the radiation environment in space.  The 
+location and function of the hardware is detailed.   
+Duration: 
+ 
+Schedule: Flexibility: Personnel Required: 
+TEPC Training              45 min L-2 months N/A Crewmember/Trainer 
+ 
+Ground Support Requirements 
+Hardware/Software 
+ 
+Preflight Hardware: 
+ 
+Preflight Software: Test Location: 
+Tissue Equivalent Proportional Counter 
+(TEPC) 
+N/A U.S. 
+Training Facilities Minimum Room Dimensions: 
+ 
+Number of Electrical Outlets: Temperature Requirements: Special Lighting: 
+8' x 10' One  (110 volts AC) Ambient N/A 
+ 
+Hot or Cold Running Water: 
+ 
+Privacy Requirements: Other: 
+N/A N/A 1 Table, 4-6 Chairs 
+Constraints/Special Requirements: N/A 
+ 
+Launch Delay Requirements: Training will be repeated if requested by the crewmember. 
+ 
+Notes: At L-10 days the crew is informed of all projected exposures and current and projected space weather conditions. 
+ 
+ 
+PAGE 3
+ 
+ 
+MR005S Radiation Monitoring Using Shuttle TEPC for Short Duration Flights              MR005S 
+  SM-FI-021 
+Page 3 of 5 
+Approved 04/19/01           Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+3.4  Preflight Activities – No Preflight Activities 
+  
+3.5 In-Flight Activities 
+ 
+TTAABBLLEE  33..55..11::    IINN--FFLLIIGGHHTT  AACCTTIIVVIITTIIEESS  
+In-Flight Activity 
+Description: 
+ 
+ 
+Schedule: 
+The TEPC will operate continuously on Shuttle to provide radiation measurements of tissue dose and dose equivalent.  Space Radiation 
+Analysis Group (SRAG) may request that the crew call down a quick reading of the TEPC, if necessary, as stated in the flight rules. 
+ 
+Duration: 
+Schedule: Personnel Required: 
+TEPC Initial Power On                 10 min. 
+ 
+ 
+TEPC Call-Down (if required)      10 min.  (includes recording data into chart at 
+the end of the TEPC procedures) 
+ 
+TEPC Power Down                       5 min. 
+Flight Day 1 
+Crew will switch on once  
+ 
+As necessary 
+ 
+ 
+Last Flight Day  
+Crew will switch off prior 
+to deorbiting  
+1 crewmember 
+ 
+ 
+1 crewmember 
+ 
+ 
+1 crewmember 
+Procedures: All in-flight procedures are contained within the Orbit Ops/All/Gen book. 
+TEPC Power On                                 TEPC Malfunction 
+        TEPC Power Down                                         Contingency Data Call-down/Data Chart 
+Constraints / Special Requirements: N/A 
+ 
+Photo / TV Requirements: N/A 
+ 
+Cold Stowage Requirements: N/A 
+ 
+Mission Extension Requirements: N/A 
+ 
+Landing Wave-Off Requirements: If landing wave-off of one day is to occur, TEPC is to be restarted. 
+ 
+Data Delivery Data/Report to Designated Recipients  (Nominal/Contingency): 
+ 
+N/A 
+ 
+  
+  
+PAGE 4
+ 
+ 
+MR005S Radiation Monitoring Using Shuttle TEPC for Short Duration Flights              MR005S 
+  SM-FI-021 
+Page 4 of 5 
+Approved 04/19/01           Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+In-Flight Activities, (cont.) 
+ 
+TTAABBLLEE  33..55..22::  IINN--FFLLIIGGHHTT  HHAARRDDWWAARREE  
+ 
+Hardware/Software 
+Name 
+ 
+ 
+P/N 
+ 
+ 
+ISS 
+Location 
+ 
+Vehicle 
+(Up/Dn) 
+ 
+ 
+Category 
+Late 
+Access / 
+Early 
+Destow/ 
+Early 
+Return 
+ 
+Docked 
+Ops 
+ 
+Weights 
+(kg) 
+ 
+Volume 
+(cm3) 
+ 
+Dimensions 
+LxWxH (cm) 
+ 
+Power 
+(watts) 
+ 
+ 
+Resupply 
+ 
+Download / 
+Downlink 
+Tissue Equivalent 
+Proportional Counter 
+(TEPC) Kit 
+SED46115993-
+XXX 
+AV  BAY 
+3A – 
+Above 
+lockers 
+MA9D and 
+MA16D 
+Shuttle N/A N/A N/A 8.5 47195 50.8 x 30.5 x 
+30.5 
+28 VDC N/A N/A 
+ 
+3.6 Postflight Activities 
+ 
+TTAABBLLEE  33..66::  PPOOSSTTFFLLIIGGHHTT  AACCTTIIVVIITTIIEESS  
+Postflight Activity 
+Description: 
+ 
+ 
+Schedule: 
+Submittal of final mission report. 
+Duration: Schedule: Personnel Required: 
+ 
+N/A N/A N/A 
+Constraints/Special Requirements: N/A 
+Early Destow / Early Return: N/A 
+Notes: N/A 
+Data Delivery Data/Report to Designated Recipients (Nominal/Contingency): Data Archives: 
+  A comprehensive report will be delivered to the Radiation Health Officer at approximately 
+ R+45 days.  The report will then be forwarded by the Radiation Health Officer to the  
+crew surgeon and data archivist at approximately R+3 months. 
+Crewmember radiation exposure from 
+each mission and their accumulated 
+radiation exposure will be recorded in 
+crewmembers’ medical records and 
+the mission specific medical records. 
+ 
+PAGE 5
+ 
+ 
+MR005S Radiation Monitoring Using Shuttle TEPC for Short Duration Flights              MR005S 
+  SM-FI-021 
+Page 5 of 5 
+Approved 04/19/01           Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+3.7 Summary Schedule 
+ 
+TTAABBLLEE  33..77::  SSUUMMMMAARRYY  SSCCHHEEDDUULLEE  
+ACTIVITY DURATION SCHEDULE PERSONNEL REQUIRED CONSTRAINTS 
+Preflight Training 
+TEPC Training 45 min L-2 months Crewmembers/Trainer None 
+ 
+Preflight Activity: N/A 
+In-Flight 
+TEPC Initial Power-On 10 min. Flight Day 1 
+Crew will switch on once 
+1 crewmember None 
+TEPC Checkout (TEPC call-down) 10 min. As necessary 1 crewmember None 
+TEPC Power-Off 5 min. Last Flight Day 
+Crew will switch off prior to deorbiting 
+1 crewmember None 
+Wheels-Stop: N/A 
+Postflight: N/A 
+Postflight Debrief 
+Debrief No extra time ~R+30 days Crewmembers/Radiation Team Included as part of the Med Ops 
+overall debrief. 
+ 
+
+FILE cl5yvqkq12spn01o63cg21vbx.pdf
+PAGE 1
+MR092L In-flight Radiation Monitoring with Radiation Assessment Detector (Rad Detector) for Long 
+Duration Flights 
+Page 1 of 6 
+ 
+ 
+Approved 06/05/2017      Medical Requirements Integration 
+          Documents (MRIDs) JSC28913 
+   
+ 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: 
+MEDICAL REQUIREMENTS OVERVIEW 
+MRID# and Title: MR092L In-flight Radiation Monitoring with Radiation Assessment Detector (Rad Detector) for Long Duration Flights
+ 
+Sponsor: Medical Operations 
+Discipline: Radiation 
+Category: Medical Requirements  
+References: 
+ 
+SSP 50260 ISS Medical Operations Requirements Document   
+ 
+Purpose/Objectives: 
+ 
+One of several devices included in the suite of active radiation detecting hardware used to monitor crew exposure to radiation and 
+perform risk assessment by measuring charged particle and neutron fluxes as a function of time, energy, and direction internal to 
+ISS. 
+Measurement Parameters: 
+ 
+Radiation dose and dose equivalent as a function of time; Particle type, energy, and direction. 
+Deliverables: 
+ 
+SRAG is responsible for archiving all cyclic telemetry, raw dumped data, and processed data of the Rad Detector.  The cyclic 
+telemetry is stored on the SRAG SQL servers for operational usage and monitoring crew exposures.  The processed data is 
+archived on the SRAG internal website.   
+ 
+Deliverables include characterization of the radiation environment for updating exposure records for occupational health risk 
+assessments, real-time data for use during radiation contingencies, and onboard crew alarm for contingency radiation events.  
+Elements of the processed data are included in a comprehensive report that is delivered to the NASA Radiation Health Officer 
+(RHO) following a crewmember’s expedition.  The archived data is also used for projecting crew mission exposure levels for future 
+expedition flight readiness reviews. 
+Flight Duration:  30 days 
+Number of Flights: Every ISS Increment 
+Number and Type of Crew 
+Members Required: 
+Designated crewmembers will be assigned as operators. 
+Other Flight 
+Characteristics: 
+ 
+N/A 
+ 
+PAGE 2
+MR092L In-flight Radiation Monitoring with Radiation Assessment Detector (Rad Detector) for Long 
+Duration Flights 
+Page 2 of 6 
+ 
+ 
+Approved 06/05/2017      Medical Requirements Integration 
+          Documents (MRIDs) JSC28913 
+   
+ 
+3.3  Preflight Training 
+ 
+TABLE 3.3: PREFLIGHT TRAINING 
+Preflight Training Activity 
+ 
+Description: 
+ 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+ 
+ 
+Training will be covered in the following lessons and documents: 
+EHS Radiation Operations 
+ 
+Training classes will introduce the radiation hardware & procedures and review the radiation environment in space.  
+The location and function of each piece of hardware is detailed.  Hands on training will also be provided.  Relocation 
+procedures will be covered to provide an understanding of what is involved in the monthly relocate activities on ISS. 
+Duration:  Schedule: Flexibility: Personnel Required: 
+EHS Radiation Operations:    45 minutes NLT L-19 months N/A Crewmember/Instructors 
+Ground Support Requirements: 
+Hardware/Software 
+Preflight Hardware:  Preflight Software: Test Location: 
+Rad Detector None U.S. 
+Training Facilities: Minimum Room 
+Dimensions:  
+Number of Electrical 
+Outlets: 
+Temperature 
+Requirements: 
+Special Lighting: 
+8' x 10' 2 Ambient N/A 
+ 
+Hot or Cold Running 
+Water:  
+Privacy Requirements: Other: 
+N/A N/A 1 Table, 4-6 Chairs 
+Constraints/Special Requirements: N/A 
+Launch Delay Requirements: Training will be repeated if requested by the crewmember. 
+Notes: N/A 
+ 
+ 
+ 
+3.4 Preflight Activities - None  
+  
+PAGE 3
+MR092L In-flight Radiation Monitoring with Radiation Assessment Detector (Rad Detector) for Long 
+Duration Flights 
+Page 3 of 6 
+ 
+ 
+Approved 06/05/2017      Medical Requirements Integration 
+          Documents (MRIDs) JSC28913 
+   
+ 
+3.5 In-Flight Activities 
+ 
+TABLE 3.5.1:  IN-FLIGHT ACTIVITIES 
+In-Flight Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+ 
+Rad Detector will operate continuously to provide radiation measurements of charged particle and neutron environments. The 
+Rad Detector will be relocated periodically throughout the habitable modules of the station to analyze the internal radiation 
+environment. Space Radiation Analysis Group (SRAG) will define a relocation plan to determine how long and at which 
+locations the Rad Detector will be deployed. Nominal deployment sites will be within the cable reach of the CHeCS Power/Data 
+ports if 1553 data connection is available. When 1553 data is available, measured spectra in the cyclic telemetry will be 
+available in real-time and the full set of data will be downlinked by BME approximately weekly on demand. If 1553 data is not 
+available and/or if SRAG defines a specific location that precludes access to a CHeCS Power/Data port, then real-time 
+telemetry will not be available but will either be downlinked the next time Rad Detector is plugged into a CHeCS Power/Data 
+port, or transferred to an SSC for downlink by the crew or BME. The Rad Detector SSC application will be available for the crew 
+to send commands and monitor telemetry from an SSC if needed (or BME can do this via SSC remote desktop). 
+ 
+Activity: Duration: Schedule: Personnel Required: 
+Rad Detector Relocate 20 minutes Once every 3 months  1  Crewmember 
+Rad Detector Rotate         10 minutes Once a month  1  Crewmember 
+Procedures: All in-flight procedures are developed in-house and contained within the System Operations Data file (SODF) Med Ops book. 
+ 
+Constraints / Special 
+Requirements: 
+Scrub turnaround = N/A 
+Rad Detector will be secured via hook and loop fasteners to the face of an ISPR/ISS bulkhead or via the unit-provided Camera 
+Shoe to the Multiuse Bracket Assembly or Flexible Bracket Assembly that is connected to an ISPR seat track, and/or via Velcro 
+and/or Kapton Tape. 
+The Rad Detector alarm is tied into the ISS Caution and Warning system (class 3 alarm). The Rad Detector does not contain a 
+local alarm. 
+Deployment locations must not impede rapid egress or block access to any rack. 
+Rad Detector Rotate will occur only on months that do not have Rad Detector Relocate scheduled. 
+Photo / TV Requirements: Photos of Rad Detector are required when it is relocated or rotated.  Photos are necessary to document the position and 
+orientation of the detector heads, surroundings of Rad Detector, and to ensure the detectors are not shielded more than 
+expected. 
+Cold Stowage Requirements: N/A 
+Mission Extension Requirements: N/A 
+Landing Wave-Off Requirements: N/A 
+PAGE 4
+MR092L In-flight Radiation Monitoring with Radiation Assessment Detector (Rad Detector) for Long 
+Duration Flights 
+Page 4 of 6 
+ 
+ 
+Approved 06/05/2017      Medical Requirements Integration 
+          Documents (MRIDs) JSC28913 
+   
+ 
+Data Delivery: Elements of the processed data are included in a comprehensive report that is delivered to the NASA Radiation Health Officer 
+(RHO) following a crewmember’s expedition.  
+ 
+Cyclic Data (minute-by-minute data):   
+This data will be obtained via the ISS S-Band telemetry resource. Data will be collected by SRAG in support of real-time console 
+operations. This data will also be used to help make real-time risk management, operational decisions to meet the As Low As 
+Reasonably Achievable (ALARA) principle for the protection of the crew from ionizing radiation during Space Weather events.  
+ 
+Rad Detector Dump Data:   
+When 1553 data connection is available, BME will dump data from the Rad Detector once per week. If 1553 data connection is 
+not available, meaning data dumps cannot be performed, it is advisable that Rad Detector be connected to an SSC so that BME 
+can downlink the data via remote desktop once per week or the crew manually transfers the data to an SSC approximately once 
+per month so that it is available for downlink via OCA. 
+ 
+Instrument Health/Status Data:   
+The hardware sustaining organization will review and analyze the engineering data files and provide a periodic summary of the 
+Rad Detector’s health & status to SRAG. These status reports will not be forwarded to the Crew Surgeon nominally. 
+ 
+Notes:  None 
+ 
+ 
+PAGE 5
+MR092L In-flight Radiation Monitoring with Radiation Assessment Detector (Rad Detector) for Long 
+Duration Flights 
+Page 5 of 6 
+ 
+ 
+Approved 06/05/2017      Medical Requirements Integration 
+          Documents (MRIDs) JSC28913 
+   
+ 
+In-Flight Activities, (cont.) 
+ 
+TABLE 3.5.2: IN-FLIGHT HARDWARE 
+ 
+Hardware/Software Name 
+Rad Detector 
+Rad Detector Power/Data Cable 10ft 
+Rad Detector USB Cable - 6ft 
+ 
+3.6 Postflight Activities 
+ 
+TABLE 3.6: POSTFLIGHT ACTIVITIES 
+Postflight Activity 
+                 Description: 
+ 
+Submittal of final mission expedition report. 
+Constraints/Special Requirements: N/A 
+ 
+Early Destow / Early Return: N/A 
+ 
+Notes: Crewmember radiation exposure from each mission and their accumulated radiation exposure will be used for 
+occupational health risk assessment. 
+Data Delivery: Elements of the processed data are included in a comprehensive report that is delivered to the NASA Radiation Health 
+Officer (RHO) following a crewmember’s expedition. 
+Mission Summary Report: Approximately R+90 days 
+Data Archives: Approximately R+90 days 
+ 
+PAGE 6
+MR092L In-flight Radiation Monitoring with Radiation Assessment Detector (Rad Detector) for Long 
+Duration Flights 
+Page 6 of 6 
+ 
+ 
+Approved 06/05/2017      Medical Requirements Integration 
+          Documents (MRIDs) JSC28913 
+   
+ 
+3.7 Summary Schedule 
+ 
+TABLE 3.7: SUMMARY SCHEDULE 
+ACTIVITY: DURATION: SCHEDULE: PERSONNEL REQUIRED: CONSTRAINTS: 
+Preflight Training: 
+EHS Radiation Operations 45 minutes NLT L-6 months Crewmembers/Instructors None 
+Preflight: N/A 
+In-Flight Activity: 
+Rad Detector Relocate  
+ 
+20 minutes Once every 3 months  1  Crewmember New location must not impede rapid egress or 
+block access to any rack. 
+Rad Detector Rotate  
+ 
+10 minutes Once a month  1  Crewmember Only on months that do not have Rad 
+Detector Relocate scheduled. 
+Postflight: 
+Final Mission Expedition Report None ~R+90 days Space Radiation Analysis Group 
+(SRAG) 
+Report provided to Radiation Health Officer 
+(RHO) to provide to crewmembers postflight. 
+Postflight Debrief: 
+Debrief No extra time ~R+30 days Crewmembers/Radiation Team Included as part of the Med Ops overall 
+debrief. 
+ 
+
+FILE cl5yvqkq12spo01o6gj3x4son.pdf
+PAGE 1
+ 
+ 
+MR093L In-flight Radiation Monitoring with Intravehicular Tissue Equivalent Proportional Counter (IV-
+TEPC) for Long Duration Flights    
+    
+Page 1 of 6 
+ 
+ 
+Approved 06/05/2017     Medical Requirements Integration 
+         Documents (MRIDs) JSC28913 
+   
+ 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: MMEEDDIICCAALL  RREEQQUUIIRREEMMEENNTTSS  OOVVEERRVVIIEEWW  
+MRID# and Title: MR093L In-flight Radiation Monitoring with Intravehicular Tissue Equivalent Proportional Counter (IV-TEPC) for Long Duration 
+Flights  
+Sponsor: Medical Operations 
+Discipline: Radiation 
+Category: Medical Requirements  
+References: SSP 50260 ISS Medical Operations Requirements Document   
+ 
+Purpose/Objectives: 
+ 
+The purpose of the activity is to collect radiation environment data that will document crew exposure to radiation, perform risk 
+assessment, and manage crew exposures during flight, especially during radiation contingencies. IV-TEPC collects the surrogate 
+linear energy (y) data for the required linear energy transfer (LET) data and the absorbed dose. The Space Radiation Analysis 
+Group (SRAG) will apply physical corrections to convert linear energy (y) spectra obtained with the IV-TEPC to LET –spectra for 
+use in determining crew exposures. These corrections must account for the impact parameter distribution, energy straggling, delta-
+ray effects, and wall effects from both delta-rays and nuclear reactions. 
+Measurement Parameters: 
+ 
+Radiation exposures at the tissue-cell level y-spectra data. 
+Deliverables: 
+ 
+SRAG is responsible for archiving all cyclic telemetry, raw dumped data, and processed data of the IV-TEPC. The cyclic telemetry 
+is stored on the SRAG SQL servers for operational usage and monitoring crew exposures. The processed data is archived on the 
+SRAG internal website.   
+ 
+Deliverables include characterization of the radiation environment for updating exposure records for occupational health risk 
+assessments, real-time data for use during radiation contingencies, and onboard crew alarm for contingency radiation events.  
+Elements of the processed data are included in a comprehensive report that is delivered to the NASA Radiation Health Officer 
+(RHO) following a crewmember’s expedition. The archived data is also used for projecting crew mission exposure levels for future 
+expedition flight readiness reviews. 
+Flight Duration:  30 days 
+Number of Flights: Every ISS Increment 
+Number and Type of Crew 
+Members Required: 
+Designated crewmembers will be assigned as operators. 
+Other Flight 
+Characteristics: 
+ 
+N/A 
+ 
+PAGE 2
+ 
+ 
+MR093L In-flight Radiation Monitoring with Intravehicular Tissue Equivalent Proportional Counter (IV-
+TEPC) for Long Duration Flights    
+    
+Page 2 of 6 
+ 
+ 
+Approved 06/05/2017     Medical Requirements Integration 
+         Documents (MRIDs) JSC28913 
+   
+ 
+3.3  Preflight Training 
+ 
+TTAABBLLEE  33..33::  PPRREEFFLLIIGGHHTT  TTRRAAIINNIINNGG  
+Preflight Training Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+Training will be covered in the following Environmental Health System (EHS) lessons and documents: 
+EHS Radiation Operations 
+ 
+Training classes will introduce the EHS radiation hardware & procedures and review the radiation environment in 
+space. The location and function of each piece of hardware is detailed. Hands on training will also be provided.  
+ 
+Duration:  Schedule: Flexibility: Personnel Required: 
+EHS Radiation Operations:           45 minutes NLT L-19 months 
+ 
+N/A Crewmember/Instructors 
+Ground Support Requirements: 
+Hardware/Software 
+Preflight Hardware:  Preflight Software: Test Location: 
+Intravehicular Tissue Equivalent Proportional 
+Counter (IV-TEPC)  
+None U.S. 
+Training Facilities: Minimum Room 
+Dimensions:  
+Number of Electrical 
+Outlets: 
+Temperature 
+Requirements: 
+Special Lighting: 
+8' x 10' 2 Ambient N/A 
+ 
+Hot or Cold Running 
+Water:  
+Privacy Requirements: Other: 
+N/A N/A 1 Table, 4-6 Chairs 
+Constraints/Special Requirements: N/A 
+Launch Delay Requirements: Training will be repeated if requested by the crewmember. 
+Notes: N/A 
+ 
+ 
+ 
+3.4 Preflight Activities - None 
+PAGE 3
+ 
+ 
+MR093L In-flight Radiation Monitoring with Intravehicular Tissue Equivalent Proportional Counter (IV-
+TEPC) for Long Duration Flights    
+    
+Page 3 of 6 
+ 
+ 
+Approved 06/05/2017     Medical Requirements Integration 
+         Documents (MRIDs) JSC28913 
+   
+ 
+  
+3.5 In-Flight Activities 
+ 
+TTAABBLLEE  33..55..11::    IINN--FFLLIIGGHHTT  AACCTTIIVVIITTIIEESS  
+In-Flight Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+IV-TEPC will operate continuously to provide radiation measurements of tissue effective dose and dose equivalent. The IV-TEPC will 
+be permanently located in Node 2 to analyze the internal radiation environment, unless Space Radiation Analysis Group (SRAG) has 
+a need for IV-TEPC to analyze in an alternate location (within cable reach of a CHeCS Power/Data port). Measured spectra will be 
+telemetered approximately weekly on demand. 
+ 
+Linear Energy Transfer (LET) spectra data shall be used to provide an estimate of average quality factor for the mission.  
+Activity: Duration: Schedule: Personnel Required: 
+IV-TEPC Monitoring None  
+(continuous monitoring)  
+Tissue Effective Dose and 
+Dose Equivalent cyclic data 
+telemetered to the ground near-
+continuously and monitored by 
+SRAG and BME.  Measured 
+spectra downlinked by BME 
+approximately weekly for SRAG 
+analysis. 
+BME, SRAG 
+Procedures: All in-flight procedures are developed in-house and contained within the System Operations Data file (SODF) MedOps book. 
+ 
+Constraints / Special 
+Requirements: 
+IV-TEPC will be secured within the designated modules via Velcro or seat track interface. 
+The IV-TEPC alarm is tied into the station caution and warning system (class 3 alarm). The IV-TEPC does not contain a local alarm. 
+Deployment location must not impede rapid egress or block access to any rack. 
+Photo / TV Requirements: Photos of IV-TEPC are required when IV-TEPC is relocated. Photos are necessary to document the position and orientation of the 
+detector heads, surroundings of IV- TEPC, and to ensure the prime detector is not shielded more than expected. Two pictures; one 
+close up and the second a medium shot. 
+Cold Stowage Requirements: N/A 
+Mission Extension Requirements: N/A 
+Landing Wave-Off Requirements: N/A 
+PAGE 4
+ 
+ 
+MR093L In-flight Radiation Monitoring with Intravehicular Tissue Equivalent Proportional Counter (IV-
+TEPC) for Long Duration Flights    
+    
+Page 4 of 6 
+ 
+ 
+Approved 06/05/2017     Medical Requirements Integration 
+         Documents (MRIDs) JSC28913 
+   
+ 
+ 
+Data Delivery: 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Cyclic Data (minute-by-minute data):   
+This data will be obtained via the ISS S-Band telemetry resource. SRAG will use this data and provide weekly summary notes to the 
+Crew Surgeon. This data will also be used to help make real-time risk management, operational decisions to meet the As Low As 
+Reasonably Achievable (ALARA) principle for the protection of the crew from ionizing radiation during space weather events.  
+ 
+IV-TEPC Dump Data:   
+Ground control will dump data from the IV-TEPC once per week. If  the capability to command the IV-TEPC from  
+MCC-H is lost, meaning data dumps cannot be performed, it is advisable that IV-TEPC data be transferred to the SSC approximately once 
+per month to prevent data loss due to the possibility of new data recording over previous data.  
+Notes: SRAG is responsible for archiving all cyclic telemetry, raw dumped data, and processed data of the IV-TEPC. The cyclic telemetry is 
+stored on the SRAG SQL servers for operational usage and monitoring crew exposures. The processed data is archived on the SRAG 
+internal website. Elements of the processed data are included in a comprehensive report that is delivered to the NASA Radiation 
+Health Officer (RHO) following a crewmember’s expedition.   
+ 
+  
+  
+PAGE 5
+ 
+ 
+MR093L In-flight Radiation Monitoring with Intravehicular Tissue Equivalent Proportional Counter (IV-
+TEPC) for Long Duration Flights    
+    
+Page 5 of 6 
+ 
+ 
+Approved 06/05/2017     Medical Requirements Integration 
+         Documents (MRIDs) JSC28913 
+   
+ 
+In-Flight Activities, (cont.) 
+ 
+TTAABBLLEE  33..55..22::  IINN--FFLLIIGGHHTT  HHAARRDDWWAARREE  
+ 
+Hardware/Software Name 
+Intra-Vehicular Tissue Equivalent Proportional Counter 
+ (IV-TEPC)  Assembly: 
+Spectrometer 
+Small Detector 
+Large Detector 
+Power Cable 
+ 
+3.6 Postflight Activities 
+ 
+TTAABBLLEE  33..66::  PPOOSSTTFFLLIIGGHHTT  AACCTTIIVVIITTIIEESS  
+Postflight Activity                   
+Description: 
+Submittal of final mission expedition report. 
+Constraints/Special Requirements: N/A 
+ 
+Early Destow / Early Return: N/A 
+ 
+Notes: Crewmember radiation exposure from each mission and their accumulated radiation exposure will be recorded in 
+crewmembers’ medical records and will also be used for occupational health risk assessment. 
+Data Delivery Elements of the processed data are included in a comprehensive report that is delivered to the NASA Radiation Health 
+Officer (RHO) following a crewmember’s expedition. 
+Mission Summary Report: Approximately R+90 days 
+Data Archives: Approximately R+90 days 
+ 
+PAGE 6
+ 
+ 
+MR093L In-flight Radiation Monitoring with Intravehicular Tissue Equivalent Proportional Counter (IV-
+TEPC) for Long Duration Flights    
+    
+Page 6 of 6 
+ 
+ 
+Approved 06/05/2017     Medical Requirements Integration 
+         Documents (MRIDs) JSC28913 
+   
+ 
+3.7 Summary Schedule 
+ 
+TTAABBLLEE  33..77::  SSUUMMMMAARRYY  SSCCHHEEDDUULLEE  
+ACTIVITY: DURATION: SCHEDULE: PERSONNEL REQUIRED: CONSTRAINTS: 
+Preflight Training: 
+EHS Radiation Operations 45 minutes NLT L-19 months Crewmembers/Instructors None 
+Preflight: N/A 
+In-Flight Activity: 
+IV-TEPC Monitoring None 
+(continuous 
+monitoring)  
+Tissue Effective Dose and 
+Dose Equivalent cyclic data 
+telemetered to the ground 
+near-continuously and 
+monitored by SRAG and 
+BME.  Measured spectra 
+downlinked by BME 
+approximately weekly for 
+SRAG analysis. 
+None BME, SRAG 
+Postflight: 
+Final Mission Expedition 
+Report 
+None ~R+90 days Space Radiation Analysis 
+Group (SRAG) 
+Report provided to Radiation Health Officer 
+(RHO) to provide to crewmembers postflight. 
+Postflight Debrief: 
+Debrief No extra time ~R+30 days Crewmembers/Radiation 
+Team 
+Included as part of the Med Ops overall debrief. 
+ 
+
+FILE cl5yvqkq12spp01o657hgcc75.pdf
+PAGE 1
+ 
+MR094L In-flight Radiation Area Monitoring with Active Radiation Environment Monitor 2 (REM2) 
+Page 1 of 4 
+ 
+     Medical Requirements Integration 
+Revised 07/15/19 Documents (MRIDs) JSC28913 
+ 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: 
+MEDICAL REQUIREMENTS OVERVIEW 
+MRID# and Title: MR094L In-flight Radiation Area Monitoring with Active Radiation Environment Monitor 2 (REM2) 
+Sponsor: Medical Operations 
+Discipline: Radiation 
+Category: Medical Requirements  
+References: SSP 50260 ISS Medical Operations Requirements Document 
+Purpose/Objectives: 
+ 
+ To monitor, characterize, and document ISS crew exposure to ionizing radiation in order to implement ALARA principle (“as 
+low as reasonable achievable”).  
+ To inform radiation risk assessment. 
+Measurement Parameters: ISS ionizing radiation environment 
+Deliverables: 
+ 
+SRAG maintains and provides a record of radiation doses used to document occupational exposure.  Radiation Environment 
+Monitor 2 provides spacecraft location-specific ionizing radiation dose data to be used for health risk assessment and to 
+evaluate shielding trends within the vehicle. 
+Flight Duration: All flights 
+Number of Flights: Every ISS Increment 
+Number and Type of Crew 
+Members Required: 
+No crew interaction is required for nominal operations once REM2s are deployed.  Crew will be required for location 
+adjustments, replacements, troubleshooting, or other off-nominal tasks. 
+Other Flight 
+Characteristics: 
+N/A 
+ 
+PAGE 2
+ 
+MR094L In-flight Radiation Area Monitoring with Active Radiation Environment Monitor 2 (REM2) 
+Page 2 of 4 
+ 
+     Medical Requirements Integration 
+Revised 07/15/19 Documents (MRIDs) JSC28913 
+ 
+3.3  Preflight Training 
+ 
+TABLE 3.3: PREFLIGHT TRAINING 
+Preflight Training Activity 
+Description: 
+ 
+ 
+ 
+Schedule: 
+Training is covered in EHS Radiation Operations. The session introduces the radiation hardware and reviews the 
+radiation environment in space.  The location and function of each piece of hardware is covered in detail. 
+Duration:  Schedule: Flexibility: Personnel Required: 
+EHS Radiation Operations:               60 minutes Pre-Assignment N/A Crewmembers/Instructors 
+ISS Med Ops Refresher                    5 Minutes L-3 months N/A Crewmembers/Instructors/Surgeon 
+Ground Support Requirements 
+Hardware/Software 
+Preflight Hardware:  Preflight Software: Test Location: 
+Radiation Environment Monitor 2 (REM2) PixelmanISS (REM2 SSC 
+Software) 
+U.S. 
+Training Facilities: Minimum Room 
+Dimensions:  
+Number of Electrical 
+Outlets: 
+Temperature 
+Requirements: 
+Special Lighting: 
+Conference Room 1 Ambient N/A 
+Hot or Cold Running 
+Water:  
+Privacy Requirements: Other: 
+N/A N/A 1 Table, 4-6 Chairs, Overhead projector/screen 
+Constraints/Special 
+Requirements: 
+N/A 
+Launch Delay Requirements: Training will be repeated if requested by the crewmember. 
+Notes: None 
+ 
+ 
+3.4  Preflight Activities - None 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+PAGE 3
+ 
+MR094L In-flight Radiation Area Monitoring with Active Radiation Environment Monitor 2 (REM2) 
+Page 3 of 4 
+ 
+     Medical Requirements Integration 
+Revised 07/15/19 Documents (MRIDs) JSC28913 
+ 
+ 
+3.5 In-Flight Activities 
+ 
+TABLE 3.5.1: IN-FLIGHT ACTIVITIES 
+In-Flight Activity 
+Description: 
+ 
+ 
+ 
+Schedule: 
+REM2s are permanently deployed to designated locations on ISS after arrival on launch vehicle. Each REM2 is connected to an 
+SSC via USB Type A Extension Cable and attached to its respective monitoring location by hook and loop fastener or Kapton 
+Tape.  The REM2s operate autonomously and continuously to provide ionizing radiation dose data which are saved to the 
+SSC/OpsLAN and downlinked to the ground via automated OCAMS script multiple times a day.  Once deployed, no direct crew 
+interaction is needed for nominal operations. 
+Activity: Duration: Schedule: Personnel Required: 
+Radiation Monitoring Continuous Continuous Unattended 
+Location Adjustment 5 minutes per unit 
+(includes Imagery) 
+As Needed 1 Crewmember 
+Procedures: Procedures will be developed as needed. 
+Constraints / Special 
+Requirements: 
+ To affix the REM2 units to their designated monitoring locations, each site will require deployed hook and loop fastener 
+which will adhere to the hook and loop fastener provided on the back of each REM2 unit.  Kapton Tape may also be used 
+as an alternative means of securing the REM2 units. 
+ For power and data transfer, each REM2 location will require an SSC to be within reach of the USB Type A Extension 
+Cable deployed with each unit. 
+ Ku comm is required for downlink to the ground. 
+Photo / TV Requirements: Photos are required for REM2 deployment, relocates, and replacements.  Photos may be requested for troubleshooting tasks. 
+Cold Stowage 
+Requirements: 
+N/A 
+Mission Extension 
+Requirements: 
+N/A 
+Notes: N/A 
+Landing Wave-Off 
+Requirements: 
+N/A 
+Data Delivery: REM2 data will be downlinked to the ground multiple times a day by automated OCAMS script.  Elements of the processed data 
+will be included in a comprehensive report that will be delivered to the NASA Radiation Health Officer (RHO) following a 
+crewmember’s expedition. 
+ 
+ 
+ 
+PAGE 4
+ 
+MR094L In-flight Radiation Area Monitoring with Active Radiation Environment Monitor 2 (REM2) 
+Page 4 of 4 
+ 
+     Medical Requirements Integration 
+Revised 07/15/19 Documents (MRIDs) JSC28913 
+ 
+TABLE 3.5.2: IN-FLIGHT HARDWARE 
+Hardware Name 
+Radiation Environment Monitor 2 (REM2) 
+USB Type A Extension Cable 
+ 
+3.6 Postflight Activities 
+ 
+TABLE 3.6: POSTFLIGHT ACTIVITIES   
+Postflight Activity 
+Description: 
+SRAG submits final mission expedition report. 
+Constraints/Special Requirements: N/A 
+Early Destow / Early Return: N/A 
+Notes: REM2 data and crewmember radiation exposure from each mission will be used for Occupational health risk 
+assessment.   
+Data Delivery: Elements of the processed data are included in a comprehensive report that is delivered to the NASA Radiation 
+Health Officer (RHO) following a crewmember’s expedition. 
+Mission Summary Report: R+30 days 
+Data Archives:  R+30 days 
+ 
+3.7 Summary Schedule 
+ 
+TABLE 3.7: SUMMARY SCHEDULE 
+ACTIVITY DURATION SCHEDULE PERSONNEL REQUIRED CONSTRAINTS 
+Preflight Training: 
+EHS Radiation Operations   60 minutes Pre-Assignment Crewmembers/Instructors None 
+ISS Med Ops Refresher 5 minutes L-3 months Crewmembers/Instructors/Surgeon  
+Preflight Activities: None 
+In-Flight Activities: 
+Radiation Monitoring  Continuous Continuous Unattended  None 
+Location Adjustment 5 minutes per unit As Needed 1 Crewmember None 
+Postflight Activities: 
+Final Mission Expedition Report  As required  R+30 days  SRAG None 
+Postflight Debrief: 
+Crew Debrief  As required Per post-flight debrief schedule Crewmembers/Radiation Team None 
+ 
+
+FILE cl5yvqhsu2smt01o6asca5dwu.pdf
+PAGE 1
+ 
+MEDB 3.1 Radiation Monitoring/Crew Personal Dosimetry    
+Page 1 of 5 
+Approved 06/05/17                                                                                                                                                                                                                                                        Medical Requirements Integration  
+                                                                                                                                                                                                                                                                                   Documents (MRIDs) JSC28913 
+ 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: 
+MEDICAL REQUIREMENTS OVERVIEW 
+MRID# and Title: 
+ 
+Radiation Monitoring/Crew Personal Dosimetry 
+Sponsor: 
+ 
+Medical Operations 
+Discipline: 
+ 
+Radiation 
+Category: 
+ 
+Medical Requirements  
+References: 
+ 
+SSP 50260 ISS Medical Operations Requirement Document  
+SSP 50667 Med Volume B, Section 3.1 
+Purpose/Objectives: 
+ 
+ To monitor and document crew exposure to radiation and to maintain crew exposures “as low as reasonable 
+achievable”.  
+ To perform risk assessment. 
+Measurement Parameters: 
+ 
+Radiation exposure 
+Deliverables: 
+ 
+ Record of radiation doses used to document occupational exposure. 
+ Doses from each mission and accumulated doses, which shall be used for health risk assessment, are to be recorded 
+in crewmembers’ medical records.  
+ All U.S. crewmembers’ medical records will be updated based on CPD data. 
+Flight Duration: 
+ 
+All flights 
+Number of Flights: 
+ 
+Every ISS Increment 
+Number and Type of Crew 
+Members Required: 
+ISS crewmembers (Primary and backup will be trained). 
+Other Flight 
+Characteristics: 
+ 
+N/A 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+PAGE 2
+ 
+MEDB 3.1 Radiation Monitoring/Crew Personal Dosimetry    
+Page 2 of 5 
+Approved 06/05/17                                                                                                                                                                                                                                                        Medical Requirements Integration  
+                                                                                                                                                                                                                                                                                   Documents (MRIDs) JSC28913 
+ 
+3.3  Preflight Training 
+ 
+TABLE 3.3: PREFLIGHT TRAINING 
+Preflight Training Activity 
+Description: 
+ 
+Schedule: 
+Training will be covered in the following Radiation lesson (ISS): EHS Radiation Operations.    
+Duration:  Schedule: Flexibility: Personnel Required: 
+EHS Radiation Operations:       45 minutes  L-19 months N/A Crew/Instructors 
+Ground Support Requirements: 
+Hardware/Software 
+Preflight Hardware:  Preflight Software: Test Location: 
+   Crew Passive Dosimeters (CPDs)    N/A U.S. 
+Training Facilities: Minimum Room 
+Dimensions: 
+Number of Electrical 
+Outlets: 
+Temperature 
+Requirements: 
+Special Lighting: 
+Conference Room N/A Ambient N/A 
+Hot or Cold Running 
+Water: 
+Privacy Requirements: Other: 
+N/A N/A Overhead projector 
+Constraints/Special Requirements: N/A 
+Launch Delay Requirements: Training will be repeated if requested by the crewmember.   
+Notes: None 
+ 
+ 
+3.4  Preflight Activities  
+ 
+TABLE 3.4 PREFLIGHT ACTIVITIES 
+Preflight Activity 
+Description: 
+ 
+Schedule: 
+No crew activities 
+Duration: Schedule: Flexibility: Personnel Required: 
+N/A N/A N/A N/A 
+Ground Support Requirements: 
+Hardware/Software 
+Preflight Hardware:  Preflight Software: Test Location: 
+N/A N/A N/A 
+Constraints/Special Requirements: When transporting hardware to launch location, hardware should not be x-rayed or stowed/shipped with radioactive 
+material. Dosimeters should be transported inside lead-lined bags. If X-ray is necessary for security, the dosimeters 
+must be kept inside the lead-lined bags and the number of X-rays should be recorded. 
+Notes: N/A 
+Launch Delay Requirements: If a launch delay of more than 90 days occurs, Space Radiation Analysis Group (SRAG) will decide whether to 
+refurbish, replace or take no action.  
+Data Delivery: None  
+PAGE 3
+ 
+MEDB 3.1 Radiation Monitoring/Crew Personal Dosimetry    
+Page 3 of 5 
+Approved 06/05/17                                                                                                                                                                                                                                                        Medical Requirements Integration  
+                                                                                                                                                                                                                                                                                   Documents (MRIDs) JSC28913 
+ 
+ 
+3.5 In-Flight Activities 
+ 
+TABLE 3.5.1:  IN-FLIGHT ACTIVITIES 
+In-Flight Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+The Crew Passive Dosimeters (CPDs) are preintegrated into the crewed launch vehicle and then distributed to the 
+appropriate crewmembers post launch. Each crewmember is required to carry his/her CPD continuously, including during 
+EVAs. Prior to descent, crewmembers are to wear or stow the CPDs to be recovered at landing. 
+Activity: Duration: Schedule: Flexibility: Personnel Required: 
+Crew Passive Dosimeter  Continuous 
+monitoring 
+Worn continuously 
+during the mission, 
+including ascent and 
+EVAs. 
+N/A All U.S. crewmembers, 
+CSA and JAXA 
+crewmembers by 
+agreement 
+Procedures: N/A 
+Constraints / Special 
+Requirements: 
+Scrub turnaround = If a launch delay of more than 90 days occurs, Space Radiation Analysis Group (SRAG) will decide 
+whether to refurbish, replace or take no action. 
+Each crewmember will be supplied with a crew passive dosimeter for continuous use for every mission. Dosimeters shall 
+be worn during EVAs.   
+Photo / TV Requirements: N/A 
+Cold Stowage Requirements: N/A 
+Mission Extension 
+Requirements: 
+N/A 
+Notes: Resupply Requirements: At launch each crewmember will be supplied with a crew passive dosimeter (CPD) for 
+continuous wear.    
+Longer duration crew (greater than 180 days) may receive mid-mission CPDs to exchange with their beginning of mission 
+CPD to assess mid-mission exposures. 
+Landing Wave-Off 
+Requirements: 
+N/A 
+Data Delivery: None 
+ 
+ 
+TABLE 3.5.2: IN-FLIGHT HARDWARE 
+Hardware/Software Name 
+Crew Passive Dosimeter (CPD) 
+ 
+ 
+PAGE 4
+ 
+MEDB 3.1 Radiation Monitoring/Crew Personal Dosimetry    
+Page 4 of 5 
+Approved 06/05/17                                                                                                                                                                                                                                                        Medical Requirements Integration  
+                                                                                                                                                                                                                                                                                   Documents (MRIDs) JSC28913 
+ 
+3.6 Postflight Activities 
+ 
+TABLE 3.6: POSTFLIGHT ACTIVITIES   
+Postflight Activity 
+Description: 
+ 
+Schedule: 
+Returning Crewmembers will have their dosimeters returned via flight surgeons. 
+Duration: Schedule: Flexibility: Personnel Required: 
+N/A R+0 N/A Flight Surgeons and landing 
+team 
+Ground Support Requirements: 
+Hardware/Software 
+Postflight Hardware: Postflight Software: Test Location: 
+N/A N/A N/A 
+Constraints/Special Requirements: Upon the return of hardware, hardware should not be x-rayed or stowed/shipped with radioactive material. 
+Dosimeters should be transported inside lead-lined bags. If X-ray is necessary for security, the dosimeters must be 
+kept inside the lead-lined bags and the number of X-rays should be recorded. 
+Early Destow / Early Return: N/A 
+Notes: N/A 
+Data Delivery: A final report containing analytical results of CPDs will be delivered to the Radiation Health Officer (RHO) 30 days 
+after the CPDs are received at the Space Radiation Dosimetry Laboratory (SRDL).  
+ 
+The RHO will submit a mission dosimetry and risk report to the Flight Surgeon and Medical Operations at R+ 60 
+days. If physical dosimetry data is not available within R+60, a preliminary report will be issued. Once physical 
+dosimetry data are received, a final report will be issued within 14 days of receipt. 
+Data Archives: Astronaut Radiation Exposure Assessment System (AREAS) (protected database). 
+ 
+PAGE 5
+ 
+MEDB 3.1 Radiation Monitoring/Crew Personal Dosimetry    
+Page 5 of 5 
+Approved 06/05/17                                                                                                                                                                                                                                                        Medical Requirements Integration  
+                                                                                                                                                                                                                                                                                   Documents (MRIDs) JSC28913 
+ 
+3.7 Summary Schedule 
+ 
+TABLE 3.7: SUMMARY SCHEDULE 
+ACTIVITY: DURATION: SCHEDULE: FLEXIBILITY: PERSONNEL 
+REQUIRED: 
+CONSTRAINTS: 
+Preflight Training: 
+EHS Radiation Operations   45 minutes L-19 months N/A Crew/ Instructors None 
+Preflight: N/A 
+In-Flight: 
+Crew Passive Dosimeter Continuous 
+monitoring  
+Worn continuously during 
+the mission, including 
+ascent and EVAs. 
+N/A All U.S. Crewmembers, 
+CSA and JAXA 
+crewmembers by 
+agreement 
+Continuous monitoring 
+Postflight: 
+Report containing analytical 
+results to RHO 
+N/A R+30 N/A SRDL personnel None 
+Mission Dosimetry and Risk 
+Report to Flight 
+Surgeon/Crew 
+N/A R+60 N/A RHO None 
+Postflight Debrief:  
+Debrief:  No extra time ~R+30 days N/A Crewmembers/Radiation 
+Team 
+Included as part of the Med 
+Ops overall debrief 
+ 
+
+FILE cl5yvqhsu2smu01o67lseef9a.pdf
+PAGE 1
+ 
+MEDB 3.2 Biodosimetry Testing (Occupational Monitoring)   MEDB 3.2 
+                                                                                       SLSDCR-SMCCB-07-007-R3 
+Page 1 of 5 
+Approved 5/26/99           Medical Requirements Integration 
+Revised 03/15/07   Documents (MRIDs) JSC28913 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: MMEEDDIICCAALL  RREEQQUUIIRREEMMEENNTTSS  OOVVEERRVVIIEEWW  
+MEDB# and Title: 
+ 
+MEDB 3.2 Biodosimetry Testing (Occupational Monitoring) 
+Sponsor: 
+ 
+Medical Operations 
+IPT: 
+ 
+Radiation 
+Category: 
+ 
+Medical Requirements  
+References: 
+ 
+SSP 50260 ISS Medical Operations Requirements Document (MORD) 
+SSP 50667 Medical Evaluations Document (MED) Volume B  
+Purpose/Objectives: 
+ 
+These results are used in conjunction with in-flight physical dosimetric measurements to characterize crew exposures.  In addition, these values 
+are used for validation and development of risk assessment models used to characterize excess risk incurred by crews due to radiation exposure 
+and to predict risk incurred in future flights for the purpose of mission design (EVA planning, etc.) 
+Measurement Parameters: 
+ 
+Lymphocyte chromosome aberration frequency, whole body radiation dose equivalent. 
+Deliverables: 
+ 
+Exposure records for occupational health determination, individual specific dose-response curves. 
+Flight Duration: 
+ 
+Flight of 2 months or more, or if predicted effective dose exceeds 10 rem 
+Number of Flights: 
+ 
+All 
+Number and Type of Crew 
+Members Required: 
+ISS crewmembers.   Each Partner agency is responsible for arranging testing for its crewmembers.  Back-up crew will only complete preflight 
+MATs greater than L-45 days unless specifically waived by crew surgeon.  If crew swap does occur, back-up crew will complete all preflight 
+MATs. 
+Other Flight Characteristics: 
+ 
+None 
+ 
+PAGE 2
+ 
+MEDB 3.2 Biodosimetry Testing (Occupational Monitoring)   MEDB 3.2 
+                                                                                       SLSDCR-SMCCB-07-007-R3 
+Page 2 of 5 
+Approved 5/26/99           Medical Requirements Integration 
+Revised 03/15/07   Documents (MRIDs) JSC28913 
+3.3  Preflight Training - None 
+ 
+3.4  Preflight Activities 
+ 
+TTAABBLLEE  33..44::  PPRREEFFLLIIGGHHTT  AACCTTIIVVIITTIIEESS  
+Preflight Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+Preflight samples will be collected on the primary and backup crewmember. One 25 ml blood sample is collected preflight to 
+develop an individual-specific baseline control.  Only the lymphocytes are required for analysis, thus the remainder of the sample 
+may be shared with other protocols.  The timing of the blood draws can be adjusted to coincide with other sample draws.  For U.S. 
+crewmembers launching or landing in Russia, a 180-day pre-launch window for preflight samples and 10-14 day postflight window 
+for samples has been allowed.  Maximum time between preflight sampling and launch should not exceed 180 days for any 
+crewmember. 
+Duration: 
+ 
+Schedule: Flexibility: Personnel Required: 
+Blood Sample Collection – 15 min 
+ 
+L-45/30 days Maximum time between sampling 
+and launch should not exceed 180 
+days for any crewmember. 
+Lab Personnel/ 
+Crewmember 
+Ground Support Requirements 
+Hardware/Software 
+ 
+Preflight Hardware: Preflight Software: Test Location: 
+ 
+Phlebotomy Hardware (will include 
+sodium-heparinized tubes into which the 
+sample will be drawn) 
+N/A U.S. (Testing is nominally conducted in 
+the U.S. but may be conducted at an 
+alternate site, if necessary) 
+Testing Facilities: Minimum Room Dimensions: Number of Electrical Outlets: Temperature Requirements: Special Lighting: 
+8' x 10' (typical exam room) 
+ 
+None Ambient N/A 
+Hot or Cold Running Water:  Privacy Requirements: Vibration/Acoustic Isolation: Other: 
+N/A 
+ 
+N/A N/A 1 table, 1 chair 
+Constraints/Special Requirements: N/A 
+Launch Delay Requirements: Data collection will be repeated if sampling done greater than L-180 days. 
+Notes: In the event that U.S. crewmembers are unable to return to JSC for sampling, provisions will be made to do the sampling at an 
+alternate site and to transport the sample back to JSC within 72 hrs of blood draw.  For the sample to remain viable, it must be kept 
+between 1 and 8 Co for entire transit period between the alternate site (Russia) and JSC. 
+Data Delivery: Data/Report to Designated Recipients (Nominal/Contingency): 
+A data analysis containing crewmembers chromosome exchange values from the preflight blood draw will be delivered to the 
+Radiation Health Officer (RHO) within 3 months of the blood draw.  The RHO will then provide a report to the crew surgeon 
+within 2 weeks.  Preflight results serve as baseline for the postflight sample. 
+  
+PAGE 3
+ 
+MEDB 3.2 Biodosimetry Testing (Occupational Monitoring)   MEDB 3.2 
+                                                                                       SLSDCR-SMCCB-07-007-R3 
+Page 3 of 5 
+Approved 5/26/99           Medical Requirements Integration 
+Revised 03/15/07   Documents (MRIDs) JSC28913 
+3.5 In-Flight Activities – None 
+PAGE 4
+ 
+MEDB 3.2 Biodosimetry Testing (Occupational Monitoring)   MEDB 3.2 
+                                                                                       SLSDCR-SMCCB-07-007-R3 
+Page 4 of 5 
+Approved 5/26/99           Medical Requirements Integration 
+Revised 03/15/07   Documents (MRIDs) JSC28913 
+3.6 Postflight Activities 
+ 
+TTAABBLLEE  33..66::  PPOOSSTTFFLLIIGGHHTT  AACCTTIIVVIITTIIEESS  
+Postflight Activity 
+Description: 
+ 
+ 
+ 
+Schedule: 
+A 15 ml blood sample is collected at R+10 days.  Postflight results are compared to preflight control to assess the whole body 
+exposure.  Only the lymphocytes are required for analysis, thus the remainder of the sample may be shared with other protocols.  
+The timing of the protocol can be adjusted to coincide with other sample draws.  For U.S. crewmembers launching or landing in 
+Russia, a 180-day pre-launch window for preflight samples and 10-14 day postflight window for samples has been allowed.   
+Duration: Schedule: Flexibility: Personnel Required: 
+Blood Sample Collection – 15 min R+7/14 days N/A Lab Personnel/Crewmember 
+Ground Support Requirements 
+Hardware/Software 
+ 
+Postflight Hardware: Postflight Software: Test Location: 
+Phlebotomy Hardware (will include sodium-
+heparinized tubes into which the sample will be drawn) 
+N/A U.S. (Testing is nominally conducted in the 
+U.S. but may be conducted at an alternate site, 
+if necessary) 
+Testing Facilities Minimum Room Dimensions: Number of Electrical Outlets: Temperature Requirements: Special Lighting: 
+8' x 10' (typical exam room) 
+ 
+None Ambient N/A 
+Hot or Cold Running Water: Privacy Requirements: Vibration/Acoustic Isolation: Other: 
+N/A 
+ 
+N/A N/A 1 table, 1 chair 
+Constraints/Special Requirements: N/A 
+Early Destow / Early Return: N/A 
+Notes: In the event that U.S. crewmembers are unable to return to JSC for sampling, provisions will be made to do the sampling at an 
+alternate site and to transport the sample back to JSC within 72 hrs. of blood draw.  For the sample to remain viable, it must be kept 
+between 1 and 8C° for entire transit period between the alternate site (Russia) and JSC. 
+Data Delivery Data/Report to Designated Recipients: Mission Summary Report: 
+A comparison of the analytical results of the pre & postflight 
+samples will be delivered to the RHO at approx. R+3 mo.  The RHO 
+will then provide a report to the crew surgeon within 2 weeks.  
+ 
+The RHO will submit a mission report containing mission 
+and accumulated mortality and cancer induction risks to the 
+crew surgeon and Medical Operations for archiving within 
+2 weeks.  
+PAGE 5
+ 
+MEDB 3.2 Biodosimetry Testing (Occupational Monitoring)   MEDB 3.2 
+                                                                                       SLSDCR-SMCCB-07-007-R3 
+Page 5 of 5 
+Approved 5/26/99           Medical Requirements Integration 
+Revised 03/15/07   Documents (MRIDs) JSC28913 
+3.7 Summary Schedule 
+ 
+TTAABBLLEE  33..77::  SSUUMMMMAARRYY  SSCCHHEEDDUULLEE  
+ACTIVITY DURATION SCHEDULE FLEXIBILITY BLOOD 
+VOLUME 
+PERSONNEL 
+REQUIRED 
+CONSTRAINTS 
+Preflight Training - None 
+Preflight 
+Blood Sample Collection 
+ 
+15 minutes L-45/30 days Maximum time 
+between pre-flight 
+sampling and launch 
+should not exceed 180 
+days for any 
+crewmember. 
+25 ml Lab Personnel/ 
+Crewmember 
+The timing of the protocol 
+can be adjusted to coincide 
+with other sample draws. 
+Each Partner agency is 
+responsible for arranging 
+biodosimetry testing for its 
+crewmembers. 
+In-Flight - None 
+Wheels-Stop - None 
+Postflight 
+Blood Sample Collection 
+ 
+15 minutes R+7/14 days N/A 15 ml Lab Personnel/ 
+Crewmember 
+The timing of the protocol 
+can be adjusted to coincide 
+with other sample draws. 
+Each Partner agency is 
+responsible for arranging 
+biodosimetry testing for its 
+crewmembers. 
+Postflight Debrief - None 
+ 
+
+FILE cl5yvqhsu2smz01o63a5sb3op.pdf
+PAGE 1
+MEDB 6.1 and 6.2   EVA Medical Monitoring                                                                
+Revised 07/25/2016                                                          Page 1 of 7     Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+ 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: 
+MEDICAL REQUIREMENTS OVERVIEW 
+MEDB# and Title: 
+ 
+ MEDB 6.1 and MEDB 6.2 EVA Medical Monitoring  
+Sponsor: 
+ 
+Medical Operations 
+Discipline: 
+ 
+Extravehicular Activity (EVA) 
+Category: 
+ 
+Medical Requirements (MR) 
+References: 
+ 
+SSP 50260 ISS Medical Operations Requirements Document (MORD),SSP 50667 Medical Evaluation Document (MED) Volume B 
+Purpose/Objectives: 
+ 
+To assess the medical health status of the EVA crewmembers pre/post EVA 
+Measurement Parameters: 
+ 
+Preflight: Neutral Buoyancy Lab (NBL) EVA training Metabolic Rates with Major Task Analysis (estimated) and In-Suit Light 
+Exercise (ISLE) Training. 
+In-flight, Pre- and Post EVA: Medical evaluation 
+In-flight, during EVA: Metabolic Rate (estimated), ECG and heart rate, suit pressure, suit CO2 partial pressure, radiation exposure, 
+body temp (Russian Orlan suit only). 
+Deliverables: 
+ 
+Preflight, NBL EVA training Metabolic Rates with Major Task Analysis (estimated) and ISLE Training data reported to the Crew 
+Surgeon, Biomedical Flight Controller (BME), and upon request, Flight Operation Directorate (FOD) leads, Extravehicular Mobility 
+Unit (EMU) Original Equipment Manufacturer (OEM) Systems Group leads and crewmember. Non-attributable data may also be 
+utilized in the EVA Physiology Lab (EPL) for reports, presentations, and publications supporting the Human Health and 
+Performance Directorate. Crew Surgeon will deliver a flight note to the Flight Director regarding crewmember readiness for EVA.    
+EPL will receive EVA heart rates and metabolic rates from BME. 
+Flight Duration: 
+ 
+  30 days 
+Number of Flights: 
+ 
+All ISS flights requiring an EVA 
+Number and Type of Crew 
+Members Required: 
+All long-duration EVA crewmembers 
+Other Flight 
+Characteristics: 
+ 
+N/A 
+ 
+ 
+ 
+PAGE 2
+MEDB 6.1 and 6.2   EVA Medical Monitoring                                                                
+Revised 07/25/2016                                                          Page 2 of 7     Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+ 
+3.3  Preflight Training 
+ 
+TABLE 3.3: PREFLIGHT TRAINING 
+Preflight Training Activity 
+Description: 
+ 
+ 
+ 
+Schedule: 
+Classes will be conducted to educate the EVA crew on medical monitoring required pre and post EVA.  
+Duration: Schedule: Flexibility: Personnel Required: 
+Experienced Crewmember: 
+CMO Skills I:                       2 hours 
+CMO Skills III:                     2 hours 
+ 
+L-15/12 months  
+ 
+ 
+ 
++/- 6 weeks 
+ 
+ 
+ 
+Johnson Space Center (JSC) 
+Instructors / CMOs 
+ 
+Inexperienced Crewmember: 
+CMO Skills I:                          3 hours 
+CMO Skills III:                        3 hours 
+ 
+Med. Evaluation of  
+Decompression Sickness:     1 hour 
+ 
+ 
+L-15/12 months 
+ 
+ 
+ 
+L-11 months 
+ 
+ 
++/- 6 weeks 
+ 
+ 
+ 
++/- 6 weeks 
+ 
+ 
+JSC Instructors / CMOs 
+ 
+ 
+ 
+JSC Instructors / EVA crew and 
+CMOs 
+Schedule: Russian medical  
+and hardware training:           2 hours 
+ Approx. L-6 months 
+ 
++/- 2 months 
+ 
+ 
+Gagarin Cosmonaut Training 
+Center (GCTC) Trainers / EVA 
+crew and CMOs 
+Ground Support Requirements 
+Hardware/Software 
+Preflight Hardware: Preflight Software: Test Location: 
+Station Support Computer (SSC) 
+ 
+SSC Data Collection Tool (DCT) 
+software  
+ 
+U.S. 
+ Urisys and accessories Russian medical & hardware training 
+will be scheduled by and trained by the 
+GCTC personnel in Star City 
+Russia 
+Training Facilities Minimum Room Dimensions: Number of Electrical 
+Outlets: 
+Temperature 
+Requirements: 
+Special Lighting: 
+Standard room, 8 ft. x 10 ft. 4 (U.S. 110V, Russia 220V) Normal, 20 – 25 C. Normal lighting 
+Hot or Cold Running Water: Privacy Requirements: Other: 
+Hot and cold water for hand 
+washing. 
+Private room required Enough chairs and tables to accommodate the crew 
+and instructors. 
+Constraints/Special Requirements: N/A 
+Launch Delay Requirements: Refresher training to be scheduled at Crew Surgeon request 
+Notes: Training procedures: 
+1. US Systems Operations Data File (SODF):  Med C/L (Medical Checklist), EVA (EVA Systems) 
+2. Russian Operations Data File (RODF): Service Module Medical Operations, Book 2 
+PAGE 3
+MEDB 6.1 and 6.2   EVA Medical Monitoring                                                                
+Revised 07/25/2016                                                          Page 3 of 7     Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+ 
+3.4 Preflight Activities 
+ 
+TABLE 3.4: PREFLIGHT ACTIVITIES 
+Preflight Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+Metabolic rate (estimated) of the crewmember will be recorded during a minimum of two training sessions in the NBL in 
+order to establish a baseline metabolic rate. This is a passive test that requires zero additional crew time during their 
+EVA training sessions.  Low, high, and average met rates for major EVA tasks will be determined. In addition, 
+decrement in O2 tank pressure will be calculated based on total O2 consumption for each major EVA task. If task 
+timeline is unavailable, 30-minute intervals will be used instead. The EPL is responsible for scheduling this session. 
+Duration: Schedule: Flexibility: Personnel Required: 
+Metabolic rate (estimated):      6 hours                During at least two NBL 
+training sessions per 
+crew member. 
+See schedule EPL personnel 
+EVA crewmember 
+Environmental Control 
+System Technician 
+Ground Support Requirements 
+Hardware/Software 
+ 
+Preflight Hardware: Preflight Software: Test Location: 
+AEI Technologies CO2 Analyzer 
+Laptop computer 
+Environmental Control System (ECS) 
+National Instruments Universal Bus 
+(USB) - 612 
+Data collection software using 
+LabVIEW (made by National 
+Instruments) 
+JSC / NBL 
+Testing Facilities Minimum Room 
+Dimensions: 
+Number of Electrical 
+Outlets: 
+Temperature Requirements: Special Lighting: 
+JSC NBL 
+Topside A or B 
+2 Normal N/A 
+Hot or Cold Running 
+Water: 
+Privacy Requirements: Vibration/Acoustic Isolation: Other: 
+N/A N/A N/A N/A 
+Constraints/Special Requirements: N/A 
+ Launch Delay Requirements: N/A 
+Notes: N/A 
+Data Delivery NBL EVA training metabolic rates and task analysis will be prepared and delivered to the Crew Surgeon and BME. L-
+3/1 month Cycle Ergometer test (MEDB 4.1) will be available on the SharePoint server.  Data will be delivered prior to 
+launch in order to compare with in flight EVA results. 
+ 
+PAGE 4
+MEDB 6.1 and 6.2   EVA Medical Monitoring                                                                
+Revised 07/25/2016                                                          Page 4 of 7     Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+ 
+3.5 In-Flight Activities 
+ 
+TABLE 3.5.1:  IN-FLIGHT ACTIVITIES 
+In-Flight Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+Pre- and Post EVA: Within 48 hours of suit donning and 24 hours of suit doffing the medical evaluation/Periodic Health Status 
+(PHS) will consist of a review of systems (ROS) by the expedition crew surgeon, a brief skin and extremity examination by the 
+CMO, and as clinically indicated urinalysis. 
+ 
+For Orlan only, and as part of nominal suit check-out on day of EVA, vital signs (Blood Pressure & temperature) and ECG-DS 
+will be done. 
+ 
+The crew surgeon may direct a specific medical exam based on ROS findings. 
+ During the EVA, the following measurements will be taken (real-time except for radiation exposure) MEDB 6.2:  
+ ECG  O2 consumption  Body temperature (Russian Orlan suit only) 
+ Heart rate  Suit CO2 partial pressure 
+ Suit pressure Radiation exposure 
+Activity: Duration: Schedule: Flexibility: Personnel Required: 
+Pre-EVA 
+Periodic Health 
+Status (PHS) 
+ 
+Setup:            10 minutes 
+Exam:            15 minutes/CM 
+CMO:               5 minutes/CM 
+Stow:             10 minutes        
+ 
+Within 48 hours of  
+suit donning 
+ 
+  48 hours 
+before EVA 
+ 
+Flight Surgeon (FS) + CMO + 
+EVA crew 
+ 
+ Post-EVA PHS 
+ 
+Setup:           10 minutes 
+Exam:           15 minutes/CM 
+CMO:              5 minutes/CM 
+Stow:            10 minutes 
+ 
+Within 24 hours  of 
+suit doffing 
+ 
+ 24 hours 
+after EVA 
+ 
+FS+ CMO + EVA crew 
+ 
+ EVA monitoring Up to 8 hours Every EVA N/A FS + EVA crew + Ground control 
+  
+PAGE 5
+MEDB 6.1 and 6.2   EVA Medical Monitoring                                                                
+Revised 07/25/2016                                                          Page 5 of 7     Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+ 
+Procedures: In-flight procedures can be found within these books:  
+US SODF: MED OPS, ISS MED CL (Medical Checklist)  
+RODF: Service Module Medical Operations Book 2 
+BME Console Handbook 
+Constraints / Special 
+Requirements: 
+ If requested, urinalysis should be performed and reported to Flight Surgeon on day of EVA. 
+ If a medical contingency occurs post EVA that is non-DCS related, schedule 1 additional hour for the PHS. 
+ EVA monitoring is performed per MEDB 6.2 
+ For double and triple EVAs, the pre and/or post EVA PHS exam may be waived, per surgeon discretion. 
+Photo / TV Requirements: N/A 
+Mission Extension 
+Requirements: 
+N/A 
+Data Delivery MEDB 6.1: In-flight PHS discrete values are recorded in the DCT and will be saved along with PHS Otoscope images on the 
+Station Support Computer (SSC) File Server. PHS data will be provided by the Med Ops Data Specialist to the Flight Surgeon 
+within 24 hours of receipt.  PHS data is archived within the Mission Extended Medical Enterprise (MEME) environment. 
+ 
+The ROS deliverable is included as part of the PMC [MEDB 1.3] in the Electronic Medical Record. 
+  
+ 
+MEDB 6.2:  ECG, heart rate, and metabolic rate data obtained during the EVA is processed by the Advanced ECG Monitoring 
+System (AEMS) and monitored real-time.  An ECG holter monitor report and summary of each EVA crewmember’s ECG data 
+is provided to the Flight Surgeon on console within 3 hours after every EVA or at designated time agreed upon by the Flight 
+Surgeon. Heart rate and metabolic rate logs are securely sent via the MEME network to the EPL after the conclusion of the 
+EVA.  ECG, heart rate, and metabolic rate data is archived on the MEME FTP server.     
+ 
+ 
+TABLE 3.5.2: IN-FLIGHT HARDWARE 
+ 
+Hardware/Software Name 
+Space Station Computer 
+(SSC) 
+Data Collection Tool (DCT) 
+Medical Diagnostic Pack 
+Medical Supply Pack 
+ 
+ 
+3.6 Postflight Activities – No Postflight Activities 
+PAGE 6
+MEDB 6.1 and 6.2   EVA Medical Monitoring                                                                
+Revised 07/25/2016                                                          Page 6 of 7     Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+ 
+3.7 Summary Schedule 
+ 
+TABLE 3.7: SUMMARY SCHEDULE 
+ACTIVITY DURATION SCHEDULE FLEXIBILITY PERSONNEL 
+REQUIRED 
+CONSTRAINTS 
+Preflight Training 
+Experienced Crewmember: 
+CMO Skills I:  
+CMO Skills III:  
+ 
+ 
+2 hours 
+ 
+ 
+ 
+L-15/12 months  
+ 
+ 
+ 
++/- 6 weeks 
+ 
+ 
+ 
+JSC Instructors / CMOs 
+ 
+ 
+ 
+N/A 
+Inexperienced Crewmember: 
+CMO Skills I:  
+CMO Skills III: 
+ 
+Med. Evaluation of  
+Decompression Sickness 
+ 
+ 
+3 hours 
+ 
+ 
+ 
+         1 hour 
+ 
+ 
+L-15/12 months 
+ 
+ 
+ 
+L-11 months 
+ 
+ 
++/- 6 weeks 
+ 
+ 
+ 
++/- 6 weeks 
+ 
+ 
+JSC Instructors / CMOs 
+ 
+ 
+ 
+JSC Instructors / EVA 
+crew and CMOs 
+ 
+N/A 
+Russian medical and 
+hardware training 
+ 
+2 hours 
+ 
+ 
+Approx. L-6 months 
+ 
+ 
++/- 2 months 
+ 
+ 
+GCTC Trainers / EVA 
+crew and CMOs 
+ 
+N/A 
+Preflight Activities 
+Preflight, NBL EVA training 
+Metabolic Rates with Major 
+Task Analysis (estimated) 
+6 hours During at least two 
+NBL sessions per 
+crewmember. 
+Schedules 
+permitting, data will 
+be collected for a 
+minimum of two 
+training sessions. If 
+either session 
+terminates early or 
+the data is 
+questionable, 
+another session will 
+be used to collect 
+data.  
+EPL personnel  
+EVA crewmember 
+Environmental Control 
+System Technician 
+ 
+ 
+N/A 
+ 
+PAGE 7
+MEDB 6.1 and 6.2   EVA Medical Monitoring                                                                
+Revised 07/25/2016                                                          Page 7 of 7     Medical Requirements Integration 
+Documents (MRIDs) JSC28913 
+ 
+ACTIVITY DURATION SCHEDULE FLEXIBILITY PERSONNEL 
+REQUIRED 
+CONSTRAINTS 
+In-Flight Activities 
+Pre-EVA Periodic 
+Health Status (PHS) 
+Setup:             10 minutes 
+Exam:             15 minutes/CM 
+CMO:                5 minutes/CM 
+Stow:              10 minutes 
+ 
+Within  48 
+hours of  suit 
+donning 
+ 
+   48 hours 
+before EVA 
+ 
+FS+ CMO + EVA crew If requested, urinalysis should be 
+performed and reported to Flight 
+Surgeon on day of EVA. If a medical 
+contingency occurs post EVA that is 
+non-DCS related, schedule 1 
+additional hour for the PHS. 
+EVA monitoring 
+(MEDB 6.2) 
+Up to 8 hours Every EVA N/A FS + EVA crew + Ground 
+Control 
+None 
+Post-EVA PHS 
+ 
+Setup:            10 minutes 
+Exam:            15 minutes/CM      
+CMO:               5 minutes/CM 
+Stow:             10 minutes 
+ 
+Within 24 hours  
+of  suit doffing 
+ 
+ 24 hours after 
+EVA 
+ 
+FS+ CMO + EVA crew + 
+Ground control 
+ 
+If a medical contingency occurs post 
+EVA that is non-DCS related, 
+schedule 1 hour additional for the 
+PHS. 
+Postflight Activities – N/A 
+ 
+
+FILE cl5yvqhsv2sn901o6h0nsf1lg (1).pdf
+PAGE 1
+ 
+MEDB N3.04 Biodosimetry   
+Page 1 of 4 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                       Documents (MRIDs) JSC28913 
+3.2  Medical Requirements Overview 
+ 
+TABLE 3.2: 
+MEDICAL REQUIREMENTS OVERVIEW 
+MEDB# and Title: 
+ 
+MEDB N3.04 Biodosimetry  
+Sponsor: 
+ 
+Medical Operations 
+Discipline: 
+ 
+Radiation 
+Category: 
+ 
+Medical Requirements  
+References: 
+ 
+SSP 50260 ISS Medical Operations Requirements Document (MORD) 
+SSP 50667 Medical Evaluations Document (MED) Volume B  
+Purpose/Objectives: 
+ 
+If requested to be analyzed, these results will be used in conjunction with in-flight physical dosimetric measurements to 
+characterize crew exposures and   may be used for validation and development of risk assessment models used to characterize 
+excess risk incurred by crews due to radiation exposure and to predict risk incurred in future flights for the purpose of mission 
+design (EVA planning, etc.) 
+Measurement Parameters: 
+ 
+Lymphocyte chromosome aberration frequency, whole body radiation dose equivalent. 
+Deliverables: 
+ 
+Exposure records for occupational health determination, individual specific dose-response curves. 
+Flight Duration: 
+ 
+Flight of 2 months or more, or if predicted effective dose exceeds 10 rem. 
+Number of Flights: 
+ 
+Every ISS Increment, as requested 
+Number and Type of Crew 
+Members Required: 
+ISS crewmembers. Each Partner agency is responsible for arranging testing for its crewmembers. 
+Other Flight 
+Characteristics: 
+ 
+None 
+ 
+PAGE 2
+ 
+MEDB N3.04 Biodosimetry   
+Page 2 of 4 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                       Documents (MRIDs) JSC28913 
+3.3  Preflight Training - None 
+ 
+3.4  Preflight Activities 
+ 
+TABLE 3.4: PREFLIGHT ACTIVITIES 
+Preflight Activity 
+Description: 
+ 
+ 
+ 
+ 
+ 
+Schedule: 
+Preflight samples will be collected on the primary crewmember. One 25 ml blood sample is collected preflight to develop 
+an individual-specific baseline control. Only the lymphocytes are required for analysis, thus the remainder of the sample 
+may be shared with other protocols. The timing of the blood draws can be adjusted to coincide with other sample draws. 
+Duration:  Schedule: Flexibility: Blood Volume: Personnel Required: 
+Blood Sample Collection:     15 minutes 
+(completed during nominal Baseline 
+Data Collection activity) 
+ 
+ 
+L-3 months Maximum time 
+between sampling 
+and launch should 
+not exceed 180 
+days for any 
+crewmember. 
+25 ml Lab Personnel/ 
+Crewmember 
+Ground Support Requirements: 
+Hardware/Software 
+Preflight Hardware: Preflight Software: Test Location:  
+Phlebotomy Hardware (will include 
+sodium-heparinized tubes into which 
+the sample will be drawn) 
+N/A U.S. (Testing is 
+nominally conducted in 
+the U.S. but may be 
+conducted at an 
+alternate site, if 
+necessary) 
+Testing Facilities: Minimum Room Dimensions: Number of Electrical 
+Outlets: 
+Temperature Requirements: Special Lighting: 
+8' x 10' (typical exam room)  None Ambient N/A 
+Hot or Cold Running Water:  Privacy Requirements: Vibration/Acoustic Isolation: Other: 
+N/A N/A N/A 1 table, 1 chair 
+Constraints/Special 
+Requirements: 
+N/A 
+Launch Delay Requirements: Data collection will be repeated if sampling done greater than L-180 days. 
+Notes: In the event that U.S. crewmembers are unable to return to JSC for sampling, provisions will be made to do the sampling 
+at an alternate site and to transport the sample back to JSC within 72 hours of blood draw. For the sample to remain 
+viable, it must be kept between 1 and 8 C for entire transit period between the alternate site (Russia) and JSC. 
+Data Delivery: None.  Blood samples stored for future analysis. 
+ 
+3.5 In-Flight Activities – None 
+PAGE 3
+ 
+MEDB N3.04 Biodosimetry   
+Page 3 of 4 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                       Documents (MRIDs) JSC28913 
+3.6 Postflight Activities 
+ 
+TABLE 3.6: POSTFLIGHT ACTIVITIES 
+Postflight Activity 
+Description: 
+ 
+ 
+ 
+Schedule: 
+A 15 ml blood sample is collected at R+14/25 days. Postflight results are compared to preflight control to assess the whole 
+body exposure. Only the lymphocytes are required for analysis, thus the remainder of the sample may be shared with 
+other protocols. The timing of the protocol can be adjusted to coincide with other sample draws.   
+Duration: Schedule: Flexibility: Blood 
+Volume: 
+Personnel Required: 
+Blood Sample Collection:      15 minutes 
+(completed during nominal Baseline Data 
+Collection activity) 
+R+ 14/25 days, 
+R+ 6/18 
+months 
+N/A 15 ml Lab 
+Personnel/Crewmember 
+Ground Support Requirements: 
+Hardware/Software 
+ 
+Postflight Hardware: Postflight Software: Test Location: 
+Phlebotomy Hardware (will include 
+sodium-heparinized tubes into which the 
+sample will be drawn) 
+N/A U.S. (Testing is nominally conducted in the 
+U.S. but may be conducted at an alternate 
+site, if necessary) 
+Testing Facilities: Minimum Room Dimensions: Number of Electrical 
+Outlets: 
+Temperature Requirements: Special Lighting: 
+8' x 10' (typical exam room) None Ambient N/A 
+Hot or Cold Running Water: Privacy Requirements: Vibration/Acoustic Isolation: Other: 
+N/A N/A N/A 1 table, 1 chair 
+Constraints/Special 
+Requirements: 
+N/A 
+Early Destow / Early Return: N/A 
+Notes: In the event that U.S. crewmembers are unable to return to JSC for sampling, provisions will be made to do the sampling 
+at an alternate site and to transport the sample back to JSC within 72 hours of blood draw. For the sample to remain 
+viable, it must be kept between 1 and 8 C for entire transit period between the alternate site (Russia) and JSC. 
+Data Delivery: None.  Blood samples stored for future analysis. 
+PAGE 4
+ 
+MEDB N3.04 Biodosimetry   
+Page 4 of 4 
+     Medical Requirements Integration 
+Revised 06/05/2017                                                                                                                                                                                                                                                       Documents (MRIDs) JSC28913 
+ 
+3.7 Summary Schedule 
+ 
+TABLE 3.7: SUMMARY SCHEDULE 
+ACTIVITY: DURATION: SCHEDULE: FLEXIBILITY: BLOOD 
+VOLUME: 
+PERSONNEL 
+REQUIRED: 
+CONSTRAINTS: 
+Preflight Training: N/A 
+Preflight: 
+Blood Sample 
+Collection 
+ 
+15 minutes  L-3 months Maximum time 
+between pre-flight 
+sampling and 
+launch should not 
+exceed 180 days for 
+any crewmember. 
+25 ml Lab Personnel/ 
+Crewmember 
+The timing of the 
+protocol can be adjusted 
+to coincide with other 
+sample draws. 
+Each Partner agency is 
+responsible for arranging 
+biodosimetry testing for 
+its crewmembers. 
+In-Flight: N/A 
+Postflight: 
+Blood Sample 
+Collection 
+ 
+15 minutes R+ 14/25 days, 
+R+ 6/18 months 
+N/A 15 ml Lab Personnel/ 
+Crewmember 
+The timing of the 
+protocol can be adjusted 
+to coincide with other 
+sample draws. 
+Each Partner agency is 
+responsible for arranging 
+biodosimetry testing for 
+its crewmembers. 
+Postflight Debrief: N/A 
+ 

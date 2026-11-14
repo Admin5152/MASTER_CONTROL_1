@@ -31,7 +31,7 @@ from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
 from brain.contract import ContractError  # noqa: E402
-from brain.radiation import SpaceWeather, storm_dose_step  # noqa: E402
+from brain.radiation import SpaceWeather, storm_dose_step, feed_freshness  # noqa: E402
 from brain.store import Store  # noqa: E402
 from systems import speaker  # noqa: E402
 from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
@@ -63,11 +63,7 @@ def apply_spaceweather(data: dict) -> None:
     """Set each crew member's storm level from NOAA unless a storm scenario is driving it."""
     if scenarios.storm is not None:
         return
-    src = "live_feed" if data["source"] == "live" else "model"
-    for cid, s in store.states.items():
-        r = s["radiation"]
-        if r["storm_level"] != data["level"] or r["source"] != src:
-            store.patch(cid, {"radiation": {"storm_level": int(data["level"]), "source": src}}, record=False)
+    store.apply_radiation_feed(data)
 
 
 async def spaceweather_loop():
@@ -101,6 +97,7 @@ async def lifespan(app: FastAPI):
         tasks.append(asyncio.create_task(spaceweather_loop()))
     else:
         spaceweather.latest = spaceweather._cached_or_snapshot()
+        apply_spaceweather(spaceweather.latest)
     tasks.append(asyncio.create_task(storm_dose_loop()))
     if os.getenv("SENTINEL_NO_WARM") != "1":
         # load Kokoro once in the background and warm it with one short sentence (fallback voice ready)
@@ -347,6 +344,7 @@ async def get_spaceweather():
         loop = asyncio.get_running_loop()
         data = await loop.run_in_executor(None, spaceweather.get)
     out = {k: v for k, v in data.items()}
+    out.update(feed_freshness(data))
     if scenarios.storm is not None:
         out["scenario"] = scenarios.storm
     return out
@@ -367,3 +365,9 @@ def advance_clock(body: dict = Body(...)):
 
 app.mount("/app", StaticFiles(directory=ROOT / "app", html=True), name="app")
 app.mount("/shared", StaticFiles(directory=ROOT / "shared"), name="shared")
+
+
+@app.get("/api/radiation/events")
+async def radiation_events():
+    with store.lock:
+        return {"events": list(store.radiation_events)}

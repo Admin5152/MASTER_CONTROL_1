@@ -8,6 +8,8 @@ Offline fallback: the saved copies in shared/.
 from __future__ import annotations
 
 import json
+import datetime as dt
+import math
 import time
 from pathlib import Path
 
@@ -42,7 +44,7 @@ def parse_protons(rows: list) -> dict:
             continue
         f = r.get("flux")
         t = r.get("time_tag")
-        if isinstance(f, (int, float)) and t:
+        if isinstance(f, (int, float)) and not isinstance(f, bool) and math.isfinite(f) and f >= 0 and isinstance(t, str) and t:
             series.append({"t": t, "flux": float(f)})
     series.sort(key=lambda p: p["t"])
     latest = series[-1] if series else None
@@ -66,14 +68,28 @@ def parse_scales(obj: dict) -> dict:
 
 
 def load_snapshot() -> dict:
-    protons = json.loads((SHARED / "swpc_protons_1day.json").read_text(encoding="utf-8"))
-    scales = json.loads((SHARED / "swpc_noaa_scales.json").read_text(encoding="utf-8"))
+    raw = json.loads((SHARED / "radiation_snapshot.json").read_text(encoding="utf-8"))
+    protons, scales = raw["protons"], raw["scales"]
     return combine(parse_protons(protons), parse_scales(scales), "snapshot")
+
+
+def feed_freshness(data: dict, now: float | None = None) -> dict:
+    """Age refers to the measurement time, never the cache-read time."""
+    now = time.time() if now is None else now
+    try:
+        stamp = dt.datetime.fromisoformat(str(data.get("time", "")).replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=dt.timezone.utc)
+        age = max(0.0, now - stamp.timestamp())
+    except (ValueError, TypeError, OverflowError):
+        age = None
+    return {"age_seconds": age, "stale": age is None or age > 900,
+            "feed_status": "stale" if age is None or age > 900 else data.get("source", "snapshot")}
 
 
 def combine(p: dict, s: dict, source: str) -> dict:
     level = max(p["level"], s["s_scale"] or 0)
-    return {
+    data = {
         "source": source,
         "level": level,
         "flux_level": p["level"],
@@ -82,7 +98,11 @@ def combine(p: dict, s: dict, source: str) -> dict:
         "time": p["time"] or s["time"],
         "series": p["series"],
         "fetched": time.time(),
+        "label": "SIM",
+        "confidence": 1,
     }
+    data.update(feed_freshness(data))
+    return data
 
 
 class SpaceWeather:
@@ -125,7 +145,10 @@ class SpaceWeather:
         if f.exists():
             try:
                 raw = json.loads(f.read_text())
-                return combine(parse_protons(raw["protons"]), parse_scales(raw["scales"]), "snapshot")
+                data = combine(parse_protons(raw["protons"]), parse_scales(raw["scales"]), "snapshot")
+                if not data["series"]:
+                    raise ValueError("empty cached series")
+                return data
             except (OSError, ValueError, KeyError):
                 pass
         return load_snapshot()
@@ -158,6 +181,8 @@ def storm_dose_step(level: int, seconds: float, sheltered: bool, thresholds: dic
 
     time_scale: one real second counts as this many mission seconds (demo speed-up, 60 = 1 s per minute).
     """
+    if seconds < 0 or time_scale < 0:
+        raise ValueError("elapsed time must be nonnegative")
     per_hour = float(thresholds["radiation"]["storm_extra_msv_hour"]["by_level"].get(str(level), 0))
     unshielded = per_hour * seconds * time_scale / 3600.0
     if not sheltered:

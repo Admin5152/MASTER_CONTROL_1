@@ -1,0 +1,42 @@
+{
+  "id": "radiation_shelter_demo",
+  "label": "SIM",
+  "confidence": 1,
+  "demoDefault": true,
+  "trigger": {
+    "storm_level_gte": 3
+  },
+  "source": "Radiation Awareness RAD-3 and RAD-4; mission operations must approve operational procedures",
+  "checklist": [
+    "Follow mission radiation operations guidance.",
+    "Move to the designated shelter and log entry time.",
+    "Await clearance from the mission radiation operations team."
+  ],
+  "evidence": [
+    {
+      "mrid": "MR004L",
+      "file": "dataset/cl5yvqhsv2snf01o6bh09ba10.pdf",
+      "pages": [
+        1
+      ],
+      "supports": "Location-specific area dosimetry and accumulated exposure records."
+    },
+    {
+      "mrid": "MR005L",
+      "file": "dataset/cl5yvqhsv2snl01o60mwu9p6r.pdf",
+      "pages": [
+        4
+      ],
+      "supports": "Continuous tissue dose and dose-equivalent monitoring; contingency alarms and SRAG review. Does not establish this app shelter threshold."
+    },
+    {
+      "mrid": "MR092L",
+      "file": "dataset/cl5yvqkq12spn01o63cg21vbx.pdf",
+      "pages": [
+        4
+      ],
+      "supports": "Minute-by-minute cyclic telemetry and SRAG operational review."
+    }
+  ],
+  "note": "S3 trigger and shelter checklist are demo defaults, not extracted NASA flight rules. NOAA near-Earth flux does not measure a crew member dose or regional Mars/Moon radiation."
+}

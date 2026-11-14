@@ -58,10 +58,10 @@ def test_store_cumulative_matches_model(store):
     assert s["radiation"]["dose_rate_msv_day"] == rate
 
 
-def test_storm_s2_unsheltered_flags_radiation_sheltered_does_not(store):
-    s = store.patch("james", {"radiation": {"storm_level": 2, "sheltered": False}})
+def test_storm_s3_unsheltered_flags_radiation_sheltered_does_not(store):
+    s = store.patch("james", {"radiation": {"storm_level": 3, "sheltered": False}})
     assert s["action"]["type"] == "flag_radiation"
-    s = store.patch("james", {"radiation": {"storm_level": 2, "sheltered": True}})
+    s = store.patch("james", {"radiation": {"storm_level": 3, "sheltered": True}})
     assert s["action"]["type"] != "flag_radiation"
 
 
@@ -69,3 +69,96 @@ def test_shelter_halves_storm_dose():
     rec, av = storm_dose_step(3, 60, False, TH)
     rec2, av2 = storm_dose_step(3, 60, True, TH)
     assert av == 0 and abs(rec2 - rec * 0.5) < 1e-9 and abs(av2 - rec * 0.5) < 1e-9
+
+
+def test_feed_cycle_transitions_and_metadata(store):
+    for level, expected in [(0, "quiet"), (1, "elevated"), (3, "storm"), (0, "quiet")]:
+        store.apply_radiation_feed({"level": level, "source": "snapshot"})
+        r = store.get("james")["radiation"]
+        assert r["event_level"] == expected
+        assert r["shelter_status"] == (level >= 3)
+        assert r["label"] == "SIM" and r["confidence"] == 1
+    events = [e for e in store.radiation_events if e["payload"]["crewId"] == "james"]
+    assert sum(e["event"] == "radiation.updated" for e in events) == 4
+    assert sum(e["event"] == "radiation.alert" for e in events) == 2
+    assert any(e["event"] == "shelter.advised" for e in events)
+    assert any(e["event"] == "radiation.resolved" for e in events)
+    assert any(e["event"] == "shelter.cleared" for e in events)
+
+
+def test_readings_reject_missing_or_invalid_metadata(store):
+    import pytest
+    from brain.contract import ContractError
+    for patch in [{"cumulative_msv": 2}, {"dose_rate_usv_h": 1, "label": "LIVE", "confidence": 1},
+                  {"event_level": "storm", "label": "SIM", "confidence": 0.5}]:
+        with pytest.raises(ContractError):
+            store.patch("james", {"radiation": patch})
+
+
+def test_negative_or_nonfinite_flux_is_ignored():
+    rows = [{"energy": ">=10 MeV", "time_tag": "2026-01-01", "flux": v}
+            for v in [-1, float("nan"), float("inf"), True]]
+    assert parse_protons(rows)["series"] == []
+
+
+def test_shielding_controls_current_rate(store):
+    store.apply_radiation_feed({"level": 3, "source": "snapshot"})
+    before = store.get("james")["radiation"]["dose_rate_usv_h"]
+    after = store.patch("james", {"radiation": {"shielding_factor": 0.25}})["radiation"]
+    assert after["dose_rate_usv_h"] == before * 0.25
+
+
+def test_storm_dose_accumulates_monotonically(store):
+    before = store.get("james")["radiation"]["cumulative_msv"]
+    for _ in range(3):
+        received, avoided = storm_dose_step(3, 60, True, TH, time_scale=1)
+        store.add_storm_dose_for("james", received, avoided)
+        current = store.get("james")["radiation"]["cumulative_msv"]
+        assert current >= before
+        before = current
+
+def test_feed_integrates_elapsed_time_and_marks_history(store, monkeypatch):
+    import brain.store as module
+    now = [1000.0]
+    monkeypatch.setattr(module.time, "time", lambda: now[0])
+    store.apply_radiation_feed({"level": 0, "source": "snapshot"})
+    before = store.get("james")["radiation"]["cumulative_msv"]
+    now[0] += 3600
+    store.apply_radiation_feed({"level": 0, "source": "snapshot"})
+    assert store.get("james")["radiation"]["cumulative_msv"] > before
+    point = store.history_for("james", "radiation.dose_rate_usv_h")[-1]
+    assert point["label"] == "SIM" and point["confidence"] == 1
+
+
+def test_radiation_event_endpoint(client):
+    import server
+    server.store.apply_radiation_feed({"level": 3, "source": "snapshot"})
+    events = client.get("/api/radiation/events").json()["events"]
+    assert any(e["event"] == "shelter.advised" for e in events)
+
+
+def test_surface_location_contract(store):
+    import pytest
+    from brain.contract import ContractError
+    loc = {"latitude": -4.5895, "longitude": 137.4417, "source": "sim", "updated": ""}
+    state = store.patch("james", {"radiation": {"mission_profile": "mars_surface", "location": loc}})
+    assert state["radiation"]["location"] == loc
+    for key, value in [("latitude", 91), ("longitude", 181), ("latitude", "north")]:
+        with pytest.raises(ContractError):
+            store.patch("james", {"radiation": {"location": {key: value}}})
+
+
+
+def test_feed_freshness_uses_measurement_timestamp():
+    from brain.radiation import feed_freshness
+    data = {"time": "2026-01-01T00:00:00Z", "source": "live"}
+    assert not feed_freshness(data, 1767225600 + 60)["stale"]
+    assert feed_freshness(data, 1767225600 + 901)["stale"]
+    assert feed_freshness({"time": "invalid"})["stale"]
+
+
+def test_shelter_clears_when_storm_drops_to_elevated(store):
+    store.apply_radiation_feed({"level": 3, "source": "snapshot"})
+    store.apply_radiation_feed({"level": 1, "source": "snapshot"})
+    assert not store.get("james")["radiation"]["shelter_status"]
+    assert any(e["event"] == "shelter.cleared" for e in store.radiation_events)
