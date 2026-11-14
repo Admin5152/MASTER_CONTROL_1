@@ -43,7 +43,23 @@ if (-not $SkipSpeaker) {
     }
 }
 
-# 3. Serve
+# 3. One server per port: stop whatever is still listening there (a stale server from yesterday serves old
+#    code and was the cause of "no voice reply"), then start fresh.
+function Stop-Port([int]$port) {
+    $pids = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique)
+    foreach ($p in $pids) {
+        if ($p -and $p -ne $PID) {
+            $name = (Get-Process -Id $p -ErrorAction SilentlyContinue).ProcessName
+            Write-Host "  Port $port was in use by $name (PID $p): stopping it." -ForegroundColor Yellow
+            Stop-Process -Id $p -Force -ErrorAction SilentlyContinue
+        }
+    }
+    if ($pids.Count) { Start-Sleep -Milliseconds 800; Write-Host "  Server restarted on port $port with the current code." -ForegroundColor Green }
+}
+$servePort = if ($Http) { 8000 } else { 8443 }
+Stop-Port $servePort
+
+# 4. Serve
 if ($Http) {
     $url = "http://localhost:8000/app/"
     $env:SENTINEL_TABLET_URL = "(tablet needs HTTPS: run without -Http)"

@@ -224,3 +224,4 @@ body[data-organ] .zone { display: none; }
 body[data-organ="heart"] #zone-heart, body[data-organ="lungs"] #zone-lungs, body[data-organ="head"] #zone-head,
 body[data-organ="eyes"] #zone-eyes, body[data-organ="gut"] #zone-gut, body[data-organ="bones"] #zone-bones { display: grid; }
 .callout { scrollbar-width: none; } .callout::-webkit-scrollbar { display: none; }
+.notice { position: fixed; z-index: calc(var(--z-sheet) + 2); top: calc(var(--top-h) + env(safe-area-inset-top) + 8px); right: var(--gutter); margin: 0; padding: 8px 14px; border-radius: var(--radius-pill); background: var(--watch-soft); color: var(--watch-ink); border: 1px solid var(--watch); font-size: var(--fs-xs); font-weight: var(--fw-medium); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }

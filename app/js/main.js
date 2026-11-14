@@ -159,6 +159,8 @@ async function mountApp() {
   ctx.screens = screens;
   ctx.say = say;
   ctx.setVoice = (v) => voiceMod.setVoice(v);
+  ctx.testVoice = () => voiceMod.testVoice();
+  ctx.voiceState = () => ({ ...voiceMod.voice, ctx: audioContext()?.state });
   ctx.setTheme = (t) => {
     const light = t === "light";
     if (light) document.documentElement.dataset.theme = "light"; else delete document.documentElement.dataset.theme;
@@ -389,6 +391,7 @@ function wireVoice() {
   on("voice:speaking-start", () => { orb.setState("speaking"); stages.setOrbBig(true); });
   on("voice:speaking-end", () => { orb.setState("idle"); orb.setSpeakLevel(0); stages.setOrbBig(false); });
   on("voice:status", (t) => note(t));
+  on("voice:notice", (t) => showNotice(t));
   on("voice:sentence", (t) => caption(t, speakingSource));
 }
 
@@ -462,6 +465,18 @@ function logLine(who, text, source) {
 
 function note(t) { caption(t, ""); }
 
+/** A small, visible, self-clearing notice (voice or brain trouble). The reason is in the console. */
+let noticeT = null;
+function showNotice(text) {
+  const n = $("notice");
+  n.textContent = text;
+  n.hidden = false;
+  window.gsap?.fromTo(n, { opacity: 0, y: -6 }, { opacity: 1, y: 0, duration: 0.3 });
+  clearTimeout(noticeT);
+  noticeT = setTimeout(() => { n.hidden = true; }, 6000);
+}
+ctx.showNotice = showNotice;
+
 // ---------- commands ----------
 async function handleCommand(text, meta = {}) {
   if (meta.heard) logLine("You", meta.via === "typed" ? text : meta.heard);
@@ -501,6 +516,7 @@ async function handleCommand(text, meta = {}) {
     else if (firstTime && stages.current === "assistant") setTimeout(() => { if (!director.busy && stages.current === "assistant" && !voiceMod.voice.capturing) stages.go("mission"); }, 9000);
   } catch {
     emit("voice:thinking", false);
+    showNotice("Brain unavailable, using local answers");
     say("The brain is offline. I can still open screens and run the scan.", { source: "local" });
   }
 }

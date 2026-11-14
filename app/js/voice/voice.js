@@ -8,7 +8,7 @@
 // played through Web Audio so the orb follows the real audio level; browser speech is the last fallback.
 // Listening pauses while Sentinel speaks so it never hears itself.
 import { emit } from "../core/bus.js";
-import { audioContext } from "../core/sound.js";
+import { audioContext, unlockAudio } from "../core/sound.js";
 import { matchWake } from "./wake.js";
 import { medianPitch, rms, talkTime } from "./pitch.js";
 import { encodeWav, resample } from "./wav.js";
@@ -26,7 +26,20 @@ export const voice = {
   status: "",
   sttSource: "",
   ttsSource: "",
+  playing: false,                 // a Web Audio source is playing Sentinel's voice right now
+  lastError: "",
 };
+
+/** A small visible notice when the voice fails, at most once every 30 s; the reason goes to the console. */
+let lastNotice = 0;
+function voiceProblem(what, detail) {
+  voice.lastError = `${what}: ${detail}`;
+  console.warn(`[sentinel voice] ${what}: ${detail}`);
+  if (Date.now() - lastNotice > 30000) {
+    lastNotice = Date.now();
+    emit("voice:notice", "Voice unavailable, showing text");
+  }
+}
 
 let onCommand = () => {};
 let onUtteranceAudio = () => {};
@@ -79,23 +92,41 @@ if ("speechSynthesis" in window) { pickBrowserVoice(); speechSynthesis.onvoicesc
 
 /** Unlock audio and browser speech on a user gesture (tablets block both otherwise). */
 export function unlockSpeech() {
+  unlockAudio();
   outChain();
   try { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } catch { /* no browser speech */ }
 }
 
-async function fetchAudio(text, myGen) {
+/** One /api/tts request, decoded. Throws with the HTTP status or the decode error so the caller can log it. */
+async function ttsOnce(text, engine) {
   const ctx = outChain();
-  if (!ctx) return null;
+  if (!ctx) throw new Error("no Web Audio");
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 9000);
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 9000);
-    const r = await fetch("../api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, voice: voiceId }), signal: ctrl.signal });
-    clearTimeout(t);
-    if (!r.ok || myGen !== gen) return null;
-    voice.ttsSource = r.headers.get("X-TTS-Source") || "";
-    const ab = await r.arrayBuffer();
-    return await ctx.decodeAudioData(ab);
-  } catch { return null; }
+    const r = await fetch("../api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, voice: voiceId, engine }), signal: ctrl.signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const source = r.headers.get("X-TTS-Source") || engine;
+    const buf = await ctx.decodeAudioData(await r.arrayBuffer());
+    return { buf, source };
+  } finally { clearTimeout(t); }
+}
+
+/** The voice chain: the server's first choice (ElevenLabs, or Kokoro if that fails there), then Kokoro
+ *  explicitly, then null (the caller uses browser speech). Every failure is logged with its status. */
+async function fetchAudio(text, myGen) {
+  for (const engine of ["auto", "kokoro"]) {
+    if (myGen !== gen) return null;
+    try {
+      const { buf, source } = await ttsOnce(text, engine);
+      voice.ttsSource = source;
+      emit("voice:engine", source);
+      return buf;
+    } catch (e) {
+      voiceProblem(`/api/tts (${engine})`, e.name === "AbortError" ? "timed out" : e.message);
+    }
+  }
+  return null;
 }
 
 function browserSay(text) {
@@ -132,13 +163,17 @@ async function pump() {
       src.buffer = buffer;
       src.connect(outGain);
       playing = { src, job };
-      src.onended = res;
+      voice.playing = true;
+      src.onended = () => { voice.playing = false; res(); };
       startLevel();
       src.start();
+      // a context that is still suspended plays nothing and never ends: say so and fall through to text
+      setTimeout(() => { if (ctx.state !== "running" && playing?.src === src) { voiceProblem("audio output", `AudioContext ${ctx.state}`); voice.playing = false; res(); } }, 1500);
     });
   } else {
     playing = { src: null, job };
     emit("voice:speak-level", 0.35);
+    emit("voice:engine", "browser");
     await browserSay(job.text);
   }
   playing = null;
@@ -178,6 +213,7 @@ export function stopSpeaking() {
   const q = queue; queue = [];
   q.forEach((j) => j.resolve());
   if (playing?.src) { try { playing.src.onended = null; playing.src.stop(); } catch { /* already stopped */ } }
+  voice.playing = false;
   if (playing) { playing.job.resolve(); playing = null; }
   try { speechSynthesis.cancel(); } catch { /* no browser speech */ }
   finishSpeaking();
@@ -389,4 +425,15 @@ export async function recordClip(seconds = 10, onProgress) {
     }, 200);
   });
   return slice(from, written) || { samples: new Float32Array(0), rate: ringRate };
+}
+
+/** Settings: speak one short (cached) line and report which engine played it. */
+export async function testVoice() {
+  stopSpeaking();
+  const myGen = gen;
+  const buf = await fetchAudio("Voice check. This is Sentinel.", myGen);
+  if (!buf) { await speak("Voice check. This is Sentinel."); return { engine: "browser", ok: "speechSynthesis" in window }; }
+  const engine = voice.ttsSource;
+  await new Promise((resolve) => { queue.push({ text: "Voice check. This is Sentinel.", audio: Promise.resolve(buf), resolve }); pump(); });
+  return { engine, ok: true };
 }

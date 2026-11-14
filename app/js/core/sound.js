@@ -12,6 +12,26 @@ export function audioContext() {
   return ctx;
 }
 
+/** Unlock audio on a user gesture: resume the context and play one silent buffer (iOS and Android tablets
+ *  keep a context suspended until something plays inside a gesture). Also keeps it unlocked: every later
+ *  tap or key press resumes it, because tablets suspend it again in the background. */
+export function unlockAudio() {
+  const c = audioContext();
+  if (!c) return null;
+  try {
+    const b = c.createBuffer(1, 1, 22050);
+    const s = c.createBufferSource();
+    s.buffer = b; s.connect(c.destination); s.start(0);
+  } catch { /* nothing to unlock */ }
+  if (!unlockAudio.bound) {
+    unlockAudio.bound = true;
+    const wake = () => { if (ctx && ctx.state !== "running") ctx.resume().catch(() => {}); };
+    for (const ev of ["pointerdown", "keydown", "touchend"]) document.addEventListener(ev, wake, { capture: true, passive: true });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") wake(); });
+  }
+  return c;
+}
+
 export function setMuted(m) { muted = m; if (m) stopAlarm(); }
 export function isMuted() { return muted; }
 

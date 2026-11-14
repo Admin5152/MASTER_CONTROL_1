@@ -290,7 +290,7 @@ function renderSettings(el, ctx) {
     <h3>Camera</h3><div class="field"><select data-cam><option value="">Default (built-in)</option></select><span class="hint">Used for the face scan and the camera pulse. Remembered in this browser.</span></div>
     <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
     <h3>Sentinel's voice</h3><div class="field"><select data-voice></select><span class="hint" data-voice-note></span></div>
-    <p style="margin-top:var(--s-3)"><button class="pill pill-ghost" type="button" data-test-voice>Play a sample</button></p>
+    <p style="margin-top:var(--s-3)"><button class="pill pill-ghost" type="button" data-test-voice>Test voice</button> <span class="note" data-voice-res aria-live="polite"></span></p>
     <h3>Listening</h3>
     <div class="mood-row"><button type="button" data-listen="wake" aria-pressed="${st.get("listen") !== "ptt"}">Wake phrase</button><button type="button" data-listen="ptt" aria-pressed="${st.get("listen") === "ptt"}">Push to talk only</button></div>
     <p class="hint fine">Wake phrase: say "Hey Sentinel" any time. Push to talk: tap the microphone or the orb, then speak.</p>`;
@@ -327,7 +327,16 @@ function renderSettings(el, ctx) {
       sel.addEventListener("change", () => { st.set("voice", sel.value); ctx.setVoice?.(sel.value); });
     } catch { el.querySelector("[data-voice]").innerHTML = `<option>Browser voice</option>`; }
   })();
-  el.querySelector("[data-test-voice]").addEventListener("click", () => ctx.say("Hello. This is how I will sound on the mission."));
+  el.querySelector("[data-test-voice]").addEventListener("click", async (e) => {
+    const b = e.currentTarget, res = el.querySelector("[data-voice-res]");
+    b.disabled = true; res.textContent = "Playing…";
+    try {
+      const r = await ctx.testVoice();
+      const name = { elevenlabs: "ElevenLabs", kokoro: "Kokoro (this laptop)", browser: "the browser's voice" }[r.engine] || r.engine;
+      res.textContent = `Played by ${name}.${r.engine === "browser" ? " The server voices were unavailable; see the console." : ""}`;
+    } catch (err) { res.textContent = `No voice: ${err.message}`; }
+    b.disabled = false;
+  });
 }
 
 function renderAbout(el) {

@@ -52,10 +52,10 @@ api.chatStream = async (crew_id, transcript, onSentence) => {
   let r;
   try {
     r = await fetch("../api/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ crew_id, transcript }) });
-  } catch { r = null; }
+  } catch (e) { r = null; console.warn(`[sentinel brain] /api/chat/stream failed: ${e.message}`); }
   if (!r || !r.ok || !r.body) {
-    const d = await api.chat(crew_id, transcript);
-    return d;
+    if (r) console.warn(`[sentinel brain] /api/chat/stream HTTP ${r.status}; trying /api/chat`);
+    try { return await api.chat(crew_id, transcript); } catch (e) { console.warn(`[sentinel brain] /api/chat failed: ${e.message}`); throw e; }
   }
   const reader = r.body.getReader();
   const dec = new TextDecoder();
