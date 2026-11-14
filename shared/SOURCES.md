@@ -39,6 +39,7 @@ Every number below was read on the page named, except where marked. `thresholds.
 - AHA blood pressure categories (page returned 403 to the fetcher; categories are the 2017 AHA/ACC ones: stage 1 at 130/80, crisis above 180/120).
 - ADA: hypoglycaemia below 70 mg/dL; target below 180 mg/dL 1-2 h after meals.
 - CDC: adults need 7 or more hours of sleep.
+- Sentinel also flags systolic blood pressure at 180 mmHg or diastolic at 110 mmHg as an app recheck alert to satisfy P4's SV1 demo scenario. This is labelled `demo_placeholder`; it is not a NASA limit or a substitute for clinical guidance. The source-backed AHA levels remain separately identified.
 
 ## demo_placeholder thresholds
 All drift percentages; heart-rate alert 130 and low watch 50; SpO2 alert 90; temperature low watch 36.0; mood watch below 3; fatigue and stress indices; S2 as the shelter-alert level; storm extra dose per hour; lunar dose rate; speaker-ID 0.75 cut-off; rPPG quality cut-off.
