@@ -352,3 +352,18 @@ test("race standings, focus bonus and the mood log", () => {
   assert.equal(race.ordinal(1), "1st"); assert.equal(race.ordinal(2), "2nd"); assert.equal(race.ordinal(3), "3rd"); assert.equal(race.ordinal(4), "4th");
   assert.equal(race.fmtTime(83.45), "1:23.5");
 });
+
+// ---------- range bars (ref 12) ----------
+import { rangeBar, severityAt } from "../../app/js/interface/ranges.js";
+test("range bar places the marker against the sourced bands", () => {
+  const spo2 = [{ severity: "watch", below: 94 }, { severity: "alert", below: 90 }];
+  assert.equal(severityAt(spo2, 98), "ok"); assert.equal(severityAt(spo2, 92), "watch"); assert.equal(severityAt(spo2, 85), "alert");
+  const b = rangeBar(spo2, 98);
+  assert.ok(b.pos > 0.7 && b.pos <= 1, `pos ${b.pos}`);
+  assert.equal(b.stops[0].sev, "alert"); assert.equal(b.stops[b.stops.length - 1].sev, "ok");
+  const hr = [{ severity: "watch", above: 100 }, { severity: "alert", above: 130 }, { severity: "watch", below: 50 }];
+  const h = rangeBar(hr, 72);
+  assert.equal(h.sev, "ok");
+  assert.deepEqual([...new Set(h.stops.map((s) => s.sev))], ["watch", "ok", "alert"]);
+  assert.equal(rangeBar([], 5), null);
+});

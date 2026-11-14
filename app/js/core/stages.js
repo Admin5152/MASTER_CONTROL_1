@@ -3,9 +3,9 @@
 // Sentinel opens something, back to the centre on "go back" or a tap.
 import { emit } from "./bus.js";
 
-export const STAGES = ["assistant", "mission", "body", "vision", "radiation"];
-const SCENE = { assistant: "space", mission: "space", radiation: "space", vision: "space", body: "body" };
-const VIEW = { assistant: "home", mission: "mission", radiation: "radiation", vision: "calm" };
+export const STAGES = ["assistant", "mission", "body", "vitals", "vision", "radiation"];
+const SCENE = { assistant: "space", mission: "space", radiation: "space", vision: "space", vitals: "space", body: "body" };
+const VIEW = { assistant: "home", mission: "mission", radiation: "radiation", vision: "calm", vitals: "calm" };
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export function createStages({ world, space, orb }) {
@@ -59,6 +59,7 @@ export function createStages({ world, space, orb }) {
       current = name;
       document.body.dataset.stage = name;
       document.querySelectorAll(".stage").forEach((s) => s.classList.toggle("is-active", s.dataset.stage === name));
+      document.querySelectorAll("#topnav [data-nav]").forEach((b) => b.setAttribute("aria-current", String(b.dataset.nav === name)));
       document.querySelectorAll("#tabbar [data-go]").forEach((b) => (b.dataset.go === name ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
       if (mode !== "calm" && mode !== "off") mode = name === "assistant" ? "home" : "corner";
       placeOrb(instant ? 0 : 1.0);

@@ -145,3 +145,59 @@
 @media (prefers-reduced-motion: reduce) {
   :root { --t-fast: 0ms; --t-med: 0ms; --t-slow: 0ms; }
 }
+
+/* ---- tokens added for the refs 12-16 layout language (dark, the default) ---- */
+:root {
+  --nav-on: #ffffff; --nav-on-ink: #05070d;
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --ok-soft: rgba(127, 224, 166, 0.16); --ok-ink: var(--nominal);
+  --watch-soft: rgba(255, 181, 71, 0.16); --watch-ink: var(--watch);
+  --alert-soft: rgba(255, 59, 78, 0.16);
+  --marker-ring: rgba(5, 7, 13, 0.85);
+  --chip-bg: rgba(240, 245, 252, 0.94); --chip-ink: #0b1424;
+}
+
+/* ---- "Clinical light" theme (brief section 10 item 2; refs 12-16): soft white and pale blue-grey
+   surfaces, navy ink, one blue accent, rounded 24 px cards, soft shadows. Same tokens, same components. */
+:root[data-theme="light"] {
+  --bg: #eef2f7;
+  --ink: #0f1d33;
+  --ink-2: rgba(15, 29, 51, 0.68);
+  --ink-3: rgba(15, 29, 51, 0.48);
+  --rule: rgba(15, 29, 51, 0.08);
+  --rule-2: rgba(15, 29, 51, 0.16);
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-strong: rgba(255, 255, 255, 0.94);
+  --surface-solid: #ffffff;
+  --surface-sunk: rgba(15, 29, 51, 0.05);
+  --assist: #1f5fe0;
+  --assist-soft: rgba(31, 95, 224, 0.1);
+  --nominal: #14a35a;
+  --watch: #d98a00;
+  --alert: #e0263b;
+  --line: #1f5fe0;
+  --line-dim: rgba(31, 95, 224, 0.4);
+  --focus: #1f5fe0;
+  --on-accent: #ffffff;
+  --badge-live-bg: #d6f5e2; --badge-live-ink: #0b6b3a;
+  --badge-sim: #6a54d8; --badge-designed: rgba(15, 29, 51, 0.6); --badge-snapshot: #b06f00;
+  --shadow-float: 0 18px 40px rgba(26, 46, 82, 0.16);
+  --shadow-card: 0 8px 24px rgba(26, 46, 82, 0.08);
+  --glow-assist: 0 0 14px rgba(31, 95, 224, 0.35);
+  --glow-alert: 0 0 12px rgba(224, 38, 59, 0.45);
+  --glow-watch: 0 0 10px rgba(217, 138, 0, 0.4);
+  --radius-card: 24px;
+  --nav-on: #1f3f8f; --nav-on-ink: #ffffff;
+  --ok-soft: rgba(20, 163, 90, 0.12); --ok-ink: #0b7a42;
+  --watch-soft: rgba(217, 138, 0, 0.14); --watch-ink: #9a6200;
+  --alert-soft: rgba(224, 38, 59, 0.12);
+  --marker-ring: #ffffff;
+  --chip-bg: #ffffff; --chip-ink: #0f1d33;
+  --glass-blur: 22px;
+  color-scheme: light;
+}
+:root[data-theme="light"] .pill-light, :root[data-theme="light"] .pill-dark { background: #1f3f8f; border-color: #1f3f8f; color: #fff; }
+:root[data-theme="light"] .statusline { background: linear-gradient(to bottom, rgba(238, 242, 247, 0.96), rgba(238, 242, 247, 0.7) 70%, rgba(238, 242, 247, 0)); }
+:root[data-theme="light"] .brand, :root[data-theme="light"] .sl-crew { color: var(--ink); }
+:root[data-theme="light"] .bubble.is-subtitle { background: rgba(255, 255, 255, 0.9); }
+:root[data-theme="light"] .race-menu { background: radial-gradient(ellipse at center, rgba(3, 6, 14, 0.78) 0%, rgba(3, 6, 14, 0.55) 45%, rgba(3, 6, 14, 0) 80%); color: #eef2f8; }

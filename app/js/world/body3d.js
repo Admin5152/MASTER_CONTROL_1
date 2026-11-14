@@ -345,7 +345,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     const b = document.createElement("button");
     b.type = "button"; b.className = "zone is-ok"; b.id = `zone-${z}`; b.dataset.zone = z;
     b.setAttribute("aria-label", ZLABEL[z]);
-    b.innerHTML = `<span class="zdot"></span><span class="zname">${ZLABEL[z]}</span>`;
+    b.innerHTML = `<span class="zdot"></span><span class="zname">${ZLABEL[z]}</span><span class="zchip" hidden></span>`;
     b.addEventListener("click", (e) => { e.stopPropagation(); onZoneClick?.(z, b); });
     hotLayer.appendChild(b);
     hot[z] = b;
@@ -469,6 +469,20 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
       activeRing = z ? ZONE_RING[z] : null;
     },
     setRing(name) { activeRing = name; },
+    /** Data chips pinned to the body (ref 14): {zone: {text, badge}}; a missing zone hides its chip. */
+    setChips(map) {
+      for (const z in hot) {
+        const c = hot[z].querySelector(".zchip"), v = map?.[z];
+        const key = v ? `${v.text}|${v.badge}` : "";
+        if (c.dataset.k === key) continue;
+        c.dataset.k = key;
+        c.hidden = !v;
+        if (v) c.innerHTML = `${v.text}<em>${v.badge}</em>`;
+        hot[z].classList.toggle("has-chip", !!v);
+        hot[z].classList.toggle("chip-left", (anchors[z]?.[0] ?? 0) < -0.02);   // chips sit on the outer side of their dot
+      }
+    },
+    zoomBy(f, seconds = 0.5) { readCam(); return moveCam({ az: cam.az, dist: Math.min(controls.maxDistance, Math.max(controls.minDistance, cam.dist * f)), y: cam.ty, x: cam.tx, z: cam.tz, el: cam.el }, seconds); },
     showRadiation(on) { radOn = !!on; radShell.visible = radOn; if (!on) radMat.uniforms.uAmt.value = 0; },
     get radiationOn() { return radOn; },
     /** X-ray on or off, eased. Optional style: "radiograph" | "anatomy". */

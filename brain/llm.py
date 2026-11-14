@@ -24,8 +24,8 @@ from typing import Any, Callable, Iterator
 
 import httpx
 
-SCREENS = ["home", "assistant", "mission", "body", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
-           "orb_calm", "aurora_run", "race", "greenhouse", "hardware", "crew"]
+SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
+           "orb_calm", "aurora_run", "race", "greenhouse", "hardware", "crew", "wellbeing", "exam", "ground", "measures"]
 ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
 METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
            "reaction", "talk_time", "pitch", "o2", "co2"]
@@ -59,7 +59,7 @@ COMMANDS: [ ...json array... ]
 Allowed commands (at most 3):
   {"cmd":"point_to","zone":Z}            Z in head, eyes, heart, lungs, gut, bones, whole_body
   {"cmd":"check_zone","zones":[Z,...]}   a focused check of one to three zones
-  {"cmd":"open_screen","name":N}         N in home, body, mission, vision, health_log, trends, radiation, cabin, cognitive, orb_calm, race, greenhouse, hardware, crew
+  {"cmd":"open_screen","name":N}         N in home, body, vitals, mission, vision, health_log, trends, radiation, cabin, cognitive (3-minute reaction test), orb_calm, race, greenhouse, hardware, crew, wellbeing, exam (guided health exam), ground (messages to ground), measures (weekly standard measures)
   {"cmd":"show_chart","metric":M}        M in heart_rate, breathing_rate, spo2, bp, glucose, temp, sleep, mood, reaction, talk_time, pitch, o2, co2
   {"cmd":"start_scan"}
   {"cmd":"rotate_body","view":V}         V in front, back, left, right

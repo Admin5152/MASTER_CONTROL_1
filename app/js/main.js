@@ -28,6 +28,8 @@ import { createWorld, isTablet } from "./world/world.js";
 import { createSpace } from "./world/space.js";
 import { createIntro } from "./world/intro.js";
 import { TILES } from "./interface/tiles.js";
+import { chipText, defaultSystem, mountBodyPanels, render as renderBodyPanels, selectSystem } from "./interface/bodypanel.js";
+import { mountVitals, renderVitals } from "./interface/vitals.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -79,8 +81,8 @@ async function boot() {
     if (introRun && !$("start-screen").classList.contains("is-ready")) introRun.skip();
   });
   try {
-    [ctx.facts, ctx.thresholds, ctx.demoLines] = await Promise.all([
-      api.json("../shared/facts.json"), api.json("../shared/thresholds.json"), api.json("assets/demo_lines.json"),
+    [ctx.facts, ctx.thresholds, ctx.demoLines, ctx.kit] = await Promise.all([
+      api.json("../shared/facts.json"), api.json("../shared/thresholds.json"), api.json("assets/demo_lines.json"), api.json("../shared/med_kit.json"),
     ]);
   } catch (e) { console.warn("could not load shared data", e); }
   try { view.crew = await api.crew(); } catch { view.crew = []; }
@@ -105,6 +107,7 @@ async function start() {
   $("start-screen").hidden = true;
   $("app").hidden = false;
   await mountApp();
+  if (settings.get("theme") === "light") ctx.setTheme("light");
   await stages.go("assistant");
   world.remove("intro");
   if (navigator.mediaDevices?.getUserMedia) {
@@ -155,6 +158,12 @@ async function mountApp() {
   ctx.screens = screens;
   ctx.say = say;
   ctx.setVoice = (v) => voiceMod.setVoice(v);
+  ctx.setTheme = (t) => {
+    const light = t === "light";
+    if (light) document.documentElement.dataset.theme = "light"; else delete document.documentElement.dataset.theme;
+    settings.set("theme", light ? "light" : "dark");
+    world.setTheme(light ? "light" : "dark");
+  };
   voiceMod.setVoice(settings.get("voice") || "river");
   ctx.setCrew = (id, src) => switchCrew(id, src);
   ctx.onCheckin = onCheckin;
@@ -187,6 +196,8 @@ async function mountApp() {
 
   director = createDirector({ orb, screens, stages, say: (t, o) => say(t, o), getView: () => view, facts: ctx.facts, onFrame: (fn) => world.onFrame(fn) });
   ctx.director = director;
+  mountBodyPanels({ rail: $("sys-rail"), panel: $("sys-panel"), insights: $("insights"), director, screens, getView: () => view, facts: ctx.facts, kit: ctx.kit });
+  mountVitals(ctx);
   banner = createBanner({ say });
   demoPanel = createDemoPanel(ctx);
   vision = createVision({
@@ -212,7 +223,13 @@ async function mountApp() {
   on("vision:open", () => vision.start());
   on("intervention:open", openIntervention);
   on("crew:changed", () => { invalidateSparks(); lastZone = null; });
-  on("stage", (name) => { if (name === "vision" && !vision.state.on) vision.start(); closeMenus(); });
+  let bodySeen = false;
+  on("stage", (name) => {
+    if (name === "vision" && !vision.state.on) vision.start();
+    if (name === "body" && !bodySeen) { bodySeen = true; selectSystem(defaultSystem(view)); }
+    if (name === "vitals") renderVitals(view);
+    closeMenus();
+  });
 
   const first = view.crew[0]?.crew_id;
   if (first) setCrew(first, "manual");
@@ -259,6 +276,17 @@ function wireControls() {
     director.run([{ cmd: "open_screen", name: go }]);
   }));
   $("btn-menu").addEventListener("click", () => toggleMenu("menu", "btn-menu"));
+  $("topnav").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-nav]");
+    if (!b) return;
+    closeMenus();
+    if (b.dataset.nav === "wellbeing") { screens.open("wellbeing"); return; }
+    closeScreen();
+    director.run([{ cmd: "open_screen", name: b.dataset.nav }]);
+  });
+  $("btn-zoom-in").addEventListener("click", () => ctx.body3d?.zoomBy(0.75));
+  $("btn-zoom-out").addEventListener("click", () => ctx.body3d?.zoomBy(1.33));
+  $("btn-zoom-fit").addEventListener("click", () => director.run([{ cmd: "zoom_body", zone: "reset" }]));
   $("btn-convo").addEventListener("click", () => toggleMenu("convo", "btn-convo"));
   $("btn-all").addEventListener("click", () => screens.open("readings"));
   $("btn-scan").addEventListener("click", () => director.run([{ cmd: "start_scan" }]));
@@ -525,6 +553,9 @@ function onState(v) {
   renderTiles(document.getElementById("app"), v, v.spaceweather);
   renderMission($("mission-cards"), v, { spaceweather: v.spaceweather, due: dueRoutine(), nextRoutine: nextRoutine(), wilt: view.wilt || 0 });
   renderFindings($("findings"), $("findings-status"), v, (z) => director.run([{ cmd: "check_zone", zones: [z] }]));
+  renderBodyPanels();
+  if (stages.current === "vitals") renderVitals(v);
+  ctx.body3d?.setChips(Object.fromEntries(["heart", "lungs", "head"].map((z) => [z, chipText(z, v)]).filter(([, c]) => c)));
   space.setProfile(s.radiation.mission_profile);
   const sev = s.action?.severity || "none";
   orb.setSeverity(["flag_cabin", "flag_radiation", "flag_ground"].includes(s.action?.type) ? "alert" : sev === "watch" ? "watch" : "none");

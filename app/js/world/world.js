@@ -16,7 +16,7 @@ const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").ma
 
 const skyVert = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.9999, 1.0); }`;
 const skyFrag = /* glsl */`
-uniform float uClinic; uniform float uFade; varying vec2 vUv;
+uniform float uClinic; uniform float uFade; uniform float uLight; varying vec2 vUv;
 void main() {
   vec2 p = vUv - vec2(0.62, 0.78);
   float d = length(p * vec2(1.0, 1.3));
@@ -24,7 +24,10 @@ void main() {
   vec2 q = vUv - vec2(0.5, 0.48);
   float e = length(q * vec2(1.2, 1.0));
   vec3 clinic = mix(vec3(0.11, 0.15, 0.24), vec3(0.03, 0.045, 0.085), smoothstep(0.0, 0.75, e));
-  gl_FragColor = vec4(mix(space, clinic, uClinic) * uFade, 1.0);
+  // Clinical light: soft white to pale blue-grey (refs 12-16)
+  vec3 light = mix(vec3(0.96, 0.975, 0.99), vec3(0.83, 0.87, 0.92), smoothstep(0.0, 1.1, length((vUv - vec2(0.45, 0.62)) * vec2(1.0, 1.25))));
+  vec3 dark = mix(space, clinic, uClinic) * uFade;
+  gl_FragColor = vec4(mix(dark, light * mix(1.0, 0.94, 1.0 - uFade), uLight), 1.0);
 }`;
 
 export function createWorld(canvas) {
@@ -42,7 +45,7 @@ export function createWorld(canvas) {
   // ---- 1. sky: gradient + starfield ----
   const skyScene = new THREE.Scene();
   const skyCam = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
-  const skyU = { uClinic: { value: 0 }, uFade: { value: 1 } };
+  const skyU = { uClinic: { value: 0 }, uFade: { value: 1 }, uLight: { value: 0 } };   // the intro is always in space; main.js applies the saved theme after Begin
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ uniforms: skyU, vertexShader: skyVert, fragmentShader: skyFrag, depthWrite: false, depthTest: false }));
   sky.frustumCulled = false; sky.renderOrder = -10;
   skyScene.add(sky);
@@ -119,8 +122,8 @@ export function createWorld(canvas) {
     s.update?.(dt, t);
     mainPass.scene = s.scene; mainPass.camera = s.camera;
     skyCam.quaternion.copy(s.camera.quaternion);
-    starPts.material.opacity = (0.6 + 0.15 * Math.sin(t * 0.7)) * (1 - skyU.uClinic.value * 0.85);
-    starMat.opacity = 0.5 * (1 - skyU.uClinic.value);
+    starPts.material.opacity = (0.6 + 0.15 * Math.sin(t * 0.7)) * (1 - skyU.uClinic.value * 0.85) * (1 - skyU.uLight.value);
+    starMat.opacity = 0.5 * (1 - skyU.uClinic.value) * (1 - skyU.uLight.value);
     orbObj?.update(dt, t);
     placeOrbCam();
     composer.render(dt);
@@ -169,9 +172,17 @@ export function createWorld(canvas) {
     },
     get orbPlace() { return { ...orbPlace }; },
     setBloom(strength) { bloom.strength = strength; },
-    get bloomBase() { return 0.85; },
+    get bloomBase() { return skyU.uLight.value > 0.5 ? 0 : 0.85; },
     /** 1 = the full sky, 0 = black: the X-ray reads on near-black (refs 09-11). Set every frame by the body. */
     setSkyFade(v) { skyU.uFade.value = v; },
+    /** "dark" (space, the default) or "light" (Clinical light). Eased. */
+    setTheme(theme, seconds = 0.6) {
+      const v = theme === "light" ? 1 : 0;
+      const g = window.gsap;
+      if (!g || reduced()) skyU.uLight.value = v; else g.to(skyU.uLight, { value: v, duration: seconds, overwrite: true });
+      bloom.strength = v ? 0 : 0.85;   // a pale sky would bloom over everything
+    },
+    get theme() { return skyU.uLight.value > 0.5 ? "light" : "dark"; },
     pause(p) { paused = !!p; },
     onFrame(fn) { hooks.add(fn); return () => hooks.delete(fn); },
     stats: () => ({ fps: Math.round(stats.fps * 10) / 10, msAvg: Math.round(stats.msAvg * 100) / 100, cap: fpsCap, dpr: renderer.getPixelRatio(), active }),

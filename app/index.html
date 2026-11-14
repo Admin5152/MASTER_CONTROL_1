@@ -10,6 +10,7 @@
   <link rel="preload" href="assets/fonts/michroma-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/layout.css">
   <script type="importmap">
   { "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/jsm/" } }
   </script>
@@ -43,11 +44,12 @@
       <span class="brand"><span class="brand-mark" aria-hidden="true"></span>Sentinel</span>
       <span class="sl-item"><button id="sb-crew-name" class="sl-crew" type="button" aria-label="Choose crew member">—</button><span id="sb-identity" class="badge badge-sim">manual</span></span>
       <span class="sl-item"><span id="sb-clock" class="num">Day —</span></span>
+      <nav class="topnav" id="topnav" aria-label="Main">
+        <button type="button" data-nav="assistant">Overview</button><button type="button" data-nav="body">Body</button><button type="button" data-nav="vitals">Vitals</button><button type="button" data-nav="mission">Mission</button><button type="button" data-nav="radiation">Radiation</button><button type="button" data-nav="wellbeing">Wellbeing</button>
+      </nav>
       <span class="sl-item sb-cabin"><span id="sb-cabin-word">Cabin —</span><span class="badge badge-sim">SIM</span><span class="visually-hidden"><span id="sb-o2">O2 —</span> <span id="sb-co2">CO2 —</span></span></span>
       <span class="sl-item"><span id="sb-rad">Radiation —</span><span id="sb-rad-badge"></span></span>
       <span class="sl-tools">
-        <button id="btn-key" class="legend-mini" type="button" aria-label="Badge key: LIVE measured now, SIM simulated, DESIGNED design only">
-          <span class="badge badge-live">LIVE</span><span class="badge badge-sim">SIM</span><span class="badge badge-designed">DESIGNED</span></button>
         <span id="sb-link" class="sb-link" role="status" title="Link to the brain">linking…</span>
         <button id="btn-mute" class="icon-btn" type="button" aria-pressed="false" aria-label="Mute sound cues">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path class="mute-waves" d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/></svg></button>
@@ -92,16 +94,17 @@
         <div class="mission-cards" id="mission-cards"></div>
       </section>
 
-      <!-- BODY: findings | the 3D body (in the world) | vitals -->
+      <!-- BODY (refs 12-16): system rail | the 3D body with pinned chips | the selected system -->
       <section id="stage-body" class="stage stage-body" data-stage="body" aria-label="Body">
-        <div class="panel body-left">
-          <div class="panel-head"><span class="label">Findings</span><span class="card-status" id="findings-status">—</span></div>
-          <ol id="findings" class="findings"></ol>
-          <ol id="scan-list" class="scan-list" aria-live="polite"></ol>
-        </div>
+        <nav id="sys-rail" class="sys-rail" aria-label="Body systems"></nav>
         <div id="body-host" class="body-host" aria-label="3D body: drag to turn, scroll or pinch to zoom">
           <div id="hotspots" class="hotspots"></div>
           <p id="body-loading" class="body-loading">Loading the body model…</p>
+          <div class="body-zoom" aria-label="Zoom">
+            <button id="btn-zoom-in" class="icon-btn" type="button" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg></button>
+            <button id="btn-zoom-out" class="icon-btn" type="button" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+            <button id="btn-zoom-fit" class="icon-btn" type="button" aria-label="Whole body"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+          </div>
           <div class="body-tools">
             <button id="btn-scan" class="pill pill-light" type="button">Full scan</button>
             <button id="btn-xray" class="pill pill-ghost" type="button" aria-pressed="false">X-ray</button>
@@ -110,10 +113,33 @@
             <button id="btn-radinfo" class="pill pill-ghost" type="button" hidden>Radiation effects</button>
           </div>
         </div>
-        <div class="body-right">
-          <div id="vitals" class="vitals" aria-label="Vitals"></div>
-          <button id="btn-all" class="link-btn" type="button">All readings</button>
+        <aside id="sys-panel" class="sys-panel" aria-live="polite"></aside>
+        <div id="insights" class="insights card"></div>
+        <div class="scan-host"><ol id="scan-list" class="scan-list" aria-live="polite"></ol></div>
+        <div hidden><ol id="findings" class="findings"></ol><span id="findings-status"></span></div>
+      </section>
+
+      <!-- VITALS (refs 13, 15): ECG strip, pressure gauge, every reading with its range, the day's plan -->
+      <section id="stage-vitals" class="stage stage-vitals" data-stage="vitals" aria-label="Vitals">
+        <div class="vitals-grid">
+          <article class="card ecg-card" id="ecg-card">
+            <header class="card-head"><span class="label">Heartbeat</span><span id="ecg-badge"></span></header>
+            <div class="ecg-row"><canvas id="ecg" class="ecg" aria-hidden="true"></canvas><p class="ecg-val"><strong id="ecg-hr" class="num">—</strong><small>bpm</small></p></div>
+            <p class="fine" id="ecg-note">Trace drawn at the measured rate: an illustration, not an ECG recording.</p>
+          </article>
+          <article class="card gauge-card" id="bp-card">
+            <header class="card-head"><span class="label">Pressure</span><span id="bp-badge"></span></header>
+            <svg class="gauge" viewBox="0 0 200 120" aria-hidden="true"><path class="g-track" d="M20 100a80 80 0 0 1 160 0"/><path id="g-arc" class="g-arc" d="M20 100a80 80 0 0 1 160 0"/><g id="g-needle"><circle cx="100" cy="100" r="9"/><path d="M100 100L100 34"/></g></svg>
+            <p class="gauge-val"><strong id="bp-val" class="num">—</strong><small>mmHg</small></p>
+            <p class="fine" id="bp-note"></p>
+          </article>
+          <div id="vitals" class="vitals vitals-tiles" aria-label="Vitals"></div>
+          <article class="card plan-card">
+            <header class="card-head"><span class="label">Plan schedule</span><span class="fine" id="plan-day"></span></header>
+            <ol id="plan-line" class="plan-line"></ol>
+          </article>
         </div>
+        <button id="btn-all" class="link-btn" type="button">All readings</button>
       </section>
 
       <!-- FACE SCAN -->
@@ -165,6 +191,8 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
         </button>
       </form>
+<button id="btn-key" class="legend-mini" type="button" aria-label="Badge key: LIVE measured now, SIM simulated, DESIGNED design only">
+          <span class="badge badge-live">LIVE</span><span class="badge badge-sim">SIM</span><span class="badge badge-designed">DESIGNED</span></button>
       <button id="btn-convo" class="menu-btn" type="button" aria-label="Conversation history" aria-expanded="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v9H10l-4 3v-3H5z"/></svg>
       </button>
