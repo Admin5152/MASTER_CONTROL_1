@@ -41,6 +41,8 @@ export const api = {
   spaceweather: () => req("GET", "../api/spaceweather"),
   clock: (hours) => req("POST", "../api/clock", { advance_hours: hours }),
   json: (path) => req("GET", path),
+  ground: (id, packet) => req("POST", `../api/ground/${id}`, packet),
+  groundList: (id) => req("GET", `../api/ground?crew_id=${encodeURIComponent(id)}`),
 };
 
 /** Streamed chat: calls onSentence(text, source) for each complete sentence as it arrives (NDJSON),

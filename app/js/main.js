@@ -30,6 +30,7 @@ import { createIntro } from "./world/intro.js";
 import { TILES } from "./interface/tiles.js";
 import { chipText, defaultSystem, mountBodyPanels, render as renderBodyPanels, selectSystem } from "./interface/bodypanel.js";
 import { mountVitals, renderVitals } from "./interface/vitals.js";
+import { registerMissionMed } from "./experience/missionmed.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -172,7 +173,8 @@ async function mountApp() {
   ctx.onClockSkip = () => pollOnce();
   ctx.homeStage = () => (interacted ? "mission" : "assistant");
   ctx.onDeviceChange = (k) => { if (k === "camera" && vision.state.on) { vision.stop(); vision.start(); } };
-  registerScreen("cognitive", { title: "Cognitive check", render: renderCognitive });
+  registerScreen("cognitive", { title: "Reaction test", badge: "LIVE", render: renderCognitive });
+  registerMissionMed(registerScreen);
   registerScreen("orb_calm", { title: "Orb Calm", orb: true, render: renderOrbCalm });
   registerScreen("race", { title: "Space race", full: true, render: renderRace });
   registerScreen("greenhouse", { title: "Greenhouse", render: renderGreenhouse });
