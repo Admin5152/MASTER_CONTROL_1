@@ -367,3 +367,15 @@ test("range bar places the marker against the sourced bands", () => {
   assert.deepEqual([...new Set(h.stops.map((s) => s.sev))], ["watch", "ok", "alert"]);
   assert.equal(rangeBar([], 5), null);
 });
+
+// ---------- 3-minute psychomotor vigilance test (brief section 10) ----------
+import * as pvt from "../../app/js/systems/pvt.js";
+test("PVT: waits of 2-10 s, lapses over 500 ms, false starts, change from baseline", () => {
+  assert.equal(pvt.nextWait("full", 0), 2000); assert.equal(pvt.nextWait("full", 1), 10000);
+  assert.equal(pvt.nextWait("practice", 0.5), 2500);
+  const s = pvt.summarize([{ ms: 250 }, { ms: 300 }, { ms: 620 }, { early: true }, { ms: 60 }, { ms: 280 }, { ms: 30000 }]);
+  assert.equal(s.n, 5); assert.equal(s.lapses, 2); assert.equal(s.falseStarts, 2); assert.equal(s.median, 300);
+  assert.equal(pvt.versusBaseline(s, 250), 20);
+  assert.match(pvt.sleepNote(5.5), /under 6 hours/);
+  assert.equal(pvt.summarize([{ early: true }]).median, null);
+});

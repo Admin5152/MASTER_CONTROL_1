@@ -27,6 +27,10 @@ const COL = {
   brain: "#ff8fa6", eyes: "#8fe3ff", heart: "#ff2e4a", lungs: "#5fb2ff", airway: "#9fd6ff", liver: "#b4503f", stomach: "#ff9a5c",
   intestines: "#ffb877", pancreas_spleen: "#d9826a", kidneys: "#d65a4c", arteries: "#ff2a40", veins: "#2f63ff",
 };
+const REAL = {
+  heart: "#9a1824", lungs: "#7fa9e6", airway: "#cf9393", brain: "#d6a7ad", eyes: "#e9eef2", liver: "#6f2119", stomach: "#d88a7c",
+  intestines: "#e3a58c", pancreas_spleen: "#b26464", kidneys: "#8c302b", arteries: "#c4212f", veins: "#2b52c4", bone: "#e8dec6",
+};
 const NAMED = { front: 0, left: -Math.PI / 2, right: Math.PI / 2, back: Math.PI };
 // best viewing angle per zone (rad, 0 = front, + = toward the subject's left) and the height of body to frame (fraction of stature)
 const ZONE_VIEW = { head: [-0.42, 0.2], eyes: [0, 0.17], heart: [0.28, 0.24], lungs: [-0.2, 0.3], gut: [0.12, 0.3], bones: [0.38, 0.62], whole_body: [0, 1] };
@@ -191,7 +195,11 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     m.name = n;
     m.renderOrder = bone ? 5 : 1;
     anat.add(m);
-    nodes[n] = { mesh: m, u: m.material.uniforms, t: { c: new THREE.Color(), p: 1.4, b: 0.1, k: 0.45, vis: 1, add: bone } };
+    nodes[n] = { mesh: m, xm: m.material, u: m.material.uniforms, t: { c: new THREE.Color(), p: 1.4, b: 0.1, k: 0.45, vis: 1, add: bone } };
+    // "realistic" look for organ views (brief section 10 item 3): lit PBR with a soft sheen for a tissue rim
+    const rc = REAL[n] || (bone ? REAL.bone : "#c98a80");
+    nodes[n].rm = new THREE.MeshPhysicalMaterial({ color: rc, roughness: bone ? 0.62 : 0.42, metalness: 0, sheen: bone ? 0.1 : 0.6,
+      sheenColor: new THREE.Color(rc).lerp(new THREE.Color(1, 1, 1), 0.35), sheenRoughness: 0.5, clearcoat: bone ? 0.05 : 0.3, clearcoatRoughness: 0.45 });
   }
 
   // ---- measurement rings (ref 04), placed from slices of the loaded body ----
@@ -376,12 +384,18 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
   }
 
   // ---- looks ----
-  let style = "radiograph";       // radiograph | anatomy
+  let style = "radiograph";       // radiograph | anatomy | real
   let lit = null;                 // array of node names in full colour, or null for all
   const tmpC = new THREE.Color();
   function retarget() {
+    const real = style === "real";
     for (const n of NODES) {
-      const t = nodes[n].t, bone = BONES.includes(n);
+      const t = nodes[n].t, bone = BONES.includes(n), node = nodes[n];
+      const want = real ? node.rm : node.xm;
+      if (node.mesh.material !== want) node.mesh.material = want;
+      node.mesh.renderOrder = real ? 0 : bone ? 5 : 1;
+      node.mesh.visible = !real || !lit || lit.includes(n);
+      if (real) continue;
       if (style === "radiograph") {
         if (bone) Object.assign(t, { p: 1.2, b: 0.3, k: 0.55, vis: 1, add: true }), t.c.set("#eef5ff");
         else Object.assign(t, { p: 2.0, b: 0.015, k: 0.1, vis: n === "arteries" || n === "veins" ? 0 : 1, add: true }), t.c.set("#7f95ad");
@@ -393,6 +407,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     }
     const radio = style === "radiograph";
     skinMat.uniforms.c.value.set(radio ? "#9fb9d6" : "#4f9dff");
+    skinMat.uniforms.vis.value = real ? 0.35 : 1;
   }
   retarget();
 
@@ -415,6 +430,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     skin.visible = anyX;
     for (const n of NODES) {
       const { u, t: tg, mesh } = nodes[n];
+      if (mesh.material !== nodes[n].xm) continue;   // realistic material: lit by the scene, nothing to ease
       u.c.value.lerp(tg.c, k);
       u.p.value += (tg.p - u.p.value) * k;
       u.b.value += (tg.b - u.b.value) * k;
@@ -496,7 +512,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
     get xray() { return xrayOn; },
     get style() { return style; },
     get lit() { return lit ? [...lit] : null; },
-    setStyle(s) { style = s === "anatomy" ? "anatomy" : "radiograph"; retarget(); },
+    setStyle(s) { style = s === "anatomy" || s === "real" ? s : "radiograph"; retarget(); },
     /** Anatomy with only these nodes (or a zone's nodes) in full colour; null lights everything. */
     focus(zoneOrNodes) {
       if (!zoneOrNodes) lit = null;
@@ -505,7 +521,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, mod
       else if (zoneOrNodes in PART_GROUPS) lit = [...PART_GROUPS[zoneOrNodes]];
       else if (NODES.includes(zoneOrNodes)) lit = [zoneOrNodes];
       else lit = null;
-      style = "anatomy";
+      style = style === "real" ? "real" : "anatomy";
       retarget();
     },
     /** Frame a node (or group) in X-ray anatomy, everything else dimmed. */

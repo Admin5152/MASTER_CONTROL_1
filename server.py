@@ -26,6 +26,7 @@ for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".
     mimetypes.add_type(_type, _ext)
 
 from brain import llm, speech  # noqa: E402
+from brain.ground import Ground  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
 from brain.contract import ContractError  # noqa: E402
@@ -37,6 +38,7 @@ from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
 spaceweather = SpaceWeather()
 scenarios = Scenarios(store, spaceweather)
+ground = Ground(persist=os.getenv("SENTINEL_NO_PERSIST") != "1")
 SPEAKER_OK = speaker.available()
 
 
@@ -244,6 +246,21 @@ async def tts(body: dict = Body(...)):
     except Exception:
         raise HTTPException(503, "no speech engine available: use the browser voice")
     return Response(r["audio"], media_type=r["mime"], headers={"X-TTS-Source": r["source"], "X-TTS-Cached": str(r["cached"]).lower(), "Cache-Control": "no-store"})
+
+
+@app.post("/api/ground/{cid}")
+def ground_send(cid: str, body: dict = Body(...)):
+    """Queue a packet for ground (SIM transport: store-and-forward with the one-way delay)."""
+    _need(cid)
+    try:
+        return ground.send(cid, str(body.get("kind", "note")), str(body.get("title", "")), body.get("body") or {})
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.get("/api/ground")
+def ground_list(crew_id: str | None = None):
+    return {"one_way_min": round(ground.one_way_s / 60, 1), "transport": "SIM", "packets": ground.list(crew_id)}
 
 
 @app.get("/api/voices")
