@@ -111,78 +111,51 @@ function makeWatch(parent) {
 }
 
 function makeChestHub(parent) {
-  const unit = new THREE.Group();
-  parent.add(unit);
-  const fabric = new THREE.MeshPhysicalMaterial({ map: fabricTexture("#2f3338", "rgba(255,255,255,.05)"), roughness: 0.88, sheen: 0.7, sheenColor: new THREE.Color(0x5d6670), sheenRoughness: 0.6 });
-  fabric.map.repeat.set(1, 4);
-  const trim = new THREE.MeshPhysicalMaterial({ color: 0x3b3e44, metalness: 0.85, roughness: 0.34 });
-  const shell = new THREE.MeshPhysicalMaterial({ color: 0x15171b, metalness: 0.1, roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.3 });
-  const groove = new THREE.MeshStandardMaterial({ color: 0x07090c, roughness: 0.6 });
-  const stitch = new THREE.MeshStandardMaterial({ color: 0x9fb0be, roughness: 0.9 });
+  const unit = new THREE.Group(); parent.add(unit);
+  unit.rotation.set(-0.12, -0.32, 0);
+  const shell = new THREE.MeshPhysicalMaterial({ color: 0x0c0d0f, metalness: 0.1, roughness: 0.55, clearcoat: 0.35, clearcoatRoughness: 0.35 });
+  const face = new THREE.MeshPhysicalMaterial({ color: 0x131518, metalness: 0.05, roughness: 0.62, clearcoat: 0.2 });
+  const metal = new THREE.MeshPhysicalMaterial({ color: 0x5a5f66, metalness: 0.95, roughness: 0.3 });
+  const fabric = new THREE.MeshPhysicalMaterial({ map: fabricTexture("#2a2d31", "rgba(255,255,255,.05)"), roughness: 0.9, sheen: 0.7, sheenColor: new THREE.Color(0x5b636c), sheenRoughness: 0.6 });
+  fabric.map.repeat.set(1, 6);
+  const edgeFabric = new THREE.MeshStandardMaterial({ color: 0x3a3e44, roughness: 0.85 });
   const violet = new THREE.MeshStandardMaterial({ color: 0x1a1030, emissive: 0x9b6bff, emissiveIntensity: 2.2, roughness: 0.25 });
   unit.userData.leds = [violet];
-  const strapL = new THREE.Mesh(roundedPanel(0.16, 0.78, 0.075, 0.055), fabric);
-  strapL.rotation.z = -0.29; strapL.position.set(-0.22, 0.1, -0.08); unit.add(strapL);
-  const strapR = strapL.clone(); strapR.rotation.z = 0.29; strapR.position.x = 0.22; unit.add(strapR);
-  const diagL = new THREE.Mesh(roundedPanel(0.125, 0.73, 0.055, 0.04), fabric);
-  diagL.rotation.z = -0.72; diagL.position.set(-0.25, -0.12, 0.015); unit.add(diagL);
-  const diagR = diagL.clone(); diagR.rotation.z = 0.72; diagR.position.x = 0.25; unit.add(diagR);
-  const cross = new THREE.Mesh(roundedPanel(0.72, 0.14, 0.065, 0.07), fabric);
-  cross.position.set(0, -0.23, -0.025); unit.add(cross);
-  // Compact adjusters and short stitch marks make the webbing read as a sewn harness.
-  for (const x of [-0.25, 0.25]) {
-    const buckle = new THREE.Mesh(roundedPanel(0.2, 0.095, 0.03, 0.045), trim);
-    buckle.position.set(x, 0.37, 0.01); unit.add(buckle);
-    const bar = new THREE.Mesh(roundedPanel(0.025, 0.07, 0.01, 0.012), shell);
-    bar.position.set(x, 0.37, 0.062); unit.add(bar);
-    for (const y of [-0.18, 0, 0.18, 0.52]) {
-      const seam = new THREE.Mesh(roundedPanel(0.012, 0.045, 0.005, 0.005), stitch);
-      seam.position.set(x + (x < 0 ? -0.045 : 0.045), y, 0.022); unit.add(seam);
-    }
+  // the hub: an angular, chamfered body, wider at the shoulders, with a raised face plate
+  const hubShape = (k) => { const s = new THREE.Shape(); const P = [[-0.34, 0.2], [-0.22, 0.32], [0.22, 0.32], [0.34, 0.2], [0.3, -0.19], [0.13, -0.33], [-0.13, -0.33], [-0.3, -0.19]].map(([x, y]) => [x * k, y * k]); s.moveTo(...P[0]); P.slice(1).forEach((p) => s.lineTo(...p)); s.closePath(); return s; };
+  const body = new THREE.ExtrudeGeometry(hubShape(1), { depth: 0.1, bevelEnabled: true, bevelSegments: 8, bevelSize: 0.035, bevelThickness: 0.035, curveSegments: 4 });
+  body.translate(0, 0, -0.05); body.computeVertexNormals();
+  unit.add(new THREE.Mesh(body, shell));
+  const plate = new THREE.ExtrudeGeometry(hubShape(0.84), { depth: 0.012, bevelEnabled: true, bevelSegments: 4, bevelSize: 0.012, bevelThickness: 0.01, curveSegments: 4 });
+  const facePlate = new THREE.Mesh(plate, face); facePlate.position.z = 0.085; unit.add(facePlate);
+  // wordmark, light bars low on each side, a status light at the top
+  const lc = document.createElement("canvas"); lc.width = 512; lc.height = 128;
+  const lg = lc.getContext("2d"); lg.fillStyle = "#e6e9ee"; lg.font = "600 58px Inter, system-ui, sans-serif"; lg.textAlign = "center"; lg.fillText("SpaceWear", 256, 82);
+  const lt = new THREE.CanvasTexture(lc); lt.colorSpace = THREE.SRGBColorSpace; lt.anisotropy = 4;
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.065), new THREE.MeshBasicMaterial({ map: lt, transparent: true, toneMapped: false }));
+  label.position.set(0, 0.13, 0.11); unit.add(label);
+  for (const s of [-1, 1]) {
+    const bar = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.15, 6, 12), violet);
+    bar.position.set(s * 0.215, -0.07, 0.108); bar.rotation.z = s * 0.2; unit.add(bar);
   }
-  const rim = new THREE.Mesh(shieldPanel(0.76, 0.72, 0.11), trim);
-  rim.position.z = 0.01; unit.add(rim);
-  const hub = new THREE.Mesh(shieldPanel(0.68, 0.65, 0.12), shell);
-  hub.position.set(0, 0.015, 0.12); unit.add(hub);
-  const inset = new THREE.Mesh(roundedPanel(0.45, 0.29, 0.09, 0.012), new THREE.MeshPhysicalMaterial({ color: 0x05070a, roughness: 0.05, clearcoat: 1 }));
-  inset.position.set(0, 0.095, 0.245); unit.add(inset);
-  const labelCanvas = document.createElement("canvas"); labelCanvas.width = 384; labelCanvas.height = 96;
-  const labelCtx = labelCanvas.getContext("2d");
-  labelCtx.fillStyle = "#dbe5f2"; labelCtx.font = "600 42px system-ui, sans-serif"; labelCtx.textAlign = "center"; labelCtx.fillText("SpaceWear", 192, 62);
-  const labelTexture = new THREE.CanvasTexture(labelCanvas); labelTexture.colorSpace = THREE.SRGBColorSpace;
-  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.31, 0.075), new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true, toneMapped: false }));
-  label.position.set(0, 0.17, 0.259); unit.add(label);
-  for (const x of [-0.17, 0.17]) {
-    const light = new THREE.Mesh(roundedPanel(0.026, 0.2, 0.012, 0.012), violet);
-    light.position.set(x, -0.03, 0.26); unit.add(light);
+  const status = new THREE.Mesh(new THREE.CapsuleGeometry(0.007, 0.05, 4, 10), violet); status.rotation.z = Math.PI / 2; status.position.set(0, 0.235, 0.108); unit.add(status);
+  // modular ports on the sides: metal sockets for the spacecraft feeds
+  for (const s of [-1, 1]) for (const y of [0.04, -0.06]) {
+    const port = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.03, 24), metal);
+    port.rotation.z = Math.PI / 2; port.position.set(s * 0.355, y, 0); unit.add(port);
   }
-  const status = new THREE.Mesh(new THREE.SphereGeometry(0.026, 14, 10), violet);
-  status.position.set(0, 0.23, 0.26); unit.add(status);
-  for (const x of [-0.22, -0.11, 0, 0.11, 0.22]) {
-    const vent = new THREE.Mesh(roundedPanel(0.065, 0.009, 0.004, 0.004), groove);
-    vent.position.set(x, -0.17, 0.26); unit.add(vent);
+  // the harness: padded straps over the shoulders and round the sides, with buckles and haptic pods
+  for (const s of [-1, 1]) {
+    const shoulder = strap([new THREE.Vector3(s * 0.2, 0.3, -0.02), new THREE.Vector3(s * 0.26, 0.6, -0.06), new THREE.Vector3(s * 0.3, 0.86, -0.22), new THREE.Vector3(s * 0.3, 0.9, -0.5)], 0.045, 0.15);
+    unit.add(new THREE.Mesh(shoulder, fabric));
+    const side = strap([new THREE.Vector3(s * 0.33, 0.0, -0.02), new THREE.Vector3(s * 0.55, 0.0, -0.1), new THREE.Vector3(s * 0.72, -0.02, -0.32), new THREE.Vector3(s * 0.78, -0.03, -0.6)], 0.13, 0.04);
+    unit.add(new THREE.Mesh(side, fabric));
+    const buckle = new THREE.Mesh(roundedPanel(0.17, 0.05, 0.02, 0.025), metal); buckle.position.set(s * 0.255, 0.56, -0.02); buckle.rotation.z = s * -0.2; unit.add(buckle);
+    const pod = new THREE.Mesh(roundedPanel(0.12, 0.085, 0.035, 0.035), shell); pod.position.set(s * 0.29, 0.76, -0.1); pod.rotation.set(-0.5, 0, s * -0.1); unit.add(pod);
+    const podLed = new THREE.Mesh(new THREE.CircleGeometry(0.008, 16), violet); podLed.position.set(s * 0.29, 0.775, -0.05); podLed.rotation.x = -0.5; unit.add(podLed);
+    const edge = new THREE.Mesh(roundedPanel(0.03, 0.2, 0.01, 0.05), edgeFabric); edge.position.set(s * 0.37, 0.0, -0.03); unit.add(edge);
   }
-  for (const x of [-0.28, 0.28]) for (const y of [-0.23, 0.27]) {
-    const screw = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 8), trim);
-    screw.position.set(x, y, 0.265); unit.add(screw);
-  }
-  for (const x of [-0.30, 0.30]) {
-    const port = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.04, 20), trim);
-    port.rotation.z = Math.PI / 2; port.position.set(x, -0.12, 0.12); unit.add(port);
-  }
-  // Inner-facing biometric contact pads sit against the suit side of the harness.
-  for (const [x, y] of [[-0.24, 0.38], [0.24, 0.38], [-0.25, -0.21], [0.25, -0.21]]) {
-    const contact = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.025, 20), violet);
-    contact.rotation.x = Math.PI / 2; contact.position.set(x, y, -0.13); unit.add(contact);
-  }
-  // haptic modules: small pods on the shoulder straps, each with its own light
-  for (const x of [-0.27, 0.27]) {
-    const podMesh = new THREE.Mesh(roundedPanel(0.13, 0.09, 0.04, 0.035), shell);
-    podMesh.position.set(x, 0.5, 0.03); podMesh.rotation.z = x < 0 ? -0.29 : 0.29; unit.add(podMesh);
-    const dot = new THREE.Mesh(new THREE.CircleGeometry(0.009, 16), violet); dot.position.set(x, 0.5, 0.075); unit.add(dot);
-  }
-  unit.scale.setScalar(0.68);
-  unit.rotation.y = -0.12;
+  unit.scale.setScalar(0.82);
   return unit;
 }
 
@@ -192,7 +165,7 @@ function makePatchSensor(parent) {
   const body = new THREE.MeshPhysicalMaterial({ color: 0x16181c, roughness: 0.38, metalness: 0.1, clearcoat: 0.6, clearcoatRoughness: 0.2 });
   const bezel = new THREE.MeshPhysicalMaterial({ color: 0x2a2d33, metalness: 0.9, roughness: 0.3 });
   const glass = new THREE.MeshPhysicalMaterial({ color: 0x0a1220, roughness: 0.03, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, transparent: true, opacity: 0.38, depthWrite: false });
-  const lensGlow = new THREE.MeshStandardMaterial({ color: 0x0b1830, emissive: 0x9fd4ff, emissiveIntensity: 1.8 });
+  const lensGlow = new THREE.MeshBasicMaterial({ color: 0xdff1ff, toneMapped: false });
   const ringGlow = new THREE.MeshStandardMaterial({ color: 0x1a1030, emissive: 0x9b6bff, emissiveIntensity: 1.6 });
   // a soft round puck: a capsule profile turned about its axis
   const prof = [];
@@ -202,8 +175,11 @@ function makePatchSensor(parent) {
   const rim = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.022, 20, 72), bezel); rim.position.z = 0.07; patch.add(rim);
   const lens = new THREE.Mesh(new THREE.SphereGeometry(0.15, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), glass);
   lens.rotation.x = Math.PI / 2; lens.scale.y = 0.35; lens.position.z = 0.068; patch.add(lens);
-  const core = new THREE.Mesh(new THREE.CircleGeometry(0.06, 40), lensGlow); core.position.z = 0.085; patch.add(core);
-  const halo = new THREE.Mesh(new THREE.RingGeometry(0.075, 0.095, 48), new THREE.MeshBasicMaterial({ color: 0x7fc4ff, transparent: true, opacity: 0.35 })); halo.position.z = 0.086; patch.add(halo);
+  const core = new THREE.Mesh(new THREE.CircleGeometry(0.05, 40), lensGlow); core.position.z = 0.125; patch.add(core);
+  const glowTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 128; const g = c.getContext("2d"); const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, "rgba(200,232,255,.95)"); r.addColorStop(0.35, "rgba(120,190,255,.45)"); r.addColorStop(1, "rgba(80,140,255,0)"); g.fillStyle = r; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
+  const bloom = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  bloom.position.z = 0.127; patch.add(bloom);
+  const halo = new THREE.Mesh(new THREE.RingGeometry(0.075, 0.09, 48), new THREE.MeshBasicMaterial({ color: 0x9fd2ff, transparent: true, opacity: 0.5, toneMapped: false })); halo.position.z = 0.124; patch.add(halo);
   const status = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.006, 8, 96), ringGlow); status.position.z = 0.0; patch.add(status);
   patch.userData.leds = [ringGlow];
   return patch;
