@@ -150,3 +150,20 @@ def test_tts_returns_audio_and_caches(client):
     r2 = client.post("/api/tts", json=body)
     assert r2.headers["x-tts-cached"] == "true" and r2.content == r1.content
     assert client.post("/api/tts", json={"text": "  "}).status_code == 400
+
+
+def test_prompt_forbids_invented_time_dependent_facts(monkeypatch):
+    """Asked "how far is Mars", the model once said "currently about 80 million km, closest in two weeks": invented.
+    The prompt must tell it to give averages and ranges and say it has no live data."""
+    p = llm.SYSTEM_PROMPT.lower()
+    assert "no live data" in p and "average and the range" in p and "unless the value is in" in p
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    seen = {}
+
+    def fake(state, transcript, history=None, **kw):
+        seen["msgs"] = llm.build_messages(state, transcript, history)
+        return "Mars averages about 225 million kilometres from Earth, between roughly 55 and 400 million. I don't have live data on where it is today."
+    monkeypatch.setattr(llm, "call_llm", fake)
+    r = llm.chat(_state(), "how far is Mars right now")
+    assert r["source"] == "llm" and "live data" in r["reply"]
+    assert "no live data" in seen["msgs"][0]["content"].lower()

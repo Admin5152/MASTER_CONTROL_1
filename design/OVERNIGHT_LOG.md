@@ -1,3 +1,5 @@
 - 07:02: builder active (last commit cab9a06 at 07:02: Sentinel Skin screen, guided exam + ground packet, organ detail view, wellbeing). No action needed.
 - 07:03: builder active, mid-run (docs/cleanup in progress: .env.example, run.ps1, old test scripts removed). No action.
 - 07:11: builder reported done (v2 complete, 45 pytest + 28 node tests pass, secret scan clean, 52-60 fps). Chrome extension disconnected, so reviewed its real-GPU and both-theme screenshots instead. Sent back 4 defects (caption covers exam title, organ view framing/chip clipping, sheet scrollbar, flat heart) plus the Sentinel Skin data feed.
+- 07:19: polish pass done (4 defects fixed, Sentinel Skin SIM feed built; 46 pytest + 28 node pass). Reviewed polish screenshots: exam caption clear, organ views framed with clean chips, scrollbars gone, heart shaded, eye check shows ONSD 4.8 mm with SIM ultrasound. Server up on :8000. Supervision stopped: build complete.
+- 07:31: leftover check-in fired; build already complete, server up, Chrome extension still disconnected. Cancelled the last check-in schedule.
