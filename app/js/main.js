@@ -534,6 +534,8 @@ function pushToTalk() {
 
 function wireVoice() {
   voiceMod.initVoice({ onCommand: (text, meta) => handleCommand(text, meta), onUtterance: (audio) => onUtterance(audio) });
+  // for the test harness and recorded demos: words as if heard by the microphone (after transcription), same path as speech
+  ctx.hear = (text) => { caption(`“${text}”`, ""); return handleCommand(text, { via: "voice", heard: text }); };
   voiceMod.setOpenMic(() => choosing);   // "Who's here?": just say your name, no wake phrase and no tap
   on("voice:open", () => { $("btn-mic").classList.add("is-open"); clearTimeout(wireVoice.t); wireVoice.t = setTimeout(() => $("btn-mic").classList.remove("is-open"), 8000); });
   on("voice:transcript", ({ text, final }) => { if (!final && text) caption(`“${text}”`, ""); });

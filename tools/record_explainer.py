@@ -3,8 +3,9 @@
 What it does:
 1. Voices the narration with ElevenLabs (a narrator voice, distinct from Sentinel's), cached on disk so a re-run
    costs nothing. Every number the narrator says is in FACTS below with its source.
-2. Drives the real app in Chrome. Narration plays over chapter cards drawn in the app's own design tokens (fonts,
-   colours, glass), then the app is shown working: Sentinel speaks for itself.
+2. Drives the real app in Chrome. Each chapter opens on Sentinel's Overview with a fact card docked beside the orb, built
+   as the app's own glass panel (its tokens, fonts, radius), while the narrator speaks; then the feature runs live and
+   Sentinel speaks for itself.
 3. Captures the screen straight from Chrome (DevTools screencast, 1920x1080) and Sentinel's voice from inside the
    page, then lays narration and voice over the picture with ffmpeg. Chrome is muted: nothing plays out loud.
 
@@ -60,7 +61,7 @@ N = {
     "end": "Sentinel. So that no one out there is ever alone with a problem.",
 }
 
-# chapter cards, drawn over the live app in its own tokens
+# hook and end: full-screen title cards; chapters: app panels docked inside the live interface
 CARDS = {
     "hook1": {"opaque": True, "track": True, "big": "22 minutes", "line": "for one message to cross from Mars to Earth", "src": "NASA · one-way light time"},
     "hook2": {"opaque": True, "big": "≈ 3 years", "line": "a crewed Mars mission, there and back. No hospital. No house calls.", "src": "NASA"},
@@ -81,7 +82,7 @@ CARDS = {
 OVERLAY = r"""(() => {
   const css = `
   #xv{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .8s ease;
-      background:rgba(4,8,16,.72);backdrop-filter:blur(22px) saturate(1.15);-webkit-backdrop-filter:blur(22px) saturate(1.15)}
+      background:rgba(4,8,16,.74)}
   #xv.opaque{background:radial-gradient(120% 90% at 50% 40%,#0b1424 0%,#03060c 70%)}
   #xv.on{opacity:1}
   #xv .in{display:grid;gap:22px;justify-items:center;text-align:center;max-width:min(1040px,86vw);transform:translateY(14px);transition:transform 1.1s cubic-bezier(.2,.7,.2,1)}
@@ -104,15 +105,43 @@ OVERLAY = r"""(() => {
   #xv.on .row{opacity:1;transform:none}
   #xv .row b{font-family:var(--font-label);font-weight:400;font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--nominal)}
   #xv .row span{font-size:21px;font-weight:300;color:var(--ink);line-height:1.4}
-  #xv .logo{color:var(--ink);transform:scale(1.25);margin-bottom:12px}`;
+  #xv .logo{color:var(--ink);transform:scale(1.25);margin-bottom:12px}
+  /* chapter cards: the app's own glass panel, docked in the free space left of Sentinel's orb */
+  #xvc{position:fixed;left:56px;top:50%;width:380px;z-index:2147482000;padding:28px 30px 24px;display:grid;gap:10px;pointer-events:none;
+      opacity:0;transform:translate(-32px,-50%);transition:opacity .6s ease,transform .9s cubic-bezier(.2,.7,.2,1)}
+  #xvc.on{opacity:1;transform:translate(0,-50%)}
+  #xvc.wide{width:500px}
+  #xvc .lab{font-family:var(--font-label);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--assist)}
+  #xvc .big{font-family:var(--font);font-weight:200;font-size:56px;line-height:1.02;letter-spacing:-.02em;color:var(--ink);margin-top:8px}
+  #xvc .line{font-family:var(--font);font-weight:300;font-size:17px;line-height:1.5;color:var(--ink-2)}
+  #xvc .src{display:flex;align-items:center;gap:9px;margin-top:8px;padding-top:14px;border-top:1px solid var(--rule);
+      font-family:var(--font-label);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3)}
+  #xvc .src::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--nominal);box-shadow:0 0 8px var(--nominal)}
+  #xvc .rows{display:grid;gap:12px;margin-top:8px}
+  #xvc .r{display:grid;gap:4px;padding:14px 16px;border-radius:16px;background:var(--surface-sunk, rgba(255,255,255,.03));border:1px solid var(--rule);
+      opacity:0;transform:translateY(8px);transition:opacity .6s ease,transform .6s ease}
+  #xvc.on .r{opacity:1;transform:none}
+  #xvc .r b{font-family:var(--font-label);font-weight:400;font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--nominal)}
+  #xvc .r span{font-size:16px;font-weight:300;line-height:1.45;color:var(--ink)}`;
   window.__xv = {
     show(c) {
-      let el = document.getElementById("xv");
-      if (!el) {
-        const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
-        el = document.createElement("div"); el.id = "xv"; document.body.appendChild(el);
-      }
+      if (!document.getElementById("xv-css")) { const st = document.createElement("style"); st.id = "xv-css"; st.textContent = css; document.head.appendChild(st); }
       const esc = (s) => String(s).replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m]));
+      if (!c.opaque) {   // a chapter card: an app panel inside the live interface
+        let d = document.getElementById("xvc");
+        if (!d) { d = document.createElement("aside"); d.id = "xvc"; d.className = "panel"; document.body.appendChild(d); }
+        let h = "";
+        if (c.label) h += `<div class="lab">${esc(c.label)}</div>`;
+        if (c.big) h += `<div class="big">${esc(c.big)}</div>`;
+        if (c.line) h += `<div class="line">${esc(c.line)}</div>`;
+        if (c.list) h += '<div class="rows">' + c.list.map(([k, v], i) => `<div class="r" style="transition-delay:${0.5 + i * 0.9}s"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join("") + "</div>";
+        if (c.src) h += `<div class="src">${esc(c.src)}</div>`;
+        d.innerHTML = h; d.classList.toggle("wide", !!c.list);
+        d.classList.remove("on"); void d.offsetWidth; d.classList.add("on");
+        return;
+      }
+      let el = document.getElementById("xv");
+      if (!el) { el = document.createElement("div"); el.id = "xv"; document.body.appendChild(el); }
       let h = '<div class="in">';
       if (c.logo) { const l = document.querySelector(".intro-logo"); if (l) h += `<div class="logo">${l.innerHTML}</div>`; }
       if (c.label) h += `<div class="lab">${esc(c.label)}</div>`;
@@ -125,7 +154,7 @@ OVERLAY = r"""(() => {
       el.classList.toggle("opaque", !!c.opaque);
       el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
     },
-    hide() { document.getElementById("xv")?.classList.remove("on"); },
+    hide() { document.getElementById("xv")?.classList.remove("on"); document.getElementById("xvc")?.classList.remove("on"); },
   };
 })();"""
 
@@ -209,12 +238,25 @@ async def run(narr: dict):
                 await pg.wait_for_timeout(150)
 
         async def say(text, then=0, max_s=30):
+            print(f"[{len(frames):5d} frames] say: {text}", flush=True)
             await pg.click("#ask-input"); await pg.type("#ask-input", text, delay=42); await pg.wait_for_timeout(300); await pg.press("#ask-input", "Enter")
             await quiet(max_s); await pg.wait_for_timeout(then)
 
+        async def home():
+            """Back to Overview (Sentinel's orb, open space on the left) unless the crew chooser is up."""
+            if await pg.evaluate("!!document.getElementById('who')"):
+                return
+            await pg.evaluate("window.sentinel.screens?.close?.()")
+            if not await pg.evaluate("document.querySelector('[data-nav=assistant]')?.getAttribute('aria-current') === 'true'"):
+                await pg.click("[data-nav=assistant]")
+            await pg.wait_for_timeout(1100)
+
         async def narrate(k, card=True, hold=0.6):
             """The narrator speaks k; with card, over its chapter card, which then fades back to the live app."""
+            print(f"[{len(frames):5d} frames] narrate: {k}", flush=True)
             if card and k in CARDS:
+                if not CARDS[k].get("opaque"):
+                    await home()
                 await pg.evaluate("(c) => window.__xv.show(c)", CARDS[k]); await pg.wait_for_timeout(700)
             f, dur = narr[k]
             spoken.append((time.time(), k, f, dur))
@@ -236,10 +278,15 @@ async def run(narr: dict):
         await pg.click("#start-btn"); await pg.wait_for_selector("#who [data-who]"); await quiet()
 
         await narrate("you")
-        await say("I'm Eliah", 500)
+        # the chooser is a voice moment: the words go in exactly as the microphone's transcript would
+        print(f"[{len(frames):5d} frames] hear: I'm Eliah", flush=True)
+        await pg.wait_for_timeout(600); await pg.evaluate("window.sentinel.hear(\"I'm Eliah\")"); await quiet(); await pg.wait_for_timeout(500)
         await say("How am I doing today?", 700)
         await narrate("twin")
-        await say("Do a full body scan", 1200, max_s=60)
+        await say("Do a full body scan", 0, max_s=60)
+        # the scan pauses between organs: wait for its last line, so the next chapter never talks over it
+        await pg.wait_for_function("document.body.innerText.includes('Scan complete')", timeout=75000, polling=200)
+        await quiet(); await pg.wait_for_timeout(1200)
         await narrate("wear")
         await say("Show my vitals", 400)
         await pg.evaluate("document.getElementById('wearable-host')?.scrollIntoView({behavior: 'smooth', block: 'center'})"); await pg.wait_for_timeout(1200)
@@ -260,7 +307,7 @@ async def run(narr: dict):
         await say("Send a digest to ground", 600)
         await say("The link is back", 600)
         await narrate("nasa")
-        await say("What does deep-space radiation do to the human body?", 800, max_s=45)
+        await say("What does deep-space radiation do to the human body?", 800, max_s=100)
         await say("Show me the NASA documents", 2500)
         await pg.evaluate("window.sentinel.screens.close()"); await pg.wait_for_timeout(600)
         await narrate("mind")
