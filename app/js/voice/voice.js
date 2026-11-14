@@ -144,46 +144,56 @@ function browserSay(text) {
   });
 }
 
+/** Plays the queue one sentence at a time. The lock is taken before any await, so a sentence that arrives
+ *  while the first one's audio is still downloading waits its turn instead of starting a second player
+ *  (that race made streamed replies speak over themselves). An interrupt (gen++) retires the old loop. */
+let pumpGen = -1;
 async function pump() {
-  if (playing || !queue.length) return;
-  const job = queue.shift();
+  if (pumpGen === gen || !queue.length) return;
   const myGen = gen;
-  if (!voice.speaking) {
-    voice.speaking = true;
-    // a reply window that was already open moves to after this speech, so talking never eats it
-    if (Date.now() < awaitingUntil) { pendingReply = Math.max(pendingReply, 9000); awaitingUntil = 0; }
-    pauseListening();
-    emit("voice:speaking-start", job.text);
+  pumpGen = myGen;
+  try {
+    while (queue.length && myGen === gen) {
+      const job = queue.shift();
+      if (!voice.speaking) {
+        voice.speaking = true;
+        // a reply window that was already open moves to after this speech, so talking never eats it
+        if (Date.now() < awaitingUntil) { pendingReply = Math.max(pendingReply, 9000); awaitingUntil = 0; }
+        pauseListening();
+        emit("voice:speaking-start", job.text);
+      }
+      const buffer = await job.audio;
+      if (myGen !== gen) { job.resolve(); return; }
+      emit("voice:sentence", job.text);
+      if (buffer) {
+        const ctx = outChain();
+        if (ctx.state === "suspended") { try { await ctx.resume(); } catch { /* ignore */ } }
+        if (myGen !== gen) { job.resolve(); return; }
+        await new Promise((res) => {
+          const src = ctx.createBufferSource();
+          src.buffer = buffer;
+          src.connect(outGain);
+          playing = { src, job };
+          voice.playing = true;
+          src.onended = () => { voice.playing = false; res(); };
+          startLevel();
+          src.start();
+          // a context that is still suspended plays nothing and never ends: say so and fall through to text
+          setTimeout(() => { if (ctx.state !== "running" && playing?.src === src) { voiceProblem("audio output", `AudioContext ${ctx.state}`); voice.playing = false; res(); } }, 1500);
+        });
+      } else {
+        playing = { src: null, job };
+        emit("voice:speak-level", 0.35);
+        emit("voice:engine", "browser");
+        await browserSay(job.text);
+      }
+      playing = null;
+      job.resolve();
+    }
+    if (myGen === gen) finishSpeaking();
+  } finally {
+    if (pumpGen === myGen) pumpGen = -1;
   }
-  const buffer = await job.audio;
-  if (myGen !== gen) { job.resolve(); return; }
-  emit("voice:sentence", job.text);
-  if (buffer) {
-    const ctx = outChain();
-    if (ctx.state === "suspended") { try { await ctx.resume(); } catch { /* ignore */ } }
-    await new Promise((res) => {
-      const src = ctx.createBufferSource();
-      src.buffer = buffer;
-      src.connect(outGain);
-      playing = { src, job };
-      voice.playing = true;
-      src.onended = () => { voice.playing = false; res(); };
-      startLevel();
-      src.start();
-      // a context that is still suspended plays nothing and never ends: say so and fall through to text
-      setTimeout(() => { if (ctx.state !== "running" && playing?.src === src) { voiceProblem("audio output", `AudioContext ${ctx.state}`); voice.playing = false; res(); } }, 1500);
-    });
-  } else {
-    playing = { src: null, job };
-    emit("voice:speak-level", 0.35);
-    emit("voice:engine", "browser");
-    await browserSay(job.text);
-  }
-  playing = null;
-  job.resolve();
-  if (myGen !== gen) return;
-  if (queue.length) pump();
-  else finishSpeaking();
 }
 
 function finishSpeaking() {
