@@ -203,3 +203,10 @@ body.is-pointing .zone .zchip { opacity: 0; }
 .skin-n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--assist-soft); color: var(--assist); font-size: 12px; font-weight: var(--fw-semi); }
 .skin-more { padding: 0 14px 14px 54px; display: grid; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
 .well-icon svg { width: 22px; height: 22px; }
+
+/* compact status line on tablets in landscape: keep the nav and the tools, drop the wordmark and secondary badges */
+@media (max-width: 1180px) and (min-width: 901px) {
+  .statusline { gap: var(--s-3); }
+  .statusline .brand { font-size: 0; letter-spacing: 0; }
+  .statusline #sb-identity, .statusline .sb-cabin .badge { display: none; }
+}
