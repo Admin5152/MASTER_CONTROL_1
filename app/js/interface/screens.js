@@ -332,6 +332,10 @@ function renderSettings(el, ctx) {
 
 function renderAbout(el) {
   el.innerHTML = `<p>Sentinel is an onboard crew-health companion built for the NASA Space Apps Challenge 2026. It describes change from each person's own baseline and never diagnoses.</p>
+    <h3>Why: Earth-Independent Medical Operations</h3>
+    <p class="note">NASA describes EIMO as "the gradual transfer of medical care and decision-making from Earth-based support to space-based systems". On a Mars transit there is no evacuation and a message to ground takes minutes each way, so care must be crew- and vehicle-reliant. Sentinel is designed around that problem: it monitors, explains change from baseline, guides the next step (a guided exam, the reaction test, a breathing break) and packages findings for delayed ground review. Source: <a href="https://ntrs.nasa.gov/citations/20240001402" target="_blank" rel="noopener">NASA EIMO Concept of Operations, NTRS 20240001402</a> (a concept, not a flown system).</p>
+    <p class="note">It also echoes NASA's work on one integrated crew-health data layer (CHP-IDA / CHP-IDSP, in development): many sources, one record, actionable output. The reaction test is "like the ISS Reaction Self Test"; the weekly set is "inspired by" NASA Spaceflight Standard Measures.</p>
+    <p class="fine">What Sentinel does not claim: it does not meet or implement NASA-STD-3001, EIMO or CHP-IDA, it is not the NASA Cognition battery or the Reaction Self Test, and it is not a medical device.</p>
     <h3>Credits</h3>
     <ul class="credits">
       <li>Planet textures: Solar System Scope (CC BY 4.0), based on NASA imagery.</li>

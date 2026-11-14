@@ -193,3 +193,12 @@ body.is-pointing .zone .zchip { opacity: 0; }
 .pvt-stats > div { display: grid; padding: 10px 12px; border-radius: 14px; background: var(--surface-sunk); }
 .pvt-stats strong { font-size: 26px; font-weight: var(--fw-light); }
 .pvt-stats small { color: var(--ink-3); font-size: 11px; }
+
+/* Sentinel Skin modules */
+.skin-mods { list-style: none; padding: 0; display: grid; gap: var(--s-2); margin-top: var(--s-3); }
+.skin-mods li.card { padding: 0; overflow: hidden; }
+.skin-mods button { width: 100%; display: grid; grid-template-columns: 28px 1fr auto; gap: var(--s-3); align-items: start; text-align: left; padding: 12px 14px; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.skin-mods strong { display: block; font-size: var(--fs-sm); }
+.skin-mods small { color: var(--ink-2); font-size: 12px; line-height: 1.4; }
+.skin-n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--assist-soft); color: var(--assist); font-size: 12px; font-weight: var(--fw-semi); }
+.skin-more { padding: 0 14px 14px 54px; display: grid; gap: 6px; font-size: 12.5px; color: var(--ink-2); }

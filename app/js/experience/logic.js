@@ -46,30 +46,10 @@ export function pacer(tSec, inSec = 4, outSec = 6) {
   return x < inSec ? { phase: "in", frac: x / inSec } : { phase: "out", frac: (x - inSec) / outSec };
 }
 
-// ---------------- Aurora Run ----------------
-/** Fraction of samples where the finger state matched the pacer (held on "in", lifted on "out"). */
-export function breathSync(samples) {
-  if (!samples.length) return 0;
-  let ok = 0;
-  for (const s of samples) if ((s.phase === "in") === !!s.holding) ok++;
-  return ok / samples.length;
-}
-
-/** Path width as a fraction of the screen width: wider when breathing in time and heart rate at or below baseline. */
-export function pathWidth(syncRatio, hr = null, baseline = null) {
-  let w = 0.18 + 0.22 * Math.max(0, Math.min(1, syncRatio));
-  if (hr != null && baseline) w += hr <= baseline ? 0.06 : 0;
-  return Math.min(0.46, w);
-}
-
+// ---------------- Mood (shared by the breaks) ----------------
 export function moodChange(before, after) {
   if (before == null || after == null) return null;
   return after - before;
-}
-
-export function sessionSummary({ moodBefore, moodAfter, startHr, endHr, syncRatio }) {
-  return { mood_before: moodBefore, mood_after: moodAfter, mood_change: moodChange(moodBefore, moodAfter),
-    start_hr: startHr ?? null, end_hr: endHr ?? null, sync_pct: Math.round((syncRatio || 0) * 100) };
 }
 
 // ---------------- Greenhouse ----------------

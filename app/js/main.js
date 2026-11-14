@@ -178,7 +178,7 @@ async function mountApp() {
   registerScreen("orb_calm", { title: "Orb Calm", orb: true, render: renderOrbCalm });
   registerScreen("race", { title: "Space race", full: true, render: renderRace });
   registerScreen("greenhouse", { title: "Greenhouse", render: renderGreenhouse });
-  registerScreen("hardware", { title: "Sentinel Skin", badge: "DESIGNED", wide: true, render: renderHardware });
+  registerScreen("hardware", { title: "Sentinel Skin", badge: "DESIGNED", render: renderHardware });
   registerScreen("interventions", { title: "Suggestions", render: (el, c, arg) => renderMenu(el, c, arg) });
   registerScreen("earth_window", { title: "Earth window", badge: "SIM", render: renderEarth });
   registerScreen("music", { title: "Ambient sound", render: renderMusic });
@@ -557,7 +557,7 @@ function onState(v) {
   renderFindings($("findings"), $("findings-status"), v, (z) => director.run([{ cmd: "check_zone", zones: [z] }]));
   renderBodyPanels();
   if (stages.current === "vitals") renderVitals(v);
-  ctx.body3d?.setChips(Object.fromEntries(["heart", "lungs", "head"].map((z) => [z, chipText(z, v)]).filter(([, c]) => c)));
+  if (!ctx.skinChips) ctx.body3d?.setChips(Object.fromEntries(["heart", "lungs", "head"].map((z) => [z, chipText(z, v)]).filter(([, c]) => c)));
   space.setProfile(s.radiation.mission_profile);
   const sev = s.action?.severity || "none";
   orb.setSeverity(["flag_cabin", "flag_radiation", "flag_ground"].includes(s.action?.type) ? "alert" : sev === "watch" ? "watch" : "none");

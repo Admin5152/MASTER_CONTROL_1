@@ -1,73 +1,245 @@
 {
   "_doc": "Pitch and info-panel facts. Each one is quoted or closely paraphrased from the URL given. Use only these in the pitch.",
   "facts": [
-    { "id": "mars_delay", "text": "At Mars' closest approach, about 35 million miles away, a signal takes about four minutes each way; when the planets are farthest apart it is around 24 minutes.",
-      "source": { "title": "NASA Goddard: Space communications, 7 things you need to know", "url": "https://www.nasa.gov/centers-and-facilities/goddard/space-communications-7-things-you-need-to-know/" } },
-    { "id": "five_hazards", "text": "NASA groups the risks of human spaceflight into five hazards: space radiation, isolation and confinement, distance from Earth, gravity fields, and hostile or closed environments.",
-      "source": { "title": "NASA Human Research Program: The human body in space / five hazards", "url": "https://www.nasa.gov/hrp/hazards/" } },
-    { "id": "radiation_invisible", "text": "Invisible to the human eye, space radiation is considered one of the most hazardous aspects of spaceflight.",
-      "source": { "title": "NASA Human Research Program: five hazards", "url": "https://www.nasa.gov/hrp/hazards/" } },
-    { "id": "sans_prevalence", "text": "Approximately 69% of long-duration astronauts present with the earliest indications of SANS (a new sign in at least one eye during or right after flight: optic disc edema, chorioretinal folds, globe flattening or a refractive shift). NASA notes the severity threshold for pathological SANS is not yet known.",
+    {
+      "id": "mars_delay",
+      "text": "At Mars' closest approach, about 35 million miles away, a signal takes about four minutes each way; when the planets are farthest apart it is around 24 minutes.",
+      "source": {
+        "title": "NASA Goddard: Space communications, 7 things you need to know",
+        "url": "https://www.nasa.gov/centers-and-facilities/goddard/space-communications-7-things-you-need-to-know/"
+      }
+    },
+    {
+      "id": "five_hazards",
+      "text": "NASA groups the risks of human spaceflight into five hazards: space radiation, isolation and confinement, distance from Earth, gravity fields, and hostile or closed environments.",
+      "source": {
+        "title": "NASA Human Research Program: The human body in space / five hazards",
+        "url": "https://www.nasa.gov/hrp/hazards/"
+      }
+    },
+    {
+      "id": "radiation_invisible",
+      "text": "Invisible to the human eye, space radiation is considered one of the most hazardous aspects of spaceflight.",
+      "source": {
+        "title": "NASA Human Research Program: five hazards",
+        "url": "https://www.nasa.gov/hrp/hazards/"
+      }
+    },
+    {
+      "id": "sans_prevalence",
+      "text": "Approximately 69% of long-duration astronauts present with the earliest indications of SANS (a new sign in at least one eye during or right after flight: optic disc edema, chorioretinal folds, globe flattening or a refractive shift). NASA notes the severity threshold for pathological SANS is not yet known.",
       "qualifier": "Long-duration astronauts; counts the earliest indications, not clinically significant disease. The team's 81% figure could not be confirmed on a nasa.gov or NTRS page and is not used.",
-      "source": { "title": "NASA NTRS 20220000516: Spaceflight Associated Neuro-ocular Syndrome (SANS): Clinical Update", "url": "https://ntrs.nasa.gov/citations/20220000516" } },
-    { "id": "career_limit", "text": "NASA limits an astronaut's career effective radiation dose from spaceflight to less than 600 mSv, for all ages and sexes.",
-      "source": { "title": "NASA OCHMO radiation protection technical brief", "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf" } },
-    { "id": "rad_cruise", "text": "Curiosity's RAD measured an average of 1.8 millisieverts of galactic cosmic radiation per day on the cruise to Mars.",
-      "source": { "title": "NASA JPL: Data from NASA rover's voyage to Mars aids planning", "url": "https://www.jpl.nasa.gov/news/data-from-nasa-rovers-voyage-to-mars-aids-planning/" } },
-    { "id": "rad_surface", "text": "On the Martian surface RAD measured an average of 0.67 mSv per day (August 2012 to June 2013).",
-      "source": { "title": "SwRI: first radiation measurements from the surface of Mars", "url": "https://www.swri.org/press-release/swri-scientists-publish-first-radiation-measurements-surface-mars" } },
-    { "id": "rad_iss", "text": "On the ISS, effective doses accumulate at approximately 0.2 to 0.5 mSv per day, about 40 to 90 mSv over a typical six-month mission.",
-      "source": { "title": "NASA NTRS 20250006168: Moon 2 Mars Space Radiation Protection", "url": "https://ntrs.nasa.gov/citations/20250006168" } },
-    { "id": "co2_limit", "text": "NASA-STD-3001 requires the one-hour average CO2 partial pressure in the habitable volume to stay at or below 3 mmHg; headaches are reported between 2.8 and 4.5 mmHg.",
-      "source": { "title": "NASA OCHMO-TB-004 Carbon Dioxide", "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf" } },
-    { "id": "hypoxia_masked", "text": "Hypoxia symptoms can be mistaken for fatigue, and a crew member experiencing hypoxia may lose cognitive function and reasoning.",
-      "source": { "title": "NASA OCHMO-TB-003 Habitable Atmosphere", "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-003-habitable-atmosphere.pdf" } },
-    { "id": "shielding", "text": "Aluminium and polyethylene shielding gives an average 50% reduction in dose from solar particle events, but only about 7% for galactic cosmic rays.",
-      "source": { "title": "NASA OCHMO radiation protection technical brief", "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf" } },
-    { "id": "veggie_bh", "text": "NASA's VEG-04 study on the ISS grew mizuna mustard and surveyed crew before, during and after flight on plant care, to test whether tending plants supports behavioural health on long missions.",
-      "source": { "title": "NASA NTRS 20205008589: VEG-04 Pick-and-Eat crop production and human research on the ISS", "url": "https://ntrs.nasa.gov/citations/20205008589" } },
-    { "id": "veggie_2025", "text": "A 2025 NASA poster on 27 astronauts who worked with the Veggie plant system concluded that working with and eating plants may serve as a behavioural health countermeasure for long-duration spaceflight.",
-      "source": { "title": "NASA NTRS 20250000411", "url": "https://ntrs.nasa.gov/citations/20250000411" } },
-    { "id": "isolation", "text": "Isolation and confinement is one of NASA's five hazards; NASA researchers are building ways to monitor behavioural health and to catch early risk factors in flight.",
-      "source": { "title": "NASA HRP: Hazard - Isolation and Confinement", "url": "https://www.nasa.gov/hrp/hazard-isolation-and-confinement/" } },
-    { "id": "med_kit", "text": "The ISS carries medical packs (such as convenience and oral medication packs) listing each medication, its side effects and stowage location.",
-      "source": { "title": "NASA ISS Medical Kit Checklist (2015 release)", "url": "https://www.nasa.gov/wp-content/uploads/2015/03/medical_kit_checklist_-_full_release.pdf" } }
+      "source": {
+        "title": "NASA NTRS 20220000516: Spaceflight Associated Neuro-ocular Syndrome (SANS): Clinical Update",
+        "url": "https://ntrs.nasa.gov/citations/20220000516"
+      }
+    },
+    {
+      "id": "career_limit",
+      "text": "NASA limits an astronaut's career effective radiation dose from spaceflight to less than 600 mSv, for all ages and sexes.",
+      "source": {
+        "title": "NASA OCHMO radiation protection technical brief",
+        "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf"
+      }
+    },
+    {
+      "id": "rad_cruise",
+      "text": "Curiosity's RAD measured an average of 1.8 millisieverts of galactic cosmic radiation per day on the cruise to Mars.",
+      "source": {
+        "title": "NASA JPL: Data from NASA rover's voyage to Mars aids planning",
+        "url": "https://www.jpl.nasa.gov/news/data-from-nasa-rovers-voyage-to-mars-aids-planning/"
+      }
+    },
+    {
+      "id": "rad_surface",
+      "text": "On the Martian surface RAD measured an average of 0.67 mSv per day (August 2012 to June 2013).",
+      "source": {
+        "title": "SwRI: first radiation measurements from the surface of Mars",
+        "url": "https://www.swri.org/press-release/swri-scientists-publish-first-radiation-measurements-surface-mars"
+      }
+    },
+    {
+      "id": "rad_iss",
+      "text": "On the ISS, effective doses accumulate at approximately 0.2 to 0.5 mSv per day, about 40 to 90 mSv over a typical six-month mission.",
+      "source": {
+        "title": "NASA NTRS 20250006168: Moon 2 Mars Space Radiation Protection",
+        "url": "https://ntrs.nasa.gov/citations/20250006168"
+      }
+    },
+    {
+      "id": "co2_limit",
+      "text": "NASA-STD-3001 requires the one-hour average CO2 partial pressure in the habitable volume to stay at or below 3 mmHg; headaches are reported between 2.8 and 4.5 mmHg.",
+      "source": {
+        "title": "NASA OCHMO-TB-004 Carbon Dioxide",
+        "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf"
+      }
+    },
+    {
+      "id": "hypoxia_masked",
+      "text": "Hypoxia symptoms can be mistaken for fatigue, and a crew member experiencing hypoxia may lose cognitive function and reasoning.",
+      "source": {
+        "title": "NASA OCHMO-TB-003 Habitable Atmosphere",
+        "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-003-habitable-atmosphere.pdf"
+      }
+    },
+    {
+      "id": "shielding",
+      "text": "Aluminium and polyethylene shielding gives an average 50% reduction in dose from solar particle events, but only about 7% for galactic cosmic rays.",
+      "source": {
+        "title": "NASA OCHMO radiation protection technical brief",
+        "url": "https://www.nasa.gov/wp-content/uploads/2023/03/radiation-protection-technical-brief-ochmo.pdf"
+      }
+    },
+    {
+      "id": "veggie_bh",
+      "text": "NASA's VEG-04 study on the ISS grew mizuna mustard and surveyed crew before, during and after flight on plant care, to test whether tending plants supports behavioural health on long missions.",
+      "source": {
+        "title": "NASA NTRS 20205008589: VEG-04 Pick-and-Eat crop production and human research on the ISS",
+        "url": "https://ntrs.nasa.gov/citations/20205008589"
+      }
+    },
+    {
+      "id": "veggie_2025",
+      "text": "A 2025 NASA poster on 27 astronauts who worked with the Veggie plant system concluded that working with and eating plants may serve as a behavioural health countermeasure for long-duration spaceflight.",
+      "source": {
+        "title": "NASA NTRS 20250000411",
+        "url": "https://ntrs.nasa.gov/citations/20250000411"
+      }
+    },
+    {
+      "id": "isolation",
+      "text": "Isolation and confinement is one of NASA's five hazards; NASA researchers are building ways to monitor behavioural health and to catch early risk factors in flight.",
+      "source": {
+        "title": "NASA HRP: Hazard - Isolation and Confinement",
+        "url": "https://www.nasa.gov/hrp/hazard-isolation-and-confinement/"
+      }
+    },
+    {
+      "id": "med_kit",
+      "text": "The ISS carries medical packs (such as convenience and oral medication packs) listing each medication, its side effects and stowage location.",
+      "source": {
+        "title": "NASA ISS Medical Kit Checklist (2015 release)",
+        "url": "https://www.nasa.gov/wp-content/uploads/2015/03/medical_kit_checklist_-_full_release.pdf"
+      }
+    }
   ],
   "zones": {
-    "head": { "title": "Brain and cognition", "hazard": "Space radiation; isolation and confinement",
+    "head": {
+      "title": "Brain and cognition",
+      "hazard": "Space radiation; isolation and confinement",
       "what": "Thinking speed, attention, mood and sleep.",
       "spaceflight": "Deep-space radiation, isolation, sleep loss and workload can all slow reaction time and lower mood. NASA tracks cognition and behavioural health on long missions.",
       "next": "Run the cognitive check and log mood and sleep.",
-      "source": { "title": "NASA HRP: Hazard - Isolation and Confinement", "url": "https://www.nasa.gov/hrp/hazard-isolation-and-confinement/" } },
-    "eyes": { "title": "Eyes and vision", "hazard": "Gravity fields",
+      "source": {
+        "title": "NASA HRP: Hazard - Isolation and Confinement",
+        "url": "https://www.nasa.gov/hrp/hazard-isolation-and-confinement/"
+      }
+    },
+    "eyes": {
+      "title": "Eyes and vision",
+      "hazard": "Gravity fields",
       "what": "Vision, and the back of the eye (optic disc and retina).",
       "spaceflight": "In weightlessness fluid shifts toward the head. About 69% of long-duration astronauts show the earliest signs of Spaceflight Associated Neuro-ocular Syndrome (SANS). Tiredness and eye strain also show here.",
       "next": "Rest your eyes, and report any blurred vision to the flight surgeon.",
-      "source": { "title": "NASA NTRS 20220000516: SANS Clinical Update", "url": "https://ntrs.nasa.gov/citations/20220000516" } },
-    "heart": { "title": "Heart and circulation", "hazard": "Gravity fields",
+      "source": {
+        "title": "NASA NTRS 20220000516: SANS Clinical Update",
+        "url": "https://ntrs.nasa.gov/citations/20220000516"
+      }
+    },
+    "heart": {
+      "title": "Heart and circulation",
+      "hazard": "Gravity fields",
       "what": "Heart rate and blood pressure.",
       "spaceflight": "Without gravity, fluids shift and the heart works differently; stress and poor sleep also raise resting heart rate.",
       "next": "Try a slow breathing session (Orb Calm) and recheck.",
-      "source": { "title": "NASA Human Research Program: five hazards", "url": "https://www.nasa.gov/hrp/hazards/" } },
-    "lungs": { "title": "Lungs and breathing", "hazard": "Hostile and closed environments",
+      "source": {
+        "title": "NASA Human Research Program: five hazards",
+        "url": "https://www.nasa.gov/hrp/hazards/"
+      }
+    },
+    "lungs": {
+      "title": "Lungs and breathing",
+      "hazard": "Hostile and closed environments",
       "what": "Breathing rate and blood oxygen, and the air the crew breathes.",
       "spaceflight": "The cabin is a closed environment: CO2 builds up if scrubbers lag, and hypoxia symptoms can be mistaken for fatigue.",
       "next": "Check the cabin readout; if CO2 is high, move to a ventilated area.",
-      "source": { "title": "NASA OCHMO-TB-004 Carbon Dioxide", "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf" } },
-    "gut": { "title": "Digestion and nutrition", "hazard": "Distance from Earth",
+      "source": {
+        "title": "NASA OCHMO-TB-004 Carbon Dioxide",
+        "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf"
+      }
+    },
+    "gut": {
+      "title": "Digestion and nutrition",
+      "hazard": "Distance from Earth",
       "what": "Blood glucose, appetite and digestion.",
       "spaceflight": "Far from Earth there is no resupply on demand: what the crew eats is planned months ahead, and fresh food is scarce.",
       "next": "Log glucose after meals and note any nausea.",
-      "source": { "title": "NASA Human Research Program: five hazards", "url": "https://www.nasa.gov/hrp/hazards/" } },
-    "bones": { "title": "Bones and muscles", "hazard": "Gravity fields",
+      "source": {
+        "title": "NASA Human Research Program: five hazards",
+        "url": "https://www.nasa.gov/hrp/hazards/"
+      }
+    },
+    "bones": {
+      "title": "Bones and muscles",
+      "hazard": "Gravity fields",
       "what": "Bone density and muscle strength.",
       "spaceflight": "Without load-bearing, bone and muscle are lost in weightlessness; daily resistance exercise is the countermeasure. This build has no exercise sensor: the exercise log is DESIGNED, not running.",
       "next": "Complete the scheduled exercise session.",
-      "source": { "title": "NASA Human Research Program: five hazards", "url": "https://www.nasa.gov/hrp/hazards/" } },
-    "whole_body": { "title": "Whole body: radiation", "hazard": "Space radiation",
+      "source": {
+        "title": "NASA Human Research Program: five hazards",
+        "url": "https://www.nasa.gov/hrp/hazards/"
+      }
+    },
+    "whole_body": {
+      "title": "Whole body: radiation",
+      "hazard": "Space radiation",
       "what": "Radiation dose to the whole body, and body temperature.",
       "spaceflight": "NASA tracks cancer risk, central nervous system and cognitive effects, cardiovascular effects and cataracts from space radiation. You cannot feel it, so Sentinel shows it, and asks for the cognitive check so a trend is noticed early.",
       "next": "Follow the storm checklist if an alert is raised; keep the cognitive check routine.",
-      "source": { "title": "NASA HRP: five hazards (space radiation)", "url": "https://www.nasa.gov/hrp/hazards/" } }
-  }
+      "source": {
+        "title": "NASA HRP: five hazards (space radiation)",
+        "url": "https://www.nasa.gov/hrp/hazards/"
+      }
+    }
+  },
+  "sentinel_skin": [
+    {
+      "module": "Base-layer smart shirt",
+      "basis": "CSA Astroskin Bio-Monitor, flown on the ISS",
+      "url": "https://asc-csa.gc.ca/eng/sciences/astroskin.asp"
+    },
+    {
+      "module": "Ultrasound patches",
+      "basis": "MIT bioadhesive ultrasound (BAUS) patch, Science 2022: continuous organ imaging for 48 h, including during exercise; needs external computing",
+      "url": "https://www.nih.gov/news-events/nih-research-matters/ultrasound-imaging-gets-small-wearable"
+    },
+    {
+      "module": "Eye module",
+      "basis": "Ocular ultrasound on ISS; a 2022 review names a portable non-invasive tool for optic nerve sheath diameter as an area of need (SANS)",
+      "url": "https://www.nature.com/articles/s41526-022-00228-1.pdf"
+    },
+    {
+      "module": "Pocket compute module",
+      "basis": "On-board processing over Bluetooth Low Energy, answering the BAUS patch's need for external computing",
+      "url": "https://www.nih.gov/news-events/nih-research-matters/ultrasound-imaging-gets-small-wearable"
+    }
+  ],
+  "nasa_monitoring": [
+    {
+      "fact": "EIMO: the gradual transfer of medical care and decision-making from Earth-based support to space-based systems (concept)",
+      "url": "https://ntrs.nasa.gov/citations/20240001402"
+    },
+    {
+      "fact": "ISS Reaction Self Test: a 3-minute psychomotor vigilance test used as a fatigue flag",
+      "url": "https://ntrs.nasa.gov/citations/20090029851"
+    },
+    {
+      "fact": "Sleep under 6 h was associated with slower psychomotor speed in 24 ISS astronauts",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8919197"
+    },
+    {
+      "fact": "Spaceflight Standard Measures include sit-to-stand and tandem-walk tests",
+      "url": "https://ntrs.nasa.gov/api/citations/20180002943/downloads/20180002943.pdf"
+    }
+  ]
 }

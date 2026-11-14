@@ -39,11 +39,9 @@ export function renderGreenhouse(el, ctx) {
         <p>Streak <strong class="num">${eng.streak_days ?? 0}</strong> days · today's check-ins <strong class="num">${eng.checkins_today ?? 0}</strong> · calm levels cleared <strong class="num">${eng.calm_levels_cleared ?? 0}</strong></p>
         <h3>Why a plant</h3>
         ${facts.map((f) => `<p>${esc(f.text)} <a class="src-link" href="${esc(f.source.url)}" target="_blank" rel="noopener">${esc(f.source.title)}</a></p>`).join("")}
-        <h3>Mood change per Aurora Run session</h3>
-        <div data-wellbeing></div>
+        <p><button class="link-btn" type="button" data-well>Open the wellbeing hub</button></p>
       </div>
     </div>`;
-  let cleanup = () => {};
-  import("./aurora.js").then(({ renderWellbeing }) => renderWellbeing(el.querySelector("[data-wellbeing]"), ctx.view.crewId)).then((c) => { cleanup = c || cleanup; });
-  return () => cleanup();
+  el.querySelector("[data-well]")?.addEventListener("click", () => ctx.screens?.open("wellbeing"));
+  return () => {};
 }

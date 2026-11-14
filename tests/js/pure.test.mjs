@@ -8,7 +8,7 @@ import { encodeWav, resample } from "../../app/js/voice/wav.js";
 import { estimateBpm, PulseTracker } from "../../app/js/vision/rppg.js";
 import { matchIntent } from "../../app/js/core/intents.js";
 import { validateCommands } from "../../app/js/core/commands.js";
-import { createCalm, updateCalm, pathWidth, breathSync, moodChange, sessionSummary, greenhouseDay, greenhouseCalm, medianReaction, pacer } from "../../app/js/experience/logic.js";
+import { createCalm, updateCalm, moodChange, greenhouseDay, greenhouseCalm, medianReaction, pacer } from "../../app/js/experience/logic.js";
 import { scanOrder } from "../../app/js/interface/body.js";
 
 // deterministic PRNG
@@ -206,20 +206,9 @@ test("Orb Calm: no clear without a 10 s hold", () => {
   assert.equal(r.cleared, true);
 });
 
-test("Aurora: path is wider for in-time breathing", () => {
-  const inTime = [], outTime = [];
-  for (let t = 0; t < 20; t += 0.1) {
-    const ph = pacer(t).phase;
-    inTime.push({ phase: ph, holding: ph === "in" });
-    outTime.push({ phase: ph, holding: ph !== "in" });
-  }
-  assert.ok(pathWidth(breathSync(inTime)) > pathWidth(breathSync(outTime)));
-  assert.ok(pathWidth(1, 60, 70) > pathWidth(1, 80, 70));
-});
-
-test("Aurora: mood 2 before and 4 after records +2", () => {
+test("mood change before and after a break: 2 then 4 records +2", () => {
   assert.equal(moodChange(2, 4), 2);
-  assert.equal(sessionSummary({ moodBefore: 2, moodAfter: 4 }).mood_change, 2);
+  assert.equal(moodChange(null, 4), null);
 });
 
 test("Greenhouse: grows on a completed day, wilts at most one, never below zero", () => {
