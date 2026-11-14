@@ -5,13 +5,13 @@ import * as THREE from "three";
 
 const TEX = "assets/space/";
 const SUN = new THREE.Vector3(-1, 0.35, 0.62).normalize();
-const MARS_POS = new THREE.Vector3(-2.7, 1.25, -6.2);
+const MARS_POS = new THREE.Vector3(-1.75, 0.95, -0.9);   // well clear of Earth on the mission view
 
 const VIEWS = {
   // fx, fy: where the planet sits on screen (fractions); r: planet radius as a fraction of screen height
   home: { target: "earth", fx: 0.5, fy: 1.62, r: 0.62, az: 0.15, el: 0.42 },
   assistant: { target: "earth", fx: 0.5, fy: 1.62, r: 0.62, az: 0.15, el: 0.42 },
-  mission: { target: "earth", fx: 0.62, fy: 0.5, r: 0.33, az: 0.12, el: 0.12 },
+  mission: { target: "earth", fx: 0.64, fy: 0.42, r: 0.27, az: 0.12, el: 0.12 },   // up and right: frames the headline, clear of the cards
   radiation: { target: "earth", fx: 0.5, fy: 0.52, r: 0.25, az: -0.25, el: 0.06 },
   calm: { target: "earth", fx: 0.5, fy: 1.75, r: 0.6, az: 0.4, el: 0.3 },
 };
@@ -186,7 +186,7 @@ export function createSpace(world, { tablet = false } = {}) {
     if (name === "radiation" && profile.startsWith("mars")) def.target = "mars";
     currentView = name;
     streamOn = name === "radiation";
-    moonPivot.children[1].visible = outer.visible = name === "mission";
+    moonPivot.children[1].visible = outer.visible = false;   // orbit lines cut through the headline text
     mars.visible = marsAtmo.visible = profile.startsWith("mars") && (name === "mission" || name === "radiation");
     const tp = def.target === "mars" ? MARS_POS : new THREE.Vector3();
     center.copy(tp);
@@ -209,6 +209,7 @@ export function createSpace(world, { tablet = false } = {}) {
     moonPivot.rotation.y += dt * 0.045;
     moon.rotation.y += dt * 0.02;
     mars.rotation.y += dt * 0.02;
+    atmo.visible = world.theme !== "light";   // an additive glow reads as a grey disc on the pale sky
     // camera: distance from the planet's screen size, plus a slow drift
     const radius = v.radius ?? 1;
     const dist = radius / (2 * v.r * half);

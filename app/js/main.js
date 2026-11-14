@@ -129,6 +129,7 @@ async function start() {
   ctx.setGlove(settings.get("glove") === "on");
   await stages.go("assistant");
   world.remove("intro");
+  openWho();   // straight away: choosing who you are never waits on the microphone prompt
   if (navigator.mediaDevices?.getUserMedia) {
     try {
       const id = settings.get("mic");
@@ -137,7 +138,6 @@ async function start() {
     } catch { note("Microphone not available: type, or use the menu."); }
   }
   applyListening();
-  openWho();
 }
 
 // ---------- "Who's here?": pick your name by tap or by saying it ----------
