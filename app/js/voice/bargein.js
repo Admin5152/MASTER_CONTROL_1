@@ -24,10 +24,14 @@ const LEAD = /^(?:(?:hey\s+)?sentinel|wait|hold on|hang on|hold up|sorry|excuse 
 // words that only fill a pause ("hang on a sec", "wait, I'm talking"): no request in them
 const FILLER = new Set("a an the sec second seconds moment minute just please i i'm im am talking speaking let me finish think up on wait hold hang sorry ok okay sentinel hey yes yeah no".split(" "));
 
+// listening noises: said while Sentinel talks, they mean "I'm following", so it keeps talking
+const BACKCHANNEL = /^(?:ok(?:ay)?|yeah|yes|yep|yup|mm+ ?h?m*|uh huh|right|i see|got it|sure|cool|nice|wow|oh|ah|hm+|thanks|thank you|true|exactly)(?:[\s,.!]+(?:ok(?:ay)?|yeah|yes|right|i see|got it))?[\s.!]*$/i;
+
 /** What an interruption meant: {kind: "stop"|"hold"|"resume"|"command", rest} (rest: the command, if any). */
 export function classifyInterruption(text) {
   const t = String(text || "").trim();
   if (!t) return { kind: "hold", rest: "" };
+  if (BACKCHANNEL.test(t)) return { kind: "resume", rest: "" };   // "yeah", "okay": carry on
   if (RESUME.test(t)) return { kind: "resume", rest: "" };
   if (STOP.test(t) && words(t).length <= 5) return { kind: "stop", rest: "" };
   // strip "wait,", "sorry,", "Sentinel," from the front; what is left is a request, if anything
@@ -44,4 +48,4 @@ export function classifyInterruption(text) {
 export function isResume(text) { return RESUME.test(String(text || "").trim()); }
 
 /** Spoken replies to an interruption, short and natural. */
-export const ACK = { stop: "Okay.", hold: "Sure, I'm listening." };
+export const ACK = { stop: "Okay.", hold: "Go ahead." };

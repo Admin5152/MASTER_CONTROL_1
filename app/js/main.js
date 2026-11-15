@@ -217,7 +217,7 @@ async function chooseCrew(id) {
     const s = view.state, a = s?.action || {};
     if (!s || s.crew_id !== id) return;
     onState(view);
-    if (!a.type || a.type === "none") say("Your readings are within your usual range.", { source: "local", append: true });
+    if (!a.type || a.type === "none") say("Your readings are within your usual range.", { source: "local", append: true, unprompted: true });
     syncPlanDone();
     bellSeen = new Set(); checkNotifications();   // anything waiting for this person is told to them as they arrive
   }, 600);
@@ -510,7 +510,7 @@ function zonePopover(zone, at, region) {
 
 let lastAskKey = "", pendingAsk = null;
 function askCheckin(a) {
-  say(`${a.detail} Want to check in now?`, { source: "local", append: true });
+  say(`${a.detail} Want to check in now?`, { source: "local", append: true, unprompted: true });
   ctx.expectReply?.(12000);
   pendingAsk = { until: Date.now() + 45000,
     yes: () => screens.open("checkin"),
@@ -534,7 +534,7 @@ async function checkNotifications(announce = true) {
     fresh.forEach((x) => bellSeen.add(x.id));
     if (announce && fresh.length && !safetyOn) {
       cue.nudge(); showNotice(fresh[0].title);
-      say(`${view.state?.display_name || ""}, ${fresh.length === 1 ? "a message for you" : `${fresh.length} messages for you`}. ${fresh[0].title}. ${fresh[0].text}`, { source: "local", priority: fresh[0].level >= 3 });
+      say(`${view.state?.display_name || ""}, ${fresh.length === 1 ? "a message for you" : `${fresh.length} messages for you`}. ${fresh[0].title}. ${fresh[0].text}`, { source: "local", unprompted: true, priority: fresh[0].level >= 3 });
       if (fresh[0].level >= 3 && !screens.current?.()) screens.open("notifications");
     }
   } catch { /* offline */ }
@@ -551,7 +551,7 @@ async function alertTick() {
       cue.nudge(); if (second || a.level >= 3) setTimeout(() => cue.nudge(), 350);
       lastActionKey = "";
       showNotice(`${second ? "Still waiting: " : "Reminder: "}${a.title}`);
-      say(`${second ? "This still needs an answer" : "A reminder"}: ${a.title} Say why this to hear the reason, or open Alerts.`, { source: "local", append: true, priority: a.level >= 3 });
+      say(`${second ? "This still needs an answer" : "A reminder"}: ${a.title} Say why this to hear the reason, or open Alerts.`, { source: "local", append: true, unprompted: true, priority: a.level >= 3 });
     }
     for (const a of r.expired || []) {
       if (a.level >= 3) { cue.nudge(); showNotice(`No answer to an urgent alert: ${a.buddy || "your crew buddy"} has been alerted (SIM).`); say(`There was no answer to an urgent alert, so I've alerted ${a.buddy || "your crew buddy"}.`, { source: "local", priority: true }); }
@@ -765,6 +765,7 @@ function wireControls() {
   // tapping the orb: in the corner it brings everything back to Sentinel; at the centre it listens
   $("orb-hit").addEventListener("click", () => {
     if (stages.orbMode === "calm") return;
+    if (voiceMod.voice.speaking) { turn++; answering = false; pushToTalk(); caption("I'm listening.", ""); return; }   // a tap interrupts
     if (stages.current !== "assistant" || screens.current()) { director.cancel(); closeScreen(); closeMenus(); stages.go("assistant"); return; }
     pushToTalk();
   });
@@ -920,8 +921,16 @@ function resetCaption() {
 let speakingSource = "";
 let answering = false;   // a streamed answer is being spoken
 let turn = 0;            // each spoken request is a turn; an interruption ends the current one
+let lastUnprompted = 0;
 function say(text, opts = {}) {
   if (!text) return Promise.resolve();
+  if (opts.unprompted && !opts.priority) {
+    // Sentinel speaks up on its own rarely: not during or just after a conversation, and at most once every 4 minutes.
+    // The words still show beside the orb and in the conversation log.
+    const busy = voiceMod.voice.speaking || answering || Date.now() - lastTurnAt < 45000 || Date.now() - lastUnprompted < 240000;
+    if (busy) { logLine("Sentinel", text, opts.source); if (!voiceMod.voice.speaking) caption(text, opts.source); return Promise.resolve(); }
+    lastUnprompted = Date.now();
+  }
   logLine("Sentinel", text, opts.source);
   speakingSource = opts.source || "";
   // the caption follows what is being said: a queued sentence is captioned when it starts playing
@@ -1609,7 +1618,7 @@ async function routineTick() {
     const sz = snoozesFor(c.mission_day);
     if (reminders.shouldEscalate(due, c, routineDone(c.mission_day), sz, escalated)) {
       escalated[due.id] = true;
-      say(`Gentle reminder: your ${due.label} is still open. It takes about a minute; want to do it now?`, { source: "local", append: true });
+      say(`Gentle reminder: your ${due.label} is still open. It takes about a minute; want to do it now?`, { source: "local", append: true, unprompted: true });
     }
     if (!nudged.has(k)) { nudged.add(k); emit("reminder.due", { type: due.id === "vitals" || due.id === "log" ? "checkin" : "measurement", crewId: view.crewId, label: due.label }); cue.nudge(); note(`Due now: ${due.label}.`); lastActionKey = ""; }
   }

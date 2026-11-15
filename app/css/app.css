@@ -524,8 +524,8 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 .card, .panel, .sheet, .callout, .menu, .convo, .askbar, .suggest, .sys-rail, .insights, .mcard { background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 40%); }
 
 /* ---------- "Who's here?" crew chooser ---------- */
-.who { position: fixed; inset: 0; z-index: calc(var(--z-sheet) + 5); display: grid; place-items: center; padding: var(--gutter); background: rgba(3, 5, 10, 0.97); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); transition: opacity 400ms; }
-.who.is-out { opacity: 0; pointer-events: none; }
+section.who { position: fixed; inset: 0; z-index: calc(var(--z-sheet) + 5); display: grid; place-items: center; padding: var(--gutter); background: rgba(3, 5, 10, 0.97); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); transition: opacity 400ms; }
+section.who.is-out { opacity: 0; pointer-events: none; }
 .who-card { width: min(640px, 100%); display: grid; justify-items: center; gap: var(--s-3); text-align: center; }
 .who-card h2 { font-size: var(--fs-prompt); font-weight: var(--fw-thin); letter-spacing: -0.01em; }
 .who-sub { color: var(--ink-2); font-size: var(--fs-sm); margin-bottom: var(--s-3); }
