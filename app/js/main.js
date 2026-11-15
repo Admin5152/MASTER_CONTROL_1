@@ -432,10 +432,21 @@ async function mountApp() {
     const top = Object.entries(s.emo).sort((a, b) => b[1].length - a[1].length)[0];
     if (hr == null && br == null) { scanMsg("No clear reading in 15 seconds, so nothing was saved. More light on your face and holding still help. You can type a reading in the Health log instead."); return; }
     try {
-      const r = (await api.scanSave(s.cid, { kind: "face", seconds: SCAN_S, samples: s.hr.length, heart_rate: hr, confidence: q, breathing_rate: br,
-        emotion: top?.[0], emotion_confidence: top ? med(top[1]) : null })).scan;
+      const body = { kind: "face", seconds: SCAN_S, samples: s.hr.length, heart_rate: hr, confidence: q, breathing_rate: br,
+        emotion: top?.[0], emotion_confidence: top ? med(top[1]) : null };
+      // the scan itself runs in the browser; if the brain can't be reached (a static host with no backend), the result
+      // is still shown and kept on this device instead of failing the whole scan
+      let r, saved = true;
+      try { r = (await api.scanSave(s.cid, body)).scan; }
+      catch (err) {
+        console.warn(`[sentinel vision] scan not saved to the brain: ${err.message}`);
+        saved = false;
+        r = { ...body, heart_rate: hr != null ? Math.round(hr) : null, breathing_rate: br != null ? Math.round(br) : null, saved: false };
+        try { localStorage.setItem(`sentinel:lastscan:${s.cid}`, JSON.stringify({ ...r, at: Date.now() })); } catch { /* private mode */ }
+      }
       const parts = [r.heart_rate != null ? `pulse ${r.heart_rate} bpm (quality ${Math.round((r.confidence || 0) * 100)}%)` : "", r.breathing_rate != null ? `breathing ${r.breathing_rate}/min` : "", r.emotion ? `expression ${esc(r.emotion)}` : ""].filter(Boolean);
-      scanMsg(`<strong>Scan result:</strong> ${parts.join(" · ")}. <em>Saved to ${esc(view.state?.display_name || "your")}'s record</em> ${badgeHTML("LIVE")}.<br><span class="fine">Moving to the next process...</span>`);
+      const where = saved ? `Saved to ${esc(view.state?.display_name || "your")}'s record` : "Kept on this device (Sentinel's brain is offline)";
+      scanMsg(`<strong>Scan result:</strong> ${parts.join(" · ")}. <em>${where}</em> ${badgeHTML("LIVE")}.<br><span class="fine">Moving to the next process...</span>`);
       emit("scan.recorded", { kind: "face", saved: r.saved, crewId: s.cid });
       say(`Scan saved. ${r.heart_rate != null ? `Pulse about ${r.heart_rate}.` : ""}${r.breathing_rate != null ? ` Breathing ${r.breathing_rate} a minute.` : ""}`, { source: "local" });
       lastActionKey = ""; pollOnce();
