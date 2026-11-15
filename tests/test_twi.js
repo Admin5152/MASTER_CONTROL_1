@@ -7,8 +7,8 @@
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
-const { translate, synthesize, transcribe, getCacheKey } = require("../server/khaya");
-const { handleSpeak, handleListen, handleTranslate } = require("../server/routes/twi");
+const { translate, synthesize, transcribe, getCacheKey } = require("../services/twi/khaya");
+const { handleSpeak, handleListen, handleTranslate } = require("../services/twi/routes/twi");
 
 // Helper to mock HTTP response
 function createMockRes() {

@@ -1,7 +1,7 @@
 # Sentinel: Part 4 and Part 5 checklist (Clinical Experience, Clinical Intelligence)
 
 Audit date: 2026-11-15. Scope: Product Document sections 12 to 22.
-This supersedes the "no UI changes" note in `CHECKLIST_PERSON6_INTEGRATION.md`: the backend engines existed and
+This supersedes the "no UI changes" note in `docs/checklists/CHECKLIST_PERSON6_INTEGRATION.md`: the backend engines existed and
 passed their tests, but the app called almost none of them. This pass connected them to the existing screens.
 
 **Status words:** DONE = built, reachable in the app and checked. PARTIAL = works, with the stated limit.

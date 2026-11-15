@@ -56,11 +56,11 @@ Twi was integrated as an **additive voice layer**—enabling astronauts to speak
 ### 2.2 Core Architectural Principles
 
 1. **Strict File Isolation**:
-   All Twi logic lives in dedicated new files (`server/khaya.js`, `server/routes/twi.js`, `src/hooks/useTwiVoice.js`, `src/components/LanguageSelector.js`, `server/server.js`, and `tests/test_twi.js`).
+   All Twi logic lives in dedicated new files (`services/twi/khaya.js`, `services/twi/routes/twi.js`, `services/twi/examples/useTwiVoice.js`, `services/twi/examples/LanguageSelector.js`, `services/twi/server.js`, and `tests/test_twi.js`).
 2. **Single Existing Code Edit**:
    Only a single line in `app/js/main.js` was modified at the voice routing junction:
    ```javascript
-   return ((globalThis.language === "tw" || (typeof language !== "undefined" && language === "tw")) ? (globalThis.speakTwi ? globalThis.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }) : import("../../src/hooks/useTwiVoice.js").then((m) => m.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }))) : voiceMod.speak(text, { interrupt: !append }));
+   return ((globalThis.language === "tw" || (typeof language !== "undefined" && language === "tw")) ? (globalThis.speakTwi ? globalThis.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }) : import("../../services/twi/examples/useTwiVoice.js").then((m) => m.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }))) : voiceMod.speak(text, { interrupt: !append }));
    ```
 3. **Fail-Safe Fallback**:
    If any Khaya API call times out (~10s), encounters network loss, or experiences credential expiration, the system **never crashes or goes silent**. It automatically displays the text on screen and falls back to the English ElevenLabs audio output.
@@ -85,7 +85,7 @@ During live API probing against `https://translation-api.ghananlp.org`, several 
 
 ## 4. Security & Secret Management
 
-- **Zero Client Exposure**: `KHAYA_KEY` and `KHAYA_KEY_SECONDARY` are strictly loaded in Node.js via `server/khaya.js`. They are never passed to the client browser or bundle.
+- **Zero Client Exposure**: `KHAYA_KEY` and `KHAYA_KEY_SECONDARY` are strictly loaded in Node.js via `services/twi/khaya.js`. They are never passed to the client browser or bundle.
 - **Git Protection**: Verified `.gitignore` contains `.env` at line 1.
 - **Example Template**: `.env.example` committed with safe placeholder entries:
   ```ini
@@ -93,7 +93,7 @@ During live API probing against `https://translation-api.ghananlp.org`, several 
   KHAYA_KEY=your_key_here
   KHAYA_KEY_SECONDARY=your_secondary_key_here
   ```
-- **Automatic Key Rotation**: If a request receives a `401 Unauthorized` or `403 Forbidden` using the primary key, `server/khaya.js` automatically retries once using `KHAYA_KEY_SECONDARY`.
+- **Automatic Key Rotation**: If a request receives a `401 Unauthorized` or `403 Forbidden` using the primary key, `services/twi/khaya.js` automatically retries once using `KHAYA_KEY_SECONDARY`.
 - **Sanitized Logging**: On 400 validation errors, `error.details` is parsed and logged to the server console for diagnostic purposes without ever logging keys or sensitive authorization headers.
 
 ---
@@ -125,11 +125,11 @@ When `language === "tw"` is selected:
 ## 7. File Manifest
 
 ### Created Files:
-1. `server/khaya.js`: Complete GhanaNLP client library (ASR v3, Translation v2, TTS v2, key rotation, zero-dep env loader, caching).
-2. `server/routes/twi.js`: Route handlers for `/api/twi/listen`, `/api/twi/speak`, `/api/twi/translate`, and `/api/twi/health` with 10s timeout protection.
-3. `server/server.js`: Standalone Node.js HTTP server running on port 3001 with CORS and Express/HTTP dispatcher support.
-4. `src/hooks/useTwiVoice.js`: Plain JS module & React Hook for mic capture, dual subtitles, 10s timeout fallback, and ElevenLabs critical alert dispatch.
-5. `src/components/LanguageSelector.js`: Universal language selector (EN / TWI toggle) with live state persistence and voice loading spinner.
+1. `services/twi/khaya.js`: Complete GhanaNLP client library (ASR v3, Translation v2, TTS v2, key rotation, zero-dep env loader, caching).
+2. `services/twi/routes/twi.js`: Route handlers for `/api/twi/listen`, `/api/twi/speak`, `/api/twi/translate`, and `/api/twi/health` with 10s timeout protection.
+3. `services/twi/server.js`: Standalone Node.js HTTP server running on port 3001 with CORS and Express/HTTP dispatcher support.
+4. `services/twi/examples/useTwiVoice.js`: Plain JS module & React Hook for mic capture, dual subtitles, 10s timeout fallback, and ElevenLabs critical alert dispatch.
+5. `services/twi/examples/LanguageSelector.js`: Universal language selector (EN / TWI toggle) with live state persistence and voice loading spinner.
 6. `package.json`: NPM package metadata and scripts (`npm run start:twi`, `npm run test:twi`).
 7. `tests/test_twi.js`: Comprehensive 10-test automated verification suite for all Twi operations.
 8. `docs/TWI_VOICE_INTEGRATION.md`: This architecture and operations document.
@@ -137,7 +137,7 @@ When `language === "tw"` is selected:
 ### Modified Existing Files (Exactly 1 Line Changed in 1 Code File):
 1. `app/js/main.js` (Line 887):
    ```javascript
-   return ((globalThis.language === "tw" || (typeof language !== "undefined" && language === "tw")) ? (globalThis.speakTwi ? globalThis.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }) : import("../../src/hooks/useTwiVoice.js").then((m) => m.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }))) : voiceMod.speak(text, { interrupt: !append }));
+   return ((globalThis.language === "tw" || (typeof language !== "undefined" && language === "tw")) ? (globalThis.speakTwi ? globalThis.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }) : import("../../services/twi/examples/useTwiVoice.js").then((m) => m.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }))) : voiceMod.speak(text, { interrupt: !append }));
    ```
 2. `.env.example`: Added 4 lines of configuration comments and placeholder keys.
 

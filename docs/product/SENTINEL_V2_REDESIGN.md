@@ -1,6 +1,6 @@
 # Sentinel v2 — Redesign Brief
 
-Sentinel v1 is built and working (branch `build`, see `README.md` and `SENTINEL_BUILD_SPEC.md`). The backend logic is sound and its tests pass. This brief is a **redesign of the look and of the voice and brain**, not a rewrite of the logic. Read `SENTINEL_BUILD_SPEC.md` too: every rule in its section 2 (honesty labels, change-from-baseline, sourced thresholds, deterministic safety, fallbacks) still applies, and every v1 acceptance test must still pass at the end.
+Sentinel v1 is built and working (branch `build`, see `README.md` and `docs/product/SENTINEL_BUILD_SPEC.md`). The backend logic is sound and its tests pass. This brief is a **redesign of the look and of the voice and brain**, not a rewrite of the logic. Read `docs/product/SENTINEL_BUILD_SPEC.md` too: every rule in its section 2 (honesty labels, change-from-baseline, sourced thresholds, deterministic safety, fallbacks) still applies, and every v1 acceptance test must still pass at the end.
 
 The team lead looked at v1 and said, in effect: it works, but it looks like a generic dashboard. They want it to look like the reference images in `design/refs/`, sound like a real assistant, and answer ordinary questions smoothly. **Open and study every image in `design/refs/` before designing anything.**
 

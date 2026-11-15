@@ -64,7 +64,7 @@ Stop-Port $servePort
 if (Get-Command node -ErrorAction SilentlyContinue) {
     if (-not (Test-Path (Join-Path $PSScriptRoot "node_modules\express"))) { Write-Host "Installing the Twi voice service..."; & npm ci --no-audit --no-fund | Out-Null }
     Stop-Port 3001
-    Start-Process node -ArgumentList "server/server.js" -WorkingDirectory $PSScriptRoot -WindowStyle Minimized
+    Start-Process node -ArgumentList "services/twi/server.js" -WorkingDirectory $PSScriptRoot -WindowStyle Minimized
     Write-Host "  Twi voice service started on port 3001." -ForegroundColor Green
 } else { Write-Host "  Node.js not found: Twi voice is off (English works)." -ForegroundColor Yellow }
 

@@ -3,7 +3,7 @@
   "version": "5.0.0",
   "description": "Sentinel Onboard Medical & Mission Intelligence with Twi Voice Support",
   "scripts": {
-    "start:twi": "node server/server.js",
+    "start:twi": "node services/twi/server.js",
     "test:twi": "node tests/test_twi.js"
   },
   "keywords": [

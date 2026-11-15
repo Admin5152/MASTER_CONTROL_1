@@ -6,6 +6,19 @@ Sentinel describes change from baseline. It never diagnoses. Every value on scre
 
 New here? Read this file, then [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Credits and licences: [CREDITS.md](CREDITS.md).
 
+## Project layout
+
+```
+app/            the browser app (what the crew sees)        services/twi/   Twi voice service (Khaya AI, Node)
+brain/          Python logic: rules, AI, speech, records    shared/         sourced data: thresholds, NASA MRIDs, crew
+systems/        speaker ID, scenarios, Sentinel Skin feed   dataset/        the 68 NASA MRID PDFs
+server.py       the server (FastAPI): app + every /api      tools/          build, anatomy, recording scripts
+run.ps1         run everything with one command             tests/          pytest, node --test, Playwright
+docs/           how to run, architecture, integration, product, pitch, checklists
+```
+
+The full map, file by file: [CONTRIBUTING.md](CONTRIBUTING.md#folder-map). How to run: [docs/HOW-TO-RUN.md](docs/HOW-TO-RUN.md).
+
 ---
 
 ## Quickstart (from a clean clone)

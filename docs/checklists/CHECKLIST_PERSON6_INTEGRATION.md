@@ -321,7 +321,7 @@ Access the application at `https://localhost:8443/app/`.
 ## 12. Section 17 Implementation: What We Track, Group Rule & NASA MRID Grounding
 
 ### 12.1 Overview & Requirements
-- **Tracked Indicators Catalog (22 indicators):** Complete clinical catalog modeling all 22 indicators from Section 17 of `Sentinel Product Document.md`:
+- **Tracked Indicators Catalog (22 indicators):** Complete clinical catalog modeling all 22 indicators from Section 17 of `docs/product/Sentinel Product Document.md`:
   - `heart_rate`, `bp_sys`, `bp_dia`, `breathing_rate`, `spo2`, `blood_glucose`, `temperature`, `sleep_hours`, `sleep_quality`, `reaction_ms`, `reaction_lapses`, `valence`, `arousal`, `mood_self`, `stress_self`, `energy_self`, `connection_self`, `talk_share`, `time_alone_pct`, `voice_pitch`, `exercise_minutes`, `hydration_log`, `cabin_o2`, `cabin_co2`, `rad_dose_rate`, `rad_cumulative`, `rad_event_level`, `shelter_status`, `missed_checkins`.
 - **The Group Rule (15 Independence Groups):**
   - "If a measurement does not change a status, a recommendation or a reminder, we do not track it. The group column is the independence group used for the pattern rule: two indicators in the same group count as one signal."

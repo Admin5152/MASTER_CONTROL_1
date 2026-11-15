@@ -2175,9 +2175,7 @@ async def revalidate_static(request, call_next):
 
 
 app.mount("/app", StaticFiles(directory=ROOT / "app", html=True), name="app")
-app.mount("/src", StaticFiles(directory=ROOT / "src"), name="src")
 app.mount("/shared", StaticFiles(directory=ROOT / "shared"), name="shared")
-app.mount("/sound", StaticFiles(directory=ROOT / "sound"), name="sound")
 
 
 @app.get("/api/radiation/events")

@@ -47,7 +47,7 @@ export function isMuted() { return muted; }
 export function playIntroSound() {
   if (muted) return null;
   if (!introAudio) {
-    introAudio = new Audio("sound/shortintro.mp3");
+    introAudio = new Audio("assets/sound/shortintro.mp3");
     introAudio.preload = "auto";
   }
   introAudio.currentTime = 0;

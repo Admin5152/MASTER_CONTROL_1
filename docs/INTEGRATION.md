@@ -195,4 +195,4 @@ In the app, open the menu and choose **Devices** to see what is connected and se
 watch, chest hub, suit and cabin sensors.
 
 Checks: `pytest -q`, `node --test tests/js`, and `tests/clinic_ui_check.py` against a clean server.
-Status by requirement: `CHECKLIST_PART4_5_UI_INTEGRATION.md`. Sources: `shared/SOURCES.md`.
+Status by requirement: `docs/checklists/CHECKLIST_PART4_5_UI_INTEGRATION.md`. Sources: `shared/SOURCES.md`.

@@ -14,19 +14,27 @@ Welcome. This page tells you where things live, how to run everything, and the f
 ## Folder map
 
 ```
-server.py                FastAPI app: serves /app and /shared, all /api routes
+server.py                FastAPI app: serves /app and /shared, all /api routes (proxies /api/twi to the Twi service)
+run.ps1                  one command to run everything (HTTPS for the tablet, the Twi service, the browser)
 brain/                   Python logic
   contract.py              the state contract (shared/contract.json): validation, deep merge
   store.py                 in-memory state + history, persisted to data/state.json; LOG_FIELDS whitelist
   drift.py, decision.py    change-from-baseline engine and the ordered rules that set `action`
   thresholds.py            absolute thresholds with kind + source
   llm.py                   the brain: prompt, health vs general, memory, streaming, numeric guard, command validator
+  claude.py                Claude (Anthropic) first, with a spending stop; Groq after (in llm.py)
   speech.py                /api/stt (Groq Whisper -> local worker) and /api/tts (ElevenLabs -> Kokoro), cache, budget
   whisper_worker.py        local faster-whisper in its own process
-  ground.py                store-and-forward queue to ground (SIM transport)
-  radiation.py, medicine.py
-systems/                 speaker ID (Resemblyzer), scripted scenarios
-shared/                  contract, mock crew, thresholds, med kit, facts (all cited), NOAA snapshot
+  ground.py, messages.py   store-and-forward queue to ground (SIM transport); crew messaging
+  suit.py, ops.py          EVA suit (SIM telemetry), EVA readiness, the flight-surgeon digest
+  eyes.py, radiation.py, medicine.py, care.py, protocols.py, alerts.py, vault.py (encrypted record) ...
+systems/                 speaker ID (Resemblyzer), Sentinel Skin feed, scripted scenarios
+services/twi/            Twi voice: a small Node service on port 3001 that calls Khaya AI (GhanaNLP)
+  server.js, routes/twi.js   /api/twi/listen, /speak, /translate, /health
+  khaya.js, twi_rules.js     the Khaya client (quota, caches) and the offline phrase rules
+  examples/                  React versions of the language switch (not used by the app)
+shared/                  contract, mock crew, thresholds, med kit, facts (all cited), NASA MRIDs, NOAA snapshot, environments
+dataset/                 the 68 NASA JSC 28913 MRID PDFs (parsed into shared/nasa_mrid.json)
 app/                     the browser app (plain ES modules, no build step)
   index.html             markup for every stage and the status line, dock and sheet
   css/tokens.css         design tokens: dark (default) and Clinical light
@@ -35,15 +43,21 @@ app/                     the browser app (plain ES modules, no build step)
   js/core/               api.js, bus.js, director.js (command bus), commands.js (whitelist), intents.js, stages.js, state.js, sound.js
   js/world/              world.js (one full-screen three.js canvas), intro.js, space.js, body3d.js (body, anatomy, X-ray, scan)
   js/interface/          orb.js, bodypanel.js (rail, system panel, insights, chips), vitals.js, ranges.js, readings.js, screens.js, tiles.js, charts.js, banner.js, demopanel.js, dashboard.js
-  js/voice/              voice.js (VAD capture, STT, TTS playback), vad.js, wake.js, pitch.js, wav.js
-  js/vision/             MediaPipe face mesh + pose, rPPG pulse
-  js/systems/            cognitive.js + pvt.js (reaction test), radiation.js
-  js/experience/         race/ (space race), missionmed.js (exam, ground, measures, wellbeing, organ view), hardware.js (Sentinel Skin), orbcalm.js, greenhouse.js, interventions.js, skin.js, logic.js
-  assets/                body3d (bodies + anatomy GLB), game (Blender GLBs), organs (Blender PNGs), space (planet textures), fonts
+  js/voice/              voice.js (VAD capture, STT, TTS playback), bargein.js, vad.js, wake.js, pitch.js, wav.js, twi.js
+  js/vision/             MediaPipe face mesh + pose, rPPG pulse, eye metrics
+  js/systems/            cognitive.js + pvt.js (reaction test, Fitts's Law), radiation.js, symptom intake
+  js/experience/         race/ (space race), eyecheck.js, missionmed.js (exam, ground, measures, wellbeing, organ view), hardware.js (Sentinel Skin), orbcalm.js, greenhouse.js, ...
+  js/comms/              crew messages
+  assets/                body3d (bodies + anatomy GLB), game (Blender GLBs), organs (Blender PNGs), space (planet textures), sound, fonts
   vendor/                three.js, MediaPipe, Chart.js, GSAP (all local; nothing loads from the internet)
-tools/                   make_cert.py; anatomy/ (body + anatomy + organ renders, Blender); game/ (race assets, Blender)
-tests/                   pytest (test_*.py), node --test (tests/js), Playwright scripts (*_shots.py, race_check.py)
+tools/                   make_cert.py, mrid_extract.py, nlsp_fetch.py; anatomy/ and game/ (Blender); recording and build scripts
+tests/                   pytest (test_*.py), node --test (tests/js), test_twi.js, Playwright scripts (*_shots.py, race_check.py)
+docs/                    ARCHITECTURE, INTEGRATION, HOW-TO-RUN, JUDGE_WALKTHROUGH, TWI_VOICE_INTEGRATION, model card
+  product/                 the product document, build spec, v2 redesign
+  pitch/                   pitch deck notes, slides.html, the ASTRA blueprint
+  checklists/              integration checklists, morning notes
 design/                  reference images, voice samples, NASA research notes
+data/, models/, certs/   local only (git-ignored): the record, caches, usage meters, voice models, HTTPS certificate
 ```
 
 ## Where each feature lives

@@ -13,11 +13,11 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-// Zero-dependency and dotenv loader checking server/.env then .env
+// Zero-dependency .env loader: services/twi/.env, then the project's .env
 function loadLocalEnv() {
   const envPaths = [
     path.resolve(__dirname, ".env"),
-    path.resolve(__dirname, "../.env"),
+    path.resolve(__dirname, "../../.env"),
   ];
 
   for (const envPath of envPaths) {
@@ -52,7 +52,7 @@ const KHAYA_BASE_URL = "https://translation-api.ghananlp.org";
 const DEFAULT_TIMEOUT_MS = 10000;
 
 // Disk cache directory for fixed phrases and generated TTS audio
-const CACHE_DIR = path.resolve(__dirname, "../data/twi_tts_cache");
+const CACHE_DIR = path.resolve(__dirname, "../../data/twi_tts_cache");
 if (!fs.existsSync(CACHE_DIR)) {
   try {
     fs.mkdirSync(CACHE_DIR, { recursive: true });

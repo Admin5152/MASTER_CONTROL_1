@@ -11,7 +11,7 @@ All requests to the Khaya API gateway require the following header:
 Ocp-Apim-Subscription-Key: <KHAYA_KEY>
 ```
 - **Error on Invalid Key**: `401 Unauthorized` or `403 Forbidden: Access denied due to invalid subscription key`.
-- **Automatic Fallback**: Handled in `server/khaya.js` by retrying once with `KHAYA_KEY_SECONDARY`.
+- **Automatic Fallback**: Handled in `services/twi/khaya.js` by retrying once with `KHAYA_KEY_SECONDARY`.
 
 ---
 
@@ -175,4 +175,4 @@ On any 400 validation error, Khaya returns:
   }
 }
 ```
-`server/khaya.js` automatically parses `error.details` and logs the bad field to console without ever exposing the API keys.
+`services/twi/khaya.js` automatically parses `error.details` and logs the bad field to console without ever exposing the API keys.
