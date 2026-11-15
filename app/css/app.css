@@ -837,7 +837,6 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 *::-webkit-scrollbar-track { background: transparent; }
 
 /* tablets: the alert banner sits over the body and clears the right-hand column */
-@media (max-width: 1400px) and (min-width: 1001px) { .banner { width: min(660px, calc(100vw - 2 * var(--gutter))); } }
 /* on the Body screen the banner sits beside the right-hand column, never on top of it */
 @media (min-width: 1001px) {
   body[data-stage="body"] .banner { left: auto; transform: none; right: calc(var(--gutter) + clamp(300px, 27vw, 380px) + 16px);
@@ -854,3 +853,8 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 /* while Sentinel talks on the Body screen, the insights card under the bubble steps back */
 body.has-bubble[data-stage="body"] .insights { opacity: 0; pointer-events: none; }
 :root { --safe-b: env(safe-area-inset-bottom, 0px); }
+
+/* a small notice never sits on an open side panel: it moves to the left of it */
+@media (min-width: 1001px) {
+  body:has(#sheet:not([hidden]):not(.is-full)) .notice { right: calc(var(--gutter) + min(560px, 46vw) + 12px); }
+}
