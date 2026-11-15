@@ -635,7 +635,8 @@ function renderSettings(el, ctx) {
     <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
     <h3>Voice language</h3>
     <div class="mood-row"><button type="button" data-lang-set="en" aria-pressed="${(localStorage.getItem("sentinel_voice_language") || "en") !== "tw"}">English (ElevenLabs)</button><button type="button" data-lang-set="tw" aria-pressed="${(localStorage.getItem("sentinel_voice_language") || "en") === "tw"}">Twi (Khaya AI)</button></div>
-    <p class="hint fine">Twi: speaks in Twi using Khaya AI. Critical safety and medical alerts will always also speak in English.</p>
+    <p class="hint fine">Twi: Sentinel answers in English and Khaya AI translates and speaks it in Twi. Critical safety and medical alerts always also play in English.</p>
+    <p class="hint fine" data-twi-status aria-live="polite"></p>
     <h3>Listening</h3>
     <div class="mood-row"><button type="button" data-listen="wake" aria-pressed="${st.get("listen") !== "ptt"}">Wake phrase</button><button type="button" data-listen="ptt" aria-pressed="${st.get("listen") === "ptt"}">Push to talk only</button></div>
     <p class="hint fine">Wake phrase: say "Hey Sentinel" any time. Push to talk: tap the microphone or the orb, then speak.</p>`;
@@ -663,6 +664,14 @@ function renderSettings(el, ctx) {
     if (globalThis.setSentinelLanguage) globalThis.setSentinelLanguage(l);
     el.querySelectorAll("[data-lang-set]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
   }));
+  // Twi voice status: Khaya's plan has a call allowance; when it is used up Twi shows on screen and is spoken in English
+  fetch("../api/twi/health").then((r) => r.json()).then((h) => {
+    const n = el.querySelector("[data-twi-status]");
+    if (!n) return;
+    if (h.ok) n.textContent = "Twi voice: ready.";
+    else if (h.resting_until) n.textContent = `Twi voice: Khaya's call allowance is used up until ${new Date(h.resting_until).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}. Until then Twi is shown on screen and spoken in English.`;
+    else n.textContent = "Twi voice: Khaya can't be reached right now; Twi is shown on screen and spoken in English.";
+  }).catch(() => {});
   (async () => {
     try {
       const devs = await navigator.mediaDevices?.enumerateDevices?.() || [];

@@ -13,7 +13,10 @@
  * - Critical alerts are flagged so the client can double-speak in English via ElevenLabs.
  */
 
-const { translate, synthesize, transcribe, checkHealth } = require("../khaya");
+const { translate, synthesize, transcribe, checkHealth, restingUntil } = require("../khaya");
+
+// Twi spelling uses the letters ɛ and ɔ, which English never does: such a line is already Twi and is not translated
+const looksTwi = (t) => /[ɛɔƐƆ]/.test(t || "");
 const { getFastPathTwi, TWI_SYSTEM_RULES, translateEnglishToTwi } = require("../twi_rules");
 
 const TIMEOUT_MS = 10000;
@@ -140,7 +143,7 @@ async function handleSpeak(req, res) {
     }
 
     // Step 1: Translate Sentinel's English text to Twi (fast-path rules or Khaya API)
-    let twiText = getFastPathTwi(text);
+    let twiText = looksTwi(text) || body.lang === "tw" ? text.trim() : getFastPathTwi(text);
     if (!twiText) {
       try {
         twiText = await withTimeout(
@@ -176,6 +179,7 @@ async function handleSpeak(req, res) {
       twi_text: twiText,
       audio: base64Audio,
       is_critical: isCritical,
+      resting_until: restingUntil() ? new Date(restingUntil()).toISOString() : null,
     }));
   } catch (err) {
     console.error("[twi route] Error in /api/twi/speak:", err.message);

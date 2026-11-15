@@ -143,6 +143,8 @@ function isCriticalAlert(text, options = {}) {
  */
 function displayDualCaption(twiText, englishText, source = "") {
   if (typeof document === "undefined") return;
+  // no translation came back: show the English line once, not the same words twice
+  if (String(twiText || "").trim() === String(englishText || "").trim()) englishText = "";
 
   const captionEl = document.getElementById("caption");
   if (captionEl) {
@@ -296,31 +298,23 @@ async function pumpTwi() {
               });
             } catch (audioErr) {
               console.warn("[twi] Web Audio decode failed:", audioErr.message);
-              // Fallback to browser SpeechSynthesis for Twi
-              if (typeof window !== "undefined" && window.speechSynthesis) {
-                const utt = new SpeechSynthesisUtterance(twiSpoken);
-                utt.rate = 0.95;
-                window.speechSynthesis.speak(utt);
-              }
+              await speakFallbackOnce(job);
             }
           }
-        } else if (typeof window !== "undefined" && window.speechSynthesis) {
-          // Khaya TTS offline: use browser SpeechSynthesis speaking Twi text
-          const utt = new SpeechSynthesisUtterance(twiSpoken);
-          utt.rate = 0.95;
-          window.speechSynthesis.speak(utt);
+        } else {
+          // No Twi audio (Khaya's allowance used up, or offline): the Twi words stay on screen and Sentinel says the
+          // reply in its usual voice, once for the whole reply (an English browser voice reading Twi is unintelligible)
+          if (result.resting_until) noteResting(result.resting_until);
+          await speakFallbackOnce(job);
         }
       } else {
         // Fallback: display dual caption with job text
         displayDualCaption(job.text, job.text, job.options?.source);
-        if (typeof job.options?.fallback === "function") {
-          console.warn("[twi fallback] Falling back to ElevenLabs English voice for:", job.text);
-          await job.options.fallback();
-        }
+        await speakFallbackOnce(job);
       }
 
       // Safety requirement: Critical alerts ALWAYS also play in English via ElevenLabs
-      if (job.isCritical && typeof job.options?.fallback === "function") {
+      if (job.isCritical && !job.group.fellBack && typeof job.options?.fallback === "function") {
         console.warn("[twi safety] Critical alert triggered: playing English ElevenLabs secondary announcement.");
         await job.options.fallback();
       }
@@ -345,6 +339,21 @@ async function pumpTwi() {
   }
 }
 
+async function speakFallbackOnce(job) {
+  if (job.group.fellBack || typeof job.options?.fallback !== "function") return;
+  job.group.fellBack = true;
+  await job.options.fallback();
+}
+
+let restingNoted = "";
+function noteResting(iso) {
+  if (restingNoted === iso) return;
+  restingNoted = iso;
+  const at = new Date(iso);
+  console.warn(`[twi] Khaya's call allowance is used up until ${at.toLocaleString()}: Twi is shown on screen, spoken in English.`);
+  window.dispatchEvent(new CustomEvent("sentinel:twi-resting", { detail: iso }));
+}
+
 /**
  * Speak English text in Twi using Khaya AI with queuing and ElevenLabs fallback.
  *
@@ -366,6 +375,7 @@ export function speakTwi(englishText, options = {}) {
   const parts = String(englishText).split(/(?<=[.!?]["')\]]*)\s+(?=[A-Z0-9"'])/);
   const chunks = englishText.length < 160 ? [englishText] : parts.map((p) => p.trim()).filter(Boolean);
 
+  const group = { fellBack: false };   // the chunks of one reply: the English fallback is spoken once for all of them
   return new Promise((resolve, reject) => {
     chunks.forEach((chunk, idx) => {
       const fetchPromise = apiFetch("/api/twi/speak", {
@@ -382,6 +392,7 @@ export function speakTwi(englishText, options = {}) {
         text: chunk,
         options,
         isCritical,
+        group,
         fetchPromise,
         resolve: idx === chunks.length - 1 ? resolve : () => {},
         reject: idx === chunks.length - 1 ? reject : () => {},

@@ -64,110 +64,134 @@ if (!fs.existsSync(CACHE_DIR)) {
 // In-memory cache for fast lookups
 const memoryCache = new Map();
 
-/**
- * Get active API key (primary by default, or secondary if specified/rotated).
- */
-function getApiKey(useSecondary = false) {
-  const key = useSecondary ? process.env.KHAYA_KEY_SECONDARY : process.env.KHAYA_KEY;
-  if (!key) {
-    if (!useSecondary && process.env.KHAYA_KEY_SECONDARY) {
-      return process.env.KHAYA_KEY_SECONDARY;
-    }
+// The Khaya plan has a call allowance per key. When it runs out Khaya answers 403 "Out of call volume quota.
+// Quota will be replenished in 1.00:33:17" (days.hh:mm:ss). Such a key rests until then: no call is made with it,
+// so Sentinel falls back at once instead of spending seconds on a refusal for every sentence.
+const resting = { primary: 0, secondary: 0 };
+
+function keyFor(slot) {
+  return (slot === "secondary" ? process.env.KHAYA_KEY_SECONDARY : process.env.KHAYA_KEY) || "";
+}
+
+function parseReplenish(msg) {
+  const m = /replenished in (?:(\d+)\.)?(\d+):(\d+):(\d+)/i.exec(msg || "");
+  if (!m) return 15 * 60 * 1000;
+  const [d, h, mi, se] = [m[1] || 0, m[2], m[3], m[4]].map(Number);
+  return (((d * 24 + h) * 60 + mi) * 60 + se) * 1000;
+}
+
+/** When Twi voice is available again (ms since epoch), or 0 if a key can be used now. */
+function restingUntil() {
+  const now = Date.now();
+  const usable = ["primary", "secondary"].filter((k) => keyFor(k) && resting[k] <= now);
+  if (usable.length) return 0;
+  const times = ["primary", "secondary"].filter((k) => keyFor(k)).map((k) => resting[k]);
+  return times.length ? Math.min(...times) : 0;
+}
+
+class KhayaQuotaError extends Error {
+  constructor(until) {
+    super(`Khaya call allowance used up; available again ${new Date(until).toISOString()}`);
+    this.quota = true;
+    this.until = until;
   }
-  return key || "";
 }
 
 /**
- * Execute an HTTP request to Khaya API with automatic key rotation on 401/403.
- *
- * @param {string} endpoint - API endpoint (e.g. '/v2/translate')
- * @param {object} options - fetch options (method, headers, body)
- * @param {boolean} isBinary - whether to return Buffer instead of JSON
- * @param {number} timeoutMs - timeout in milliseconds (default 10000ms)
- * @returns {Promise<any>}
+ * Execute an HTTP request to the Khaya API. Uses the primary key, then the secondary if the primary is refused or
+ * resting. Throws KhayaQuotaError at once when both keys are resting.
  */
 async function khayaFetch(endpoint, options = {}, isBinary = false, timeoutMs = DEFAULT_TIMEOUT_MS) {
-  let useSecondary = false;
-  let attempts = 0;
+  const slots = ["primary", "secondary"].filter((k) => keyFor(k));
+  if (!slots.length) throw new Error("Khaya API key is missing. Set KHAYA_KEY in .env");
+  const url = endpoint.startsWith("http") ? endpoint : `${KHAYA_BASE_URL}${endpoint}`;
+  let lastErr = null;
 
-  while (attempts < 2) {
-    attempts++;
-    const key = getApiKey(useSecondary);
-    if (!key) {
-      throw new Error("Khaya API key is missing. Set KHAYA_KEY in server/.env");
-    }
-
-    const headers = {
-      ...(options.headers || {}),
-      "Ocp-Apim-Subscription-Key": key,
-    };
-
-    const url = endpoint.startsWith("http") ? endpoint : `${KHAYA_BASE_URL}${endpoint}`;
-
+  for (const slot of slots) {
+    if (resting[slot] > Date.now()) continue;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
+    let response;
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         ...options,
-        headers,
+        headers: { ...(options.headers || {}), "Ocp-Apim-Subscription-Key": keyFor(slot) },
         signal: controller.signal,
       });
-      clearTimeout(timeout);
-
-      if (response.status === 401 || response.status === 403) {
-        if (!useSecondary && process.env.KHAYA_KEY_SECONDARY) {
-          console.warn(`[khaya] Received ${response.status} - retrying with KHAYA_KEY_SECONDARY`);
-          useSecondary = true;
-          continue;
-        }
-        throw new Error(`Khaya authentication failed with status ${response.status}`);
-      }
-
-      if (response.status === 400) {
-        let errDetails = "Bad Request (400)";
-        try {
-          const errJson = await response.json();
-          errDetails = JSON.stringify(errJson.error?.details || errJson.details || errJson);
-        } catch {
-          // not json
-        }
-        console.error(`[khaya] 400 Client Error on ${endpoint}:`, errDetails);
-        throw new Error(`Khaya 400 validation error: ${errDetails}`);
-      }
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        throw new Error(`Khaya API error ${response.status}: ${text.slice(0, 200)}`);
-      }
-
-      if (isBinary) {
-        const arrayBuf = await response.arrayBuffer();
-        return Buffer.from(arrayBuf);
-      }
-
-      return await response.json();
     } catch (err) {
       clearTimeout(timeout);
-      if (err.name === "AbortError") {
-        throw new Error(`Khaya operation on ${endpoint} timed out after ${timeoutMs}ms`);
-      }
-      if (attempts >= 2 || (useSecondary && (err.message.includes("401") || err.message.includes("403")))) {
-        throw err;
-      }
-      if (err.message.includes("401") || err.message.includes("403")) {
-        useSecondary = true;
-        continue;
-      }
+      if (err.name === "AbortError") throw new Error(`Khaya operation on ${endpoint} timed out after ${timeoutMs}ms`);
       throw err;
     }
+    clearTimeout(timeout);
+
+    if (response.status === 401 || response.status === 403) {
+      const text = await response.text().catch(() => "");
+      if (/quota/i.test(text)) {
+        resting[slot] = Date.now() + parseReplenish(text);
+        console.warn(`[khaya] ${slot} key: call allowance used up, resting until ${new Date(resting[slot]).toLocaleString()}`);
+      } else {
+        resting[slot] = Date.now() + 30 * 60 * 1000;   // a refused key: try again in half an hour
+        console.warn(`[khaya] ${slot} key refused (${response.status}); resting 30 min`);
+      }
+      lastErr = new Error(`Khaya refused the ${slot} key (${response.status}): ${text.slice(0, 120)}`);
+      continue;
+    }
+
+    if (response.status === 400) {
+      let errDetails = "Bad Request (400)";
+      try {
+        const errJson = await response.json();
+        errDetails = JSON.stringify(errJson.error?.details || errJson.details || errJson);
+      } catch {
+        // not json
+      }
+      console.error(`[khaya] 400 Client Error on ${endpoint}:`, errDetails);
+      throw new Error(`Khaya 400 validation error: ${errDetails}`);
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`Khaya API error ${response.status}: ${text.slice(0, 200)}`);
+    }
+
+    if (isBinary) return Buffer.from(await response.arrayBuffer());
+    return await response.json();
   }
+
+  const until = restingUntil();
+  if (until) throw new KhayaQuotaError(until);
+  throw lastErr || new Error("Khaya unavailable");
+}
+
+// Translations are cached in memory and on disk: Sentinel repeats many lines, and every call counts against the quota.
+const TRANSLATION_FILE = path.join(CACHE_DIR, "translations.json");
+let translationCache = {};
+try {
+  translationCache = JSON.parse(fs.readFileSync(TRANSLATION_FILE, "utf-8"));
+} catch {
+  translationCache = {};
+}
+let translationSaveTimer = null;
+function saveTranslations() {
+  clearTimeout(translationSaveTimer);
+  translationSaveTimer = setTimeout(() => {
+    try { fs.writeFileSync(TRANSLATION_FILE, JSON.stringify(translationCache)); } catch {}
+  }, 500);
 }
 
 /**
  * Health check: verify "twi" availability in ASR v3, Translation v2, and TTS v2.
  */
+let healthCache = null;   // { at, result }: the check costs three calls, so it runs at most every 30 minutes
+
 async function checkHealth() {
+  const until = restingUntil();
+  if (until) {
+    return { ok: false, resting_until: new Date(until).toISOString(), twi_supported: { asr: false, translation: false, tts: false },
+             details: { reason: "Khaya call allowance used up" } };
+  }
+  if (healthCache && Date.now() - healthCache.at < 30 * 60 * 1000) return healthCache.result;
   const result = {
     ok: false,
     twi_supported: {
@@ -211,6 +235,8 @@ async function checkHealth() {
   }
 
   result.ok = result.twi_supported.asr && result.twi_supported.translation && result.twi_supported.tts;
+  if (restingUntil()) result.resting_until = new Date(restingUntil()).toISOString();
+  else healthCache = { at: Date.now(), result };
   return result;
 }
 
@@ -242,6 +268,9 @@ async function translate(text, sourceLanguage = "eng", targetLanguage = "twi") {
     return cleanText;
   }
 
+  const ck = `${src}>${tgt}:${cleanText.toLowerCase().replace(/\s+/g, " ")}`;
+  if (translationCache[ck]) return translationCache[ck];
+
   const payload = {
     text: cleanText,
     source_language: src,
@@ -256,7 +285,9 @@ async function translate(text, sourceLanguage = "eng", targetLanguage = "twi") {
     body: JSON.stringify(payload),
   });
 
-  return result.text || "";
+  const out = result.text || "";
+  if (out) { translationCache[ck] = out; saveTranslations(); }
+  return out;
 }
 
 /**
@@ -482,6 +513,7 @@ async function prewarmCache() {
 }
 
 module.exports = {
+  restingUntil,
   translate,
   synthesize,
   transcribe,

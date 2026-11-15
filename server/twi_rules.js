@@ -249,8 +249,9 @@ function translateEnglishToTwi(text, name = "") {
   // If already translated
   if (out !== text) return out;
 
-  // General fallback translation
-  return `Akwaaba. ${text}`;
+  // No rule fits and Khaya is not reachable: keep the English as it is (a "Twi" line that is English with a greeting
+  // in front would read as a translation when it is not)
+  return text;
 }
 
 module.exports = {

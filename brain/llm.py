@@ -25,6 +25,8 @@ from typing import Any, Callable, Iterator
 
 import httpx
 
+from brain import claude
+
 SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
            "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "symptom",
            "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence", "profile", "audit", "pulse",
@@ -553,6 +555,11 @@ def _client() -> httpx.Client:
 def warm_llm() -> None:
     """Open the connection before the first question (called at startup and when the app loads)."""
     cfg = llm_config()
+    if claude.available():
+        try:
+            claude._get_client().models.retrieve(claude.model())   # opens the connection; free
+        except Exception:
+            pass
     if not cfg["key"]:
         return
     try:
@@ -570,7 +577,14 @@ def llm_config() -> dict:
 
 
 def llm_available() -> bool:
-    return bool(llm_config()["key"])
+    return bool(llm_config()["key"]) or claude.available()
+
+
+def brain_model() -> str | None:
+    """The model that answers next (shown in the health check)."""
+    if claude.available():
+        return claude.model()
+    return llm_config()["model"] if llm_config()["key"] else None
 
 
 def _state_for_prompt(state: dict) -> dict:
@@ -610,15 +624,9 @@ def _state_light(state: dict) -> dict:
 
 
 def build_messages(state: dict, transcript: str, history: list[dict] | None = None) -> list[dict]:
+    # The brain always answers in English, also in Twi mode: Khaya (GhanaNLP) translates the reply into Twi and
+    # speaks it, which is better Twi than a general model writes, and the safety and number checks stay on English.
     sys_prompt = GENERAL_PROMPT if is_general(transcript) else SYSTEM_PROMPT
-    lang = (state.get("app") or {}).get("language") or state.get("language") or "en"
-    if lang == "tw":
-        sys_prompt += (
-            "\n\nLANGUAGE INSTRUCTION: You are operating in Ghanaian Asante Twi mode. "
-            "Even if the crew member asks or types in English, you MUST formulate your spoken response and clinical advice in natural, fluent Ghanaian Asante Twi. "
-            "Include key English medical terms in parentheses if necessary for clinical precision (e.g. 'Komatwa mmirikatuo (heart rate)'). "
-            "Be warm, clear, calm and reassuring."
-        )
     msgs = [{"role": "system", "content": sys_prompt}]
     msgs += history or []
     ev = evidence_for(transcript)
@@ -667,6 +675,11 @@ def _refused(model: str, r) -> None:
 def call_llm(state: dict, transcript: str, timeout: float = 8.0, post=None, history: list[dict] | None = None) -> str:
     """Return the model's final content (never its reasoning). Raises on any failure (caller falls back)."""
     cfg = llm_config()
+    if post is None and claude.available():
+        try:
+            return claude.complete(build_messages(state, transcript, history), timeout=timeout + 2)
+        except Exception:
+            pass                                   # Groq answers instead
     if not cfg["key"]:
         raise RuntimeError("no key")
     messages = build_messages(state, transcript, history)
@@ -687,11 +700,22 @@ def call_llm(state: dict, transcript: str, timeout: float = 8.0, post=None, hist
 
 
 def stream_llm(state: dict, transcript: str, history: list[dict] | None = None, timeout: float = 8.0) -> Iterator[str]:
-    """Yield content deltas from a streamed completion (reasoning deltas are ignored)."""
+    """Yield content deltas from a streamed completion (reasoning deltas are ignored). Claude first when it is set
+    up; if it fails before saying anything, Groq answers the same question."""
     cfg = llm_config()
+    messages = build_messages(state, transcript, history)
+    if claude.available():
+        said = False
+        try:
+            for piece in claude.stream(messages, timeout=timeout + 2):
+                said = True
+                yield piece
+            return
+        except Exception:
+            if said:
+                return                             # it already spoke: end there rather than start a second answer
     if not cfg["key"]:
         raise RuntimeError("no key")
-    messages = build_messages(state, transcript, history)
     headers = {"Authorization": f"Bearer {cfg['key']}"}
     last = "no model"
     think = is_general(transcript)
