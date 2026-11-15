@@ -370,6 +370,28 @@ test("PVT: waits of 2-10 s, lapses over 500 ms, false starts, change from baseli
   assert.equal(pvt.summarize([{ early: true }]).median, null);
 });
 
+test("Fitts's Law: ID = log2(D/W + 1), smaller targets take longer MT, throughput", () => {
+  const idSmall = pvt.fittsIndex(200, 20); // log2(200/20 + 1) = log2(11) ~ 3.46
+  const idLarge = pvt.fittsIndex(200, 60); // log2(200/60 + 1) = log2(4.33) ~ 2.12
+  assert.ok(idSmall > idLarge, "Small targets must have higher Index of Difficulty than large targets");
+
+  const tp = pvt.fittsThroughput(idSmall, 500); // 3.46 / 0.5 ~ 6.92 bps
+  assert.ok(tp > 0);
+
+  const sf = pvt.summarizeFitts([
+    { hit: true, mt: 420, w: 22, d: 200, id: 3.34 },
+    { hit: true, mt: 380, w: 24, d: 180, id: 3.09 },
+    { hit: true, mt: 240, w: 60, d: 200, id: 2.12 },
+    { hit: true, mt: 220, w: 64, d: 180, id: 1.93 },
+    { hit: false, mt: 500, w: 22, d: 200, id: 3.34 },
+  ]);
+  assert.equal(sf.hits, 4);
+  assert.equal(sf.misses, 1);
+  assert.equal(sf.accuracy, 80);
+  assert.ok(sf.smallMt > sf.largeMt, "Small target movement time must exceed large target movement time");
+  assert.ok(sf.diffPct > 0);
+});
+
 // ---------- body model and zones (Product Document section 7) ----------
 import { worstSeverity, zoneStatuses, regionOf, REGIONS, REGION_ZONE, ZONES as BODY_ZONES } from "../../app/js/interface/body.js";
 import { buildSymptom, symptomPatch, symptomsFor, zoneFor, describeSymptom, LOG_MAX } from "../../app/js/systems/symptomlog.js";

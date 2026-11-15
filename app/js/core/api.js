@@ -49,6 +49,9 @@ async function req(method, url, body, opts = {}) {
 }
 
 export const api = {
+  get: (url, opts) => req("GET", url, undefined, opts),
+  post: (url, body, opts) => req("POST", url, body, opts),
+  symptomExtract: (text, crew_id) => req("POST", "../api/symptom/extract", { text, crew_id }),
   health: () => req("GET", "../api/health"),
   pin: () => req("GET", "../api/pin"),
   crew: () => req("GET", "../api/crew"),

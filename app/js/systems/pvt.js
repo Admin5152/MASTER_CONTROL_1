@@ -53,3 +53,60 @@ export function sleepNote(sleepHours) {
     ? `Last night's sleep was ${sleepHours} hours. In a study of 24 ISS astronauts, nights under 6 hours went with slower reaction speed.`
     : `Last night's sleep was ${sleepHours} hours (6 or more).`;
 }
+
+// ================= Fitts's Law Psychomotor & Target Acquisition =================
+// Fitts's Law: MT = a + b * log2(2D/W) or log2(D/W + 1) [Shannon formulation].
+// Smaller targets (W) and greater distances (D) increase the Index of Difficulty (ID),
+// taking significantly longer to acquire and testing astronaut motor control & fatigue in space.
+
+/** Fitts Index of Difficulty: ID = log2(D / W + 1) in bits (Shannon formulation) */
+export function fittsIndex(distance, width) {
+  const d = Math.max(1, distance || 1);
+  const w = Math.max(1, width || 1);
+  return Math.round(Math.log2(d / w + 1) * 100) / 100;
+}
+
+/** Human motor throughput: TP = ID / (MT / 1000) in bits per second */
+export function fittsThroughput(index, movementTimeMs) {
+  if (!movementTimeMs || movementTimeMs <= 0) return 0;
+  return Math.round((index / (movementTimeMs / 1000)) * 100) / 100;
+}
+
+/** Summarize a series of Fitts's Law trials */
+export function summarizeFitts(trials) {
+  const valid = trials.filter((t) => t.hit && t.mt > 80);
+  const misses = trials.filter((t) => !t.hit).length;
+  const n = valid.length;
+  if (!n) return { n: 0, hits: 0, misses, accuracy: 0, meanMt: null, medianMt: null, avgThroughput: null, smallMt: null, largeMt: null, diffPct: null };
+
+  const mts = valid.map((t) => t.mt).sort((a, b) => a - b);
+  const meanMt = Math.round(mts.reduce((a, b) => a + b, 0) / n);
+  const m = Math.floor(n / 2);
+  const medianMt = n % 2 ? mts[m] : Math.round((mts[m - 1] + mts[m]) / 2);
+
+  const tps = valid.map((t) => fittsThroughput(t.id, t.mt));
+  const avgThroughput = Math.round((tps.reduce((a, b) => a + b, 0) / n) * 10) / 10;
+
+  // Compare small targets (W <= 28) vs large targets (W >= 48)
+  const small = valid.filter((t) => t.w <= 30);
+  const large = valid.filter((t) => t.w >= 44);
+
+  const smallMt = small.length ? Math.round(small.reduce((a, b) => a + b.mt, 0) / small.length) : null;
+  const largeMt = large.length ? Math.round(large.reduce((a, b) => a + b.mt, 0) / large.length) : null;
+  const diffPct = smallMt && largeMt ? Math.round(((smallMt - largeMt) / largeMt) * 100) : null;
+
+  const accuracy = Math.round((n / (n + misses)) * 100);
+
+  return {
+    n,
+    hits: n,
+    misses,
+    accuracy,
+    meanMt,
+    medianMt,
+    avgThroughput,
+    smallMt,
+    largeMt,
+    diffPct,
+  };
+}

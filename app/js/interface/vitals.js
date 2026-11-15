@@ -106,8 +106,8 @@ export function renderVitals(v) {
   line.innerHTML = PLAN.map((p) => {
     const st = now >= p.h + 1 ? "is-past" : now >= p.h ? "is-now" : "";
     return `<li class="${st}" style="--x:${((p.h - 7) / 15) * 100}%">
-      ${p.screen ? `<button type="button" data-screen="${p.screen}">` : "<div>"}
-        <span class="plan-time num">${String(p.h).padStart(2, "0")}:00</span><strong>${esc(p.label)}</strong>${p.note ? `<small>${esc(p.note)}</small>` : ""}
+      ${p.screen ? `<button type="button" data-screen="${p.screen}" title="Tap to log activities for ${esc(p.label)}">` : "<div>"}
+        <span class="plan-time num">${String(p.h).padStart(2, "0")}:00</span><strong>${esc(p.label)}</strong>${st === "is-now" ? `<span class="badge badge-live" style="margin-top:2px;font-size:9.5px;padding:1px 6px">LOG NOW</span>` : (p.note ? `<small>${esc(p.note)}</small>` : "")}
       ${p.screen ? "</button>" : "</div>"}</li>`;
   }).join("");
 }

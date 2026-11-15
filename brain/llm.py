@@ -389,6 +389,40 @@ def small_talk(t: str, name: str = "") -> str | None:
     return None
 
 
+def twi_translate(text: str, name: str = "") -> str:
+    """Translates common clinical & conversational rules replies into Ghanaian Asante Twi."""
+    t = text.lower()
+    if "heart rate is about" in t:
+        m = re.search(r"heart rate is about (\d+)(?:, (\d+) above your usual (\d+)|, (\d+) below your usual (\d+)|, close to your usual (\d+))?", text, re.I)
+        if m:
+            hr = m.group(1)
+            base = m.group(3) or m.group(5) or m.group(6)
+            if base:
+                return f"Wo komatwa mmirikatuo (heart rate) yɛ bɛyɛ {hr}, ɛbɛn wo gyinapɛn {base} yiye. Wo nipadua akwahosan tebea nyinaa kɔ so yiye{f', {name}' if name else ''}."
+            return f"Wo komatwa mmirikatuo yɛ bɛyɛ {hr}."
+    if "cabin oxygen" in t:
+        return "Esuom mframa pa (Oxygen) a ɛwɔ dan no mu yɛ ɔha mu nkyekyem a ɛfata, na carbon dioxide nso kɔ so yiye."
+    if "modelled dose" in t or "radiation" in t:
+        return "Sunsuma a ano yɛ den (Radiation) tebea kɔ so yiye na storm level yɛ nominal."
+    if "headache" in t:
+        return "M'atwerɛ wo tipae no ato hɔ. Yɛrekɔ akwahosan nsɛmmisa mu ahwɛ aduru a ɛbɛboa wo."
+    if "symptom triage" in t or "where does it hurt" in t or "not feeling well" in t:
+        return "Mebue akwahosan nhwehwɛmu (symptom triage) ama woatumi aka nea ɛrehaw wo."
+    if "everything else is within your usual range" in t:
+        return f"Wo nipadua akwahosan tebea nyinaa yɛ papa na ɛkɔ so yiye{f', {name}' if name else ''}."
+    if "orb calm" in t:
+        return "Wopɛ sɛ yɛgye y'ahome kakra wɔ Stillpoint Orb Calm mu anaa?"
+    if "sleep" in t:
+        return f"Nna pa{f', {name}' if name else ''}. Da yiye. Mɛhwɛ wo so wɔ anadwo yi mu."
+    if "sentinel" in t and "companion" in t:
+        return "Mene Sentinel, w'akwahosan boafoɔ wɔ wim yi mu. Mehwɛ sɛ w'apɔmuden kɔ so yiye."
+    if "glad to hear it" in t:
+        return f"Ɛyɛ aso pa kɛse{f', {name}' if name else ''}! Me nso me ho yɛ papa."
+    if "i'm here" in t or "i am here" in t:
+        return f"Mewɔ ha ma wo{f', {name}' if name else ''}. Asɛm bɛn na ɛwɔ w'adwenem?"
+    return f"Akwaaba. {text}"
+
+
 def rules_reply(state: dict, transcript: str) -> tuple[str, list[dict]]:
     name = state.get("display_name", "")
     t = (transcript or "").lower()
@@ -397,7 +431,10 @@ def rules_reply(state: dict, transcript: str) -> tuple[str, list[dict]]:
         return state.get("devices") or "The camera and the microphone are what I can use right now. Worn devices would show here when they send readings.", [{"cmd": "open_screen", "name": "devices"}]
     if t.strip() and not is_health_question(t):
         talk = small_talk(t, name)
-        return (talk, []) if talk else (OFFLINE_GENERAL, [])
+        res = talk if talk else OFFLINE_GENERAL
+        if (state.get("app") or {}).get("language") == "tw" or state.get("language") == "tw":
+            res = twi_translate(res, name)
+        return (clean_reply(res), [])
     hr, base = _hr(state)
     action = state.get("action") or {}
     atype = action.get("type", "none")
@@ -467,6 +504,8 @@ def rules_reply(state: dict, transcript: str) -> tuple[str, list[dict]]:
         reply = f"{hr_line} {detail} This may warrant a check with the flight surgeon." if atype == "flag_ground" else f"{detail} {hr_line}"
     else:
         reply = hr_line or "I am here."
+    if (state.get("app") or {}).get("language") == "tw" or state.get("language") == "tw":
+        reply = twi_translate(reply, name)
     return clean_reply(reply), validate_commands(cmds)
 
 
@@ -571,7 +610,16 @@ def _state_light(state: dict) -> dict:
 
 
 def build_messages(state: dict, transcript: str, history: list[dict] | None = None) -> list[dict]:
-    msgs = [{"role": "system", "content": GENERAL_PROMPT if is_general(transcript) else SYSTEM_PROMPT}]
+    sys_prompt = GENERAL_PROMPT if is_general(transcript) else SYSTEM_PROMPT
+    lang = (state.get("app") or {}).get("language") or state.get("language") or "en"
+    if lang == "tw":
+        sys_prompt += (
+            "\n\nLANGUAGE INSTRUCTION: You are operating in Ghanaian Asante Twi mode. "
+            "Even if the crew member asks or types in English, you MUST formulate your spoken response and clinical advice in natural, fluent Ghanaian Asante Twi. "
+            "Include key English medical terms in parentheses if necessary for clinical precision (e.g. 'Komatwa mmirikatuo (heart rate)'). "
+            "Be warm, clear, calm and reassuring."
+        )
+    msgs = [{"role": "system", "content": sys_prompt}]
     msgs += history or []
     ev = evidence_for(transcript)
     evidence = f"\n\nNASA MRID EVIDENCE (the team's dataset, NASA JSC 28913):\n{ev}" if ev else ""
@@ -998,3 +1046,160 @@ def predict_face_emotion(img_bytes: bytes) -> dict:
         "wording": f"expression suggests {emotion.lower()}",
         "source": "hsemotion"
     }
+
+
+# ================= Voice Symptom Intake (Clinical Extraction & Confirmation) =================
+# The language model ONLY extracts structured fields (zone, symptom, onset, severity).
+# The astronaut confirms them before any record is created.
+# Deterministic clinical rules then pick the protocol, so the model NEVER decides care.
+
+def extract_symptom_rules(text: str) -> dict:
+    """Deterministic extractor for clinical symptom statements."""
+    t = (text or "").lower().strip()
+
+    # 1. Zone & Symptom
+    zone = "whole_body"
+    symptoms = []
+
+    if re.search(r"\b(headache|head hurts?|head aches?|migraine)\b", t):
+        zone = "head"
+        symptoms.append("headache")
+    if re.search(r"\b(dizzy|dizziness|lightheaded|light-headed|vertigo)\b", t):
+        if zone == "whole_body":
+            zone = "head"
+        symptoms.append("dizziness")
+    if re.search(r"\b(blurry|blurred|vision|double vision)\b", t):
+        zone = "eyes"
+        symptoms.append("blurred vision")
+    if re.search(r"\b(nausea|nauseous|queasy|feel sick|vomit)\b", t):
+        zone = "gut"
+        symptoms.append("nausea")
+    if re.search(r"\b(stomach|abdomen|belly|gut|tummy)\b", t):
+        zone = "gut"
+        symptoms.append("stomach pain")
+    if re.search(r"\b(chest|heart racing|palpitations?)\b", t):
+        zone = "chest"
+        symptoms.append("chest tightness" if "tight" in t else "palpitations")
+    if re.search(r"\b(breath|breathless|short of breath|lungs?|cough)\b", t):
+        zone = "lungs"
+        symptoms.append("short of breath" if "breath" in t else "cough")
+    if re.search(r"\b(back|knee|joint|shoulder|wrist|ankle|neck|muscle|arm|leg)\b", t):
+        zone = "bones"
+        symptoms.append("joint/muscle pain")
+    if re.search(r"\b(rash|itchy|skin)\b", t):
+        zone = "skin"
+        symptoms.append("skin irritation")
+
+    symptom_str = " and ".join(symptoms) if symptoms else "general discomfort"
+
+    # 2. Onset
+    onset = "now"
+    if re.search(r"\b(since morning|this morning|morning)\b", t):
+        onset = "morning"
+    elif re.search(r"\b(yesterday|since yesterday|last night)\b", t):
+        onset = "yesterday"
+    elif re.search(r"\b(days|few days|couple of days)\b", t):
+        onset = "days"
+    elif re.search(r"\b(hours|couple of hours|an hour|few hours)\b", t):
+        onset = "hours"
+
+    # 3. Severity (1 = mild, 2 = moderate, 3 = severe)
+    severity = 2
+    if re.search(r"\b(mild|slight|little|bit|minor)\b", t):
+        severity = 1
+    elif re.search(r"\b(severe|terrible|awful|worst|unbearable|extreme|intense)\b", t):
+        severity = 3
+
+    zone_names = {
+        "head": "Head & Neurological",
+        "eyes": "Eyes & Vision",
+        "gut": "Digestion & Abdomen",
+        "chest": "Cardiovascular",
+        "lungs": "Respiratory",
+        "bones": "Musculoskeletal",
+        "skin": "Integumentary",
+        "whole_body": "Whole Body",
+    }
+    sev_labels = {1: "mild", 2: "moderate", 3: "severe"}
+
+    confirmation = (
+        f"I noted: {zone_names.get(zone, zone)}, {symptom_str}, onset: {onset}, severity: {sev_labels.get(severity, 'moderate')}. "
+        "Confirm symptom entry?"
+    )
+
+    twi_confirmation = (
+        f"M'atwerɛ: {symptom_str}, firi {onset}. Wopɛ sɛ yɛde to hɔ na yɛahwɛ aduru a ɛbɛboa wo?"
+    )
+
+    return {
+        "zone": zone,
+        "symptom": symptom_str,
+        "onset": onset,
+        "severity": severity,
+        "zone_label": zone_names.get(zone, zone),
+        "confirmation": confirmation,
+        "twi_confirmation": twi_confirmation,
+        "raw_text": text,
+    }
+
+
+def extract_symptom(text: str, crew_id: str = "") -> dict:
+    """Extract clinical symptom fields using LLM entity extraction with deterministic fallback."""
+    # Fast path: deterministic extraction
+    rules_res = extract_symptom_rules(text)
+    if not llm_available():
+        return rules_res
+
+    # Try LLM structured extraction prompt
+    try:
+        cfg = llm_config()
+        if not cfg.get("key"):
+            return rules_res
+        prompt = (
+            "You are a clinical NLP entity extractor for an astronaut health system.\n"
+            "Extract ONLY the following four fields as JSON from the astronaut's statement:\n"
+            "- zone: one of ['head', 'eyes', 'chest', 'lungs', 'gut', 'bones', 'skin', 'whole_body']\n"
+            "- symptom: short concise symptom description (e.g. 'headache and dizziness')\n"
+            "- onset: one of ['now', 'morning', 'yesterday', 'hours', 'days']\n"
+            "- severity: integer 1 (mild), 2 (moderate), or 3 (severe)\n"
+            "Do NOT include any treatment, advice, or diagnosis. Output ONLY JSON.\n\n"
+            f"Astronaut: \"{text}\""
+        )
+        body = {
+            "model": cfg.get("model", DEFAULT_MODEL),
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.0,
+            "max_tokens": 120,
+        }
+        res = _client().post(
+            f"{cfg['base_url'].rstrip('/')}/chat/completions",
+            headers={"Authorization": f"Bearer {cfg['key']}", "Content-Type": "application/json"},
+            json=body,
+            timeout=2.0,
+        )
+        if res.status_code == 200:
+            content = res.json()["choices"][0]["message"]["content"]
+            m = re.search(r"\{.*\}", content, re.DOTALL)
+            if m:
+                parsed = json.loads(m.group(0))
+                zone = parsed.get("zone") if parsed.get("zone") in ZONES else rules_res["zone"]
+                symptom = str(parsed.get("symptom", rules_res["symptom"])).strip()
+                onset = str(parsed.get("onset", rules_res["onset"])).strip()
+                sev = int(parsed.get("severity", rules_res["severity"]))
+                if sev not in (1, 2, 3):
+                    sev = 2
+                return {
+                    "zone": zone,
+                    "symptom": symptom,
+                    "onset": onset,
+                    "severity": sev,
+                    "zone_label": rules_res["zone_label"],
+                    "confirmation": f"I noted: {zone}, {symptom}, onset: {onset}. Confirm symptom entry?",
+                    "twi_confirmation": f"M'atwerɛ: {symptom}, firi {onset}. Wopɛ sɛ yɛde to hɔ?",
+                    "raw_text": text,
+                    "source": "llm",
+                }
+    except Exception:
+        pass
+    return rules_res
+

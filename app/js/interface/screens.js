@@ -479,7 +479,74 @@ const metricOfField = (field) => Object.entries(METRIC_DEFS).find(([, d]) => d.f
 // ---------- crew ----------
 function renderCrew(el, ctx) {
   el.innerHTML = `<p class="note">Choose who is using Sentinel. A manual choice is badged <span class="badge badge-sim">manual</span>; a voice match is badged LIVE.</p>
-    <div class="hub" style="margin-top:var(--s-4)">${ctx.view.crew.map((c) => `<button type="button" data-crew="${esc(c.crew_id)}"><strong>${esc(c.display_name)}</strong><span>${c.crew_id === ctx.view.crewId ? "Using Sentinel now" : "Switch to"}</span></button>`).join("")}</div>`;
+    <div class="hub" style="margin-top:var(--s-4)">${ctx.view.crew.map((c) => `<button type="button" data-crew="${esc(c.crew_id)}"><strong>${esc(c.display_name)}</strong><span>${c.crew_id === ctx.view.crewId ? "Using Sentinel now" : "Switch to"}</span></button>`).join("")}</div>
+    <h3>Crew Intercom & Chat</h3>
+    <p class="note">Send messages directly to crewmates on board. Messages appear in their notification inbox and live chat feed.</p>
+    <div class="field" style="margin-bottom:var(--s-2)">
+      <label><span>Recipient</span>
+        <select data-comms-to style="width:100%; border-radius:8px; padding:6px; background:rgba(15,23,42,0.7); color:inherit; border:1px solid rgba(148,163,184,0.3);">
+          <option value="all">All Crew (Broadcast)</option>
+          ${ctx.view.crew.filter(c => c.crew_id !== ctx.view.crewId).map(c => `<option value="${esc(c.crew_id)}">${esc(c.display_name)}</option>`).join("")}
+        </select>
+      </label>
+    </div>
+    <div class="field" style="margin-bottom:var(--s-2)">
+      <label><span>Message</span>
+        <textarea data-comms-text rows="2" placeholder="Type a message to your crewmate..." style="width:100%; border-radius:8px; padding:8px; background:rgba(15,23,42,0.6); color:inherit; border:1px solid rgba(148,163,184,0.3); resize:vertical; font-family:inherit;"></textarea>
+      </label>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:var(--s-2); align-items:center;">
+      <button class="pill pill-light" type="button" data-comms-send>Send Message</button>
+      <span class="note" data-comms-status aria-live="polite"></span>
+    </div>
+    <div data-comms-feed style="margin-top:var(--s-3); max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
+      <p class="hint fine">Loading recent messages...</p>
+    </div>`;
+
+  const toSel = el.querySelector("[data-comms-to]");
+  const txtArea = el.querySelector("[data-comms-text]");
+  const sendBtn = el.querySelector("[data-comms-send]");
+  const statusEl = el.querySelector("[data-comms-status]");
+  const feedEl = el.querySelector("[data-comms-feed]");
+
+  const refreshFeed = async () => {
+    try {
+      const res = await api.json("../api/crew/messages");
+      const msgs = res?.messages || [];
+      if (!msgs.length) {
+        feedEl.innerHTML = `<p class="hint fine" style="opacity:0.6;">No intercom messages yet. Start a conversation above.</p>`;
+        return;
+      }
+      feedEl.innerHTML = msgs.slice(-15).reverse().map((m) => `
+        <div style="padding:6px 10px; border-radius:8px; background:rgba(30,41,59,0.7); border:1px solid rgba(148,163,184,0.2); font-size:12px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+            <strong style="color:#38bdf8;">${esc(m.from_name || "Crew")} &rarr; ${esc(m.to_cid === "all" ? "All Crew" : (ctx.view.crew.find(c => c.crew_id === m.to_cid)?.display_name || m.to_cid))}</strong>
+            <span style="opacity:0.5; font-size:10px;">${new Date((m.t || 0) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <div style="color:#f1f5f9;">${esc(m.text || "")}</div>
+        </div>
+      `).join("");
+    } catch {
+      feedEl.innerHTML = `<p class="hint fine" style="opacity:0.6;">Intercom messages saved locally.</p>`;
+    }
+  };
+  refreshFeed();
+
+  sendBtn?.addEventListener("click", async () => {
+    const text = txtArea.value.trim();
+    if (!text) { txtArea.focus(); return; }
+    const toCid = toSel.value;
+    statusEl.textContent = "Sending...";
+    try {
+      await api.post("../api/crew/message", { from_cid: ctx.view.crewId, to_cid: toCid, text });
+      txtArea.value = "";
+      statusEl.textContent = "Sent!";
+      setTimeout(() => { statusEl.textContent = ""; }, 2500);
+      refreshFeed();
+    } catch (err) {
+      statusEl.textContent = `Error: ${err.message}`;
+    }
+  });
   el.querySelectorAll("[data-crew]").forEach((b) => b.addEventListener("click", () => { ctx.setCrew(b.dataset.crew, "manual"); closeScreen(); }));
   el.insertAdjacentHTML("beforeend", `<h3>Add a crew member</h3>
     <p class="note">They start with a clean record: no borrowed readings, baselines calibrate from their own check-ins, and everything in Sentinel works for them straight away.</p>
@@ -566,6 +633,9 @@ function renderSettings(el, ctx) {
     <div class="mood-row"><button type="button" data-mood-optin="on" aria-pressed="${st.get(`mood_optin:${ctx.view.crewId}`) !== "off"}">On</button><button type="button" data-mood-optin="off" aria-pressed="${st.get(`mood_optin:${ctx.view.crewId}`) === "off"}">Off</button></div>
     <p class="hint fine">For the current crew member. On: about once a second the face scan sends a face crop to the model on this laptop to read expression; no image is stored. Off: no face crop is sent and expression is not read; pulse and breathing still work.</p>
     <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
+    <h3>Voice language</h3>
+    <div class="mood-row"><button type="button" data-lang-set="en" aria-pressed="${(localStorage.getItem("sentinel_voice_language") || "en") !== "tw"}">English (ElevenLabs)</button><button type="button" data-lang-set="tw" aria-pressed="${(localStorage.getItem("sentinel_voice_language") || "en") === "tw"}">Twi (Khaya AI)</button></div>
+    <p class="hint fine">Twi: speaks in Twi using Khaya AI. Critical safety and medical alerts will always also speak in English.</p>
     <h3>Listening</h3>
     <div class="mood-row"><button type="button" data-listen="wake" aria-pressed="${st.get("listen") !== "ptt"}">Wake phrase</button><button type="button" data-listen="ptt" aria-pressed="${st.get("listen") === "ptt"}">Push to talk only</button></div>
     <p class="hint fine">Wake phrase: say "Hey Sentinel" any time. Push to talk: tap the microphone or the orb, then speak.</p>`;
@@ -585,6 +655,13 @@ function renderSettings(el, ctx) {
   el.querySelectorAll("[data-listen]").forEach((b) => b.addEventListener("click", () => {
     st.set("listen", b.dataset.listen); ctx.applyListening?.();
     el.querySelectorAll("[data-listen]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
+  el.querySelectorAll("[data-lang-set]").forEach((b) => b.addEventListener("click", () => {
+    const l = b.dataset.langSet;
+    try { localStorage.setItem("sentinel_voice_language", l); } catch {}
+    globalThis.language = l;
+    if (globalThis.setSentinelLanguage) globalThis.setSentinelLanguage(l);
+    el.querySelectorAll("[data-lang-set]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
   }));
   (async () => {
     try {

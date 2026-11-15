@@ -206,6 +206,84 @@ body.is-pointing .zone .zchip { opacity: 0; }
 .pvt-stats strong { font-size: 26px; font-weight: var(--fw-light); }
 .pvt-stats small { color: var(--ink-3); font-size: 11px; }
 
+/* ---------- Fitts's Law Reaction & Motor Control Game ---------- */
+.fitts-arena {
+  position: relative;
+  width: 100%;
+  height: 290px;
+  border-radius: var(--radius-card, 20px);
+  border: 1px solid var(--rule-2, rgba(255, 255, 255, 0.16));
+  background: radial-gradient(circle at 50% 50%, rgba(111, 208, 255, 0.05) 0%, rgba(10, 16, 30, 0.6) 80%), repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255, 255, 255, 0.03) 39px, rgba(255, 255, 255, 0.03) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255, 255, 255, 0.03) 39px, rgba(255, 255, 255, 0.03) 40px);
+  overflow: hidden;
+  touch-action: manipulation;
+  user-select: none;
+  cursor: crosshair;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+:root[data-theme="light"] .fitts-arena {
+  background: radial-gradient(circle at 50% 50%, rgba(31, 95, 224, 0.04) 0%, #f8fafc 80%), repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(15, 29, 51, 0.04) 39px, rgba(15, 29, 51, 0.04) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(15, 29, 51, 0.04) 39px, rgba(15, 29, 51, 0.04) 40px);
+  border-color: rgba(15, 29, 51, 0.14);
+}
+.fitts-prompt-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  pointer-events: none;
+}
+.fitts-target {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 120ms cubic-bezier(.2, .8, .2, 1);
+  box-shadow: 0 0 16px rgba(111, 208, 255, 0.4);
+}
+.fitts-target:active { transform: translate(-50%, -50%) scale(0.92); }
+.fitts-target.is-large {
+  background: radial-gradient(circle, #38bdf8 0%, rgba(14, 165, 233, 0.4) 60%, transparent 100%);
+  border: 2px solid #38bdf8;
+}
+.fitts-target.is-med {
+  background: radial-gradient(circle, #818cf8 0%, rgba(99, 102, 241, 0.5) 60%, transparent 100%);
+  border: 2px solid #818cf8;
+}
+.fitts-target.is-small {
+  background: radial-gradient(circle, #f43f5e 0%, rgba(225, 29, 72, 0.6) 60%, transparent 100%);
+  border: 2px solid #f43f5e;
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.65);
+}
+.fitts-target-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+.fitts-target-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  animation: fitts-spin 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes fitts-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.fitts-burst {
+  position: absolute;
+  pointer-events: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: #38bdf8;
+  animation: fitts-float 600ms ease-out forwards;
+}
+@keyframes fitts-float { from { opacity: 1; transform: translate(-50%, -10px); } to { opacity: 0; transform: translate(-50%, -36px); } }
+
 /* Sentinel Skin modules */
 .skin-mods { list-style: none; padding: 0; display: grid; gap: var(--s-2); margin-top: var(--s-3); }
 .skin-mods li.card { padding: 0; overflow: hidden; }
@@ -434,6 +512,104 @@ html[data-glove="on"] .cl-acts .pill, html[data-glove="on"] .cl-select, html[dat
 .care-ask .pill { min-height: 36px; padding: 4px 14px; font-size: var(--fs-xs); }
 .env-ask { display: flex; gap: var(--s-2); margin-top: 8px; }
 .env-banner.is-ask p { margin: 6px 0 0; }
+
+/* Voice Symptom Intake Confirmation Card */
+.symptom-confirm-card {
+  position: fixed;
+  z-index: 60;
+  top: calc(var(--top-h) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(540px, calc(100vw - 2 * var(--gutter)));
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: var(--surface-strong);
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  animation: bannerSlideIn 0.25s ease-out;
+  color: var(--ink);
+}
+[data-theme="light"] .symptom-confirm-card {
+  background: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.15);
+}
+.symptom-confirm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.symptom-confirm-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(94, 234, 212, 0.12);
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(94, 234, 212, 0.3);
+}
+[data-theme="light"] .symptom-confirm-badge {
+  color: #0369a1;
+  background: #e0f2fe;
+  border-color: #bae6fd;
+}
+.symptom-confirm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 12px;
+  margin: 12px 0 16px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-dim);
+}
+[data-theme="light"] .symptom-confirm-grid {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+.symptom-confirm-item label {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+[data-theme="light"] .symptom-confirm-item label {
+  color: #64748b;
+}
+.symptom-confirm-item strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 600;
+}
+[data-theme="light"] .symptom-confirm-item strong {
+  color: #0f172a;
+}
+.symptom-confirm-protocol {
+  grid-column: 1 / -1;
+  border-top: 1px dashed var(--line-dim);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+[data-theme="light"] .symptom-confirm-protocol {
+  border-top-color: #cbd5e1;
+}
+.symptom-confirm-protocol strong {
+  color: #38bdf8;
+}
+[data-theme="light"] .symptom-confirm-protocol strong {
+  color: #0284c7;
+}
+.symptom-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
 /* the plan schedule: equal slots in time order, so two close times can never print over each other */
 .plan-line { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(104px, 1fr); gap: 0 10px; height: auto; min-height: 96px; padding: 30px 0 8px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 .plan-line::before { right: auto; width: 100%; min-width: 100%; }

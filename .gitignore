@@ -1,4 +1,7 @@
 .env
+server/.env
+**/.env
+data/twi_tts_cache/
 .venv/
 __pycache__/
 *.pyc
@@ -14,3 +17,5 @@ tests/screenshots/**/*.png
 tests/screenshots/**/*.jpg
 tests/screenshots/**/*.webm
 presentation/
+python-*.exe
+scratch/

@@ -357,6 +357,34 @@ function renderCare(el, ctx, arg) {
   if (arg === "log") log();
   else if (arg === "library") library();
   else if (arg?.run) runner(arg.run);
+  else if (arg?.protocol) {
+    const proto = arg.protocol;
+    const protoId = proto.id || arg.protocol_id;
+    const sev = arg.severity != null ? arg.severity : 2;
+    const lvl = sev >= 3 ? 3 : 2;
+    card({
+      symptom: arg.symptom || proto.title,
+      zone: arg.zone || proto.zone,
+      severity: sev,
+      urgency: lvl,
+      protocol_id: protoId,
+      protocol_title: proto.title,
+      kit: {
+        item: { name: proto.kit_item || "Convenience Pack medication", pack: "Locker MED-1" },
+        safety: {}
+      },
+      recommendation_card: {
+        protocol_title: proto.title,
+        sure: "High (Deterministic NASA MRID protocol match)",
+        now: (proto.steps || []).map((s) => s.text),
+        use: proto.kit_item || "Convenience Pack medication",
+        recheck_minutes: proto.recheck_interval_min || 45,
+        escalate_if: (proto.red_flags || []).join(". "),
+        why: `Grounding: ${proto.hazard || "Hostile closed environment"}. Sourced from ${proto.source?.title || "NASA Flight Medicine"}.`,
+        source: proto.source
+      }
+    });
+  }
   else if (arg && (arg.zone || arg.symptom)) triage({ zone: ZONE_ALIAS[arg.zone] || arg.zone, symptom: arg.symptom, severity: arg.severity, onset: arg.onset });
   else if (arg === "triage" || arg?.view === "triage") triage({});
   else home();

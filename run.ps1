@@ -59,6 +59,15 @@ function Stop-Port([int]$port) {
 $servePort = if ($Http) { 8000 } else { 8443 }
 Stop-Port $servePort
 
+# Twi voice (Khaya AI): a small Node service on port 3001 that Sentinel calls through /api/twi. Optional: without
+# Node, Sentinel runs in English only.
+if (Get-Command node -ErrorAction SilentlyContinue) {
+    if (-not (Test-Path (Join-Path $PSScriptRoot "node_modules\express"))) { Write-Host "Installing the Twi voice service..."; & npm ci --no-audit --no-fund | Out-Null }
+    Stop-Port 3001
+    Start-Process node -ArgumentList "server/server.js" -WorkingDirectory $PSScriptRoot -WindowStyle Minimized
+    Write-Host "  Twi voice service started on port 3001." -ForegroundColor Green
+} else { Write-Host "  Node.js not found: Twi voice is off (English works)." -ForegroundColor Yellow }
+
 # 4. Serve
 if ($Http) {
     $url = "http://localhost:8000/app/"

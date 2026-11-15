@@ -3,7 +3,7 @@ import { api } from "./core/api.js";
 import { emit, on } from "./core/bus.js";
 import { createDirector } from "./core/director.js";
 import { crewFromSpeech, matchIntent, wellbeingConcern } from "./core/intents.js";
-import { audioContext, cue, setMuted, isMuted } from "./core/sound.js";
+import { audioContext, cue, setMuted, isMuted, playIntroSound, stopIntroSound } from "./core/sound.js";
 import { setAmbient, duckAmbient, asideAmbient, refreshAmbient } from "./core/ambient.js";
 import { createStages } from "./core/stages.js";
 import { patch, pollOnce, setCrew, startPolling, view } from "./core/state.js";
@@ -46,6 +46,7 @@ import { registerSymptom } from "./systems/symptom.js";
 import { logFromSpeech, registerClinic } from "./experience/clinic.js";
 import { careReply, registerCare, symptomFromSpeech } from "./experience/care.js";
 import { REGION_NAMES, REGION_ZONE, regionOf, zoneStatuses } from "./interface/body.js";
+import { initMessages, closeMessages } from "./comms/messages.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -54,6 +55,34 @@ const settings = {
   get(k) { try { return localStorage.getItem(`sentinel:${k}`) || ""; } catch { return ""; } },
   set(k, v) { try { localStorage.setItem(`sentinel:${k}`, v); } catch { /* storage blocked */ } },
 };
+
+// Global Sentinel Language State (English / Twi)
+const initialLang = (() => {
+  try {
+    return localStorage.getItem("sentinel_voice_language") || settings.get("language") || "en";
+  } catch {
+    return "en";
+  }
+})();
+globalThis.language = initialLang;
+window.language = initialLang;
+window.__sentinelLanguage = initialLang;
+
+globalThis.setSentinelLanguage = (lang) => {
+  const clean = lang === "tw" ? "tw" : "en";
+  globalThis.language = clean;
+  window.language = clean;
+  window.__sentinelLanguage = clean;
+  try { localStorage.setItem("sentinel_voice_language", clean); } catch {}
+  settings.set("language", clean);
+  document.querySelectorAll("[data-lang-set]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.langSet === clean));
+  });
+  window.dispatchEvent(new CustomEvent("sentinel:language-change", { detail: clean }));
+  return clean;
+};
+window.setSentinelLanguage = globalThis.setSentinelLanguage;
+
 const ctx = { view, patch, settings, health: {}, facts: { facts: [], zones: {} }, thresholds: null, demoLines: {} };
 window.sentinel = ctx; // for the browser test harness and debugging
 let orb, director, banner, vision, demoPanel, screens, world, space, stages;
@@ -102,7 +131,10 @@ async function boot() {
     world.orbTo(t, 1.6, "expo.out");
     setTimeout(ready, 900);
   };
-  const go = () => { introRun = intro.run({ onForm: form, onDone: () => {} }); };
+  const go = () => {
+    playIntroSound();
+    introRun = intro.run({ onForm: form, onDone: () => {} });
+  };
   setAmbient("start");
   const firstTouch = () => { audioContext(); for (const ev of ["pointerdown", "keydown"]) document.removeEventListener(ev, firstTouch, true); };
   for (const ev of ["pointerdown", "keydown"]) document.addEventListener(ev, firstTouch, true);
@@ -143,6 +175,7 @@ tabs?.addEventListener("message", (e) => { if (e.data?.type === "active" && e.da
 async function start() {
   // every device opens in full screen: browsers allow it only inside a tap, and Begin is that tap (first, before any await)
   toggleFullscreen(true);
+  stopIntroSound(700);
   tabs?.postMessage({ type: "active", id: instanceId });   // any other open Sentinel goes quiet
   audioContext();
   voiceMod.unlockSpeech();
@@ -377,12 +410,14 @@ async function mountApp() {
   const scanMsg = (html) => { const e = $("scan-result"); if (e) e.innerHTML = html; };
   function startScan() {
     if (scan) clearInterval(scan.t);
+    // Clear previous scan result immediately when starting/rescaning
+    scanMsg(`<strong>Scanning: ${SCAN_S} seconds left to finish and complete</strong> · hold still and face the light.`);
     scan = { t0: performance.now(), hr: [], q: [], br: [], emo: {}, cid: view.crewId };
     $("btn-scan15").disabled = true;
     scan.t = setInterval(() => {
       if (!scan) return;
       const left = Math.max(0, Math.ceil(SCAN_S - (performance.now() - scan.t0) / 1000));
-      scanMsg(`<strong>Scanning: ${left} s</strong> · hold still and face the light. ${scan.hr.length} pulse sample${scan.hr.length === 1 ? "" : "s"} so far.`);
+      scanMsg(`<strong>Scanning: ${left} second${left === 1 ? "" : "s"} left to finish and complete</strong> · hold still and face the light. ${scan.hr.length} pulse sample${scan.hr.length === 1 ? "" : "s"} collected.`);
       if (left <= 0) finishScan();
     }, 500);
   }
@@ -399,10 +434,32 @@ async function mountApp() {
       const r = (await api.scanSave(s.cid, { kind: "face", seconds: SCAN_S, samples: s.hr.length, heart_rate: hr, confidence: q, breathing_rate: br,
         emotion: top?.[0], emotion_confidence: top ? med(top[1]) : null })).scan;
       const parts = [r.heart_rate != null ? `pulse ${r.heart_rate} bpm (quality ${Math.round((r.confidence || 0) * 100)}%)` : "", r.breathing_rate != null ? `breathing ${r.breathing_rate}/min` : "", r.emotion ? `expression ${esc(r.emotion)}` : ""].filter(Boolean);
-      scanMsg(`<strong>Scan saved to ${esc(view.state?.display_name || "your")}'s record</strong> ${badgeHTML("LIVE")} ${parts.join(" · ")}. An estimate for trends${(r.confidence || 0) < 0.35 ? "; the signal was weak, so it will not raise an alert on its own" : ""}.`);
+      scanMsg(`<strong>Scan result:</strong> ${parts.join(" · ")}. <em>Saved to ${esc(view.state?.display_name || "your")}'s record</em> ${badgeHTML("LIVE")}.<br><span class="fine">Moving to the next process...</span>`);
       emit("scan.recorded", { kind: "face", saved: r.saved, crewId: s.cid });
       say(`Scan saved. ${r.heart_rate != null ? `Pulse about ${r.heart_rate}.` : ""}${r.breathing_rate != null ? ` Breathing ${r.breathing_rate} a minute.` : ""}`, { source: "local" });
       lastActionKey = ""; pollOnce();
+
+      // Automatically move to the next process:
+      // 1) If in a checkin flow, advance to Step 2 (Typed entries) and reopen checkin
+      const ckKey = `sentinel:checkin:${s.cid}`;
+      let ckSaved = null;
+      try { ckSaved = JSON.parse(sessionStorage.getItem(ckKey) || "null"); } catch {}
+      if (ckSaved && ckSaved.i === 0) {
+        ckSaved.i = 1;
+        if (hr != null) (ckSaved.vit ||= {}).heart_rate = hr;
+        if (br != null) (ckSaved.vit ||= {}).breathing_rate = br;
+        try { sessionStorage.setItem(ckKey, JSON.stringify(ckSaved)); } catch {}
+        setTimeout(() => {
+          screens.open("checkin");
+          showNotice("Face scan complete. Advanced to Step 2: typed entries.");
+        }, 1400);
+      } else {
+        // 2) If standalone scan, advance to the Daily check-in / Health log next process
+        setTimeout(() => {
+          screens.open("health_log");
+          showNotice("Face scan saved to system. Proceeding to Health log.");
+        }, 2200);
+      }
     } catch (e) { scanMsg(`The scan was not saved: ${esc(e.message)}.`); }
   }
   on("reading.added", (r) => {
@@ -637,12 +694,17 @@ const SHEET_ONLY = ["devices", "notifications", "datasets", "today", "checkin", 
 function wireControls() {
   $("btn-unwell").addEventListener("click", () => screens.open("care", "triage"));
   $("banner-ack").addEventListener("click", () => { if (view.crewId) api.alertsAckOpen(view.crewId, 3).catch(() => {}); });
-  $("banner-details").addEventListener("click", () => {   // what the alert is about, then the steps for it
+  $("banner-details").addEventListener("click", async () => {   // what the alert is about, then the steps for it
     const a = view.state?.action || {};
+    banner.hide(); // Immediately dismiss the hovering overlay so it never blocks the details page
+    stopAlarm();
+    const zone = a.zone && a.zone !== "cabin" ? a.zone : "";
     if (a.type === "flag_cabin" || view.state?.cabin?.alert) return screens.open("cabin");
     if (a.type === "flag_radiation") return director.run([{ cmd: "open_screen", name: "radiation" }]);
-    const zone = a.zone && a.zone !== "cabin" ? a.zone : "";
     if (!zone) return screens.open("alerts");
+    // Move cleanly to the 3D body model and open the zone details sheet without any hovering overlay
+    await stages.go("body");
+    director.run([{ cmd: "point_to", zone }]);
     screens.zone(zone);   // the readings, the trend and the history behind it
     showNotice("Showing what changed. Tap Recommended steps for what to do.");
   });
@@ -659,7 +721,7 @@ function wireControls() {
   }));
   $("btn-menu").addEventListener("click", () => toggleMenu("menu", "btn-menu"));
   document.addEventListener("pointerdown", (e) => {   // tap outside the menu or the conversation panel: it closes
-    if (($("menu").hidden && $("convo").hidden) || e.target.closest("#menu, #convo, #btn-menu, #btn-convo")) return;
+    if (($("menu").hidden && $("convo").hidden) || e.target.closest("#menu, #convo, #btn-menu, #btn-convo, #btn-messages, #messages-panel")) return;
     closeMenus();
   });
   $("btn-bell").addEventListener("click", () => (screens.current?.() === "notifications" ? closeScreen() : screens.open("notifications")));
@@ -695,6 +757,7 @@ function wireControls() {
   $("btn-zoom-out").addEventListener("click", () => ctx.body3d?.zoomBy(1.33));
   $("btn-zoom-fit").addEventListener("click", () => director.run([{ cmd: "zoom_body", zone: "reset" }]));
   $("btn-convo").addEventListener("click", () => toggleMenu("convo", "btn-convo"));
+  initMessages(ctx);
   $("btn-all").addEventListener("click", () => screens.open("readings"));
   $("btn-scan").addEventListener("click", () => director.run([{ cmd: "start_scan" }]));
   $("btn-hurt").addEventListener("click", () => screens.open("symptom"));
@@ -772,6 +835,7 @@ function wireControls() {
 }
 
 function toggleMenu(id, btn) {
+  closeMessages();
   const el = $(id), open = el.hidden;
   closeMenus();
   if (!open) return;
@@ -938,7 +1002,7 @@ function say(text, opts = {}) {
   if (sleeping) return Promise.resolve();   // the quiet tab never speaks
   // during a spoken answer, anything else (a screen's narration) is queued after it, never cut into it
   const append = opts.append || (answering && opts.source !== "LLM" && opts.source !== "rules" && !opts.interrupt);
-  return voiceMod.speak(text, { interrupt: !append });
+  return ((globalThis.language === "tw" || (typeof language !== "undefined" && language === "tw")) ? (globalThis.speakTwi ? globalThis.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }) : import("./voice/twi.js").then((m) => m.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }))) : voiceMod.speak(text, { interrupt: !append }));
 }
 
 function logLine(who, text, source) {
@@ -976,6 +1040,127 @@ function showEnvBanner(out) {
   el.innerHTML = `<b>Environment: ${esc(out.environment)}</b><ul>${(out.changes || []).map((c) => `<li>${esc(c)}</li>`).join("")}</ul><button type="button" class="pill pill-ghost">OK</button>`;
   el.querySelector("button").addEventListener("click", () => el.remove());
   document.body.appendChild(el); setTimeout(() => el.remove(), 15000);
+}
+
+let pendingSymptom = null; // a spoken symptom waiting for confirmation
+
+function dismissSymptomConfirmation() {
+  pendingSymptom = null;
+  document.querySelectorAll(".symptom-confirm-card").forEach((el) => el.remove());
+}
+
+async function confirmSymptomEntry(item) {
+  dismissSymptomConfirmation();
+  if (!item) return;
+  const isTwi = globalThis.language === "tw";
+
+  // 1. Log symptom to manual.symptom_log in state
+  try {
+    const prev = view.state?.manual?.symptom_log || [];
+    await api.post(`../api/state/${view.crewId}/patch`, {
+      manual: {
+        symptom_log: [
+          ...prev,
+          {
+            type: item.symptom,
+            zone: item.zone,
+            severity: item.severity,
+            onset: item.onset,
+            at: new Date().toISOString()
+          }
+        ]
+      }
+    });
+  } catch {}
+
+  // 2. Announce protocol launch
+  const protoTitle = item.protocol?.title || "Clinical Evaluation";
+  const spoken = isTwi
+    ? `Wɔagye ato mu. Nhyehyɛe a mmara paw maa wo ne: ${protoTitle}.`
+    : `Symptom confirmed. Launching rule-selected protocol: ${protoTitle}.`;
+  say(spoken, { source: "local" });
+
+  // 3. Open Care screen with rule-selected protocol
+  closeMenus();
+  screens.open("care", {
+    zone: item.zone,
+    symptom: item.symptom,
+    severity: item.severity,
+    onset: item.onset,
+    protocol: item.protocol,
+    protocol_id: item.protocol?.id,
+    voice: true
+  });
+}
+
+function showSymptomConfirmation(extracted) {
+  dismissSymptomConfirmation();
+  const el = document.createElement("section");
+  el.className = "symptom-confirm-card";
+  el.setAttribute("role", "dialog");
+  el.setAttribute("aria-label", "Symptom Intake Confirmation");
+
+  const sevWord = extracted.severity === 1 ? "Mild (1/3)" : extracted.severity === 3 ? "Severe (3/3)" : "Moderate (2/3)";
+  const isTwi = globalThis.language === "tw";
+  const protoTitle = extracted.protocol?.title || "Clinical Evaluation (Determined by rules)";
+
+  el.innerHTML = `
+    <div class="symptom-confirm-header">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="symptom-confirm-badge">${isTwi ? "AKWAHOSAN NHWEHWƐMU" : "SYMPTOM INTAKE"}</span>
+        <span class="fine" style="font-size:11px; opacity:0.75;">${isTwi ? "LLM Nnyinasoɔ" : "Field extraction only"}</span>
+      </div>
+      <button type="button" class="symptom-close-btn" style="background:none; border:none; color:var(--ink-dim); font-size:16px; cursor:pointer;" aria-label="Close">✕</button>
+    </div>
+    <h3 style="margin:4px 0 8px; font-size:15px; font-weight:600; color:var(--ink);">
+      ${isTwi ? "Gye akwahosan tebea a y'atwerɛ yi to mu" : "Confirm Extracted Symptom Fields"}
+    </h3>
+    <p class="fine" style="margin:0 0 8px; font-size:12px; line-height:1.4; color:var(--ink-dim);">
+      ${isTwi
+        ? "Mfitiase nsɛm pɛ na afiri afiri no nkyɛn; mmara a ɛwɔ hɔ no na ɛbɛpaw aduru ne nhyehyɛe no."
+        : "The language model extracts fields only. Clinical rules select the protocol; the model never decides care."}
+    </p>
+    <div class="symptom-confirm-grid">
+      <div class="symptom-confirm-item">
+        <label>${isTwi ? "Baabi (Zone)" : "Zone"}</label>
+        <strong>${esc(extracted.zone_label || extracted.zone || "Head")}</strong>
+      </div>
+      <div class="symptom-confirm-item">
+        <label>${isTwi ? "Nea ɛrehaw wo" : "Symptom"}</label>
+        <strong>${esc(extracted.symptom || "Headache")}</strong>
+      </div>
+      <div class="symptom-confirm-item">
+        <label>${isTwi ? "Bere a ɛfirii ase" : "Onset"}</label>
+        <strong>${esc(extracted.onset || "morning")}</strong>
+      </div>
+      <div class="symptom-confirm-item">
+        <label>${isTwi ? "Ahooden (Severity)" : "Severity"}</label>
+        <strong>${esc(sevWord)}</strong>
+      </div>
+      <div class="symptom-confirm-protocol">
+        <label style="color:#38bdf8; font-weight:600;">${isTwi ? "Nhyehyɛe a mmara paw (Protocol)" : "Protocol Selected by Rules"}</label>
+        <strong>${esc(protoTitle)}</strong>
+        ${extracted.protocol?.source?.title ? `<span class="fine" style="display:block; margin-top:2px; font-size:11px; color:var(--ink-dim);">Source: ${esc(extracted.protocol.source.title)}</span>` : ""}
+      </div>
+    </div>
+    <div class="symptom-confirm-actions">
+      <button type="button" class="pill pill-ghost" data-cancel>${isTwi ? "Twa mu (Cancel)" : "Cancel"}</button>
+      <button type="button" class="pill pill-light" data-confirm>${isTwi ? "Gye to mu (Confirm)" : "Confirm Entry"}</button>
+    </div>
+  `;
+
+  el.querySelector(".symptom-close-btn")?.addEventListener("click", () => {
+    dismissSymptomConfirmation();
+  });
+  el.querySelector("[data-cancel]")?.addEventListener("click", () => {
+    dismissSymptomConfirmation();
+    say(isTwi ? "Yɛannyɛ ho hwee. M'amfa anto hɔ." : "Symptom entry cancelled.", { source: "local" });
+  });
+  el.querySelector("[data-confirm]")?.addEventListener("click", () => {
+    confirmSymptomEntry(extracted);
+  });
+
+  document.body.appendChild(el);
 }
 const earlyNoted = new Set();   // an early sign is answered once per session
 const SAFETY_FIRST = "I'm here. Please call a crewmate now. I'm letting them know.";
@@ -1057,6 +1242,21 @@ async function handleCommand(text, meta = {}) {
     else if (/ (yes|yeah|yep|sure|okay|ok|please|lets do it|go ahead) /.test(t) && t.trim().split(/\s+/).length <= 5) { pendingAsk = null; p.yes(); return; }
     else if (/ (no|nope|not now|later|nah) /.test(t) && t.trim().split(/\s+/).length <= 5) { pendingAsk = null; p.no(); return; }
   }
+  if (pendingSymptom) {
+    const tLower = ` ${text.toLowerCase().replace(/[\u2019']/g, "").replace(/[^a-z0-9 ]/g, " ")} `;
+    const isYes = / (yes|yeah|yep|sure|confirm|confirmed|correct|affirmative|aane|mep[ɛe]|proceed) /.test(tLower);
+    const isNo = / (no|nope|cancel|cancelled|abort|nah|negative|dabi) /.test(tLower);
+    if (isYes) {
+      const it = pendingSymptom;
+      confirmSymptomEntry(it);
+      return;
+    }
+    if (isNo) {
+      dismissSymptomConfirmation();
+      say(globalThis.language === "tw" ? "Yɛannyɛ ho hwee. M'amfa anto hɔ." : "Symptom entry cancelled.", { source: "local" });
+      return;
+    }
+  }
   // "which devices are connected": answered from the real list, before the hardware-viewer phrases can catch "devices"
   if (/\b(what|which)\b.*\b(devices?|sensors?)\b|\b(devices?|sensors?|watch|suit link)\b.*\b(connected|working|online|sending)\b|\bwhat is connected\b/i.test(text)) {
     try {
@@ -1084,20 +1284,106 @@ async function handleCommand(text, meta = {}) {
       followUp(); return;
     }
   }
+  const isTwiRequest = /(?:respond|speak|answer|reply|talk|conversation|chat|say\s+it|tell\s+me)(?:\s+\w+){0,4}\s+in\s+twi\b/i.test(text)
+    || /\b(?:in\s+twi|switch\s+to\s+twi|kasa\s+twi|let'?s\s+(?:have\s+)?(?:all\s+)?(?:the\s+)?conversation\s+(?:right\s+now\s+)?in\s+twi|can\s+you\s+(?:answer|respond|speak|talk)\s+(?:in\s+)?twi)\b/i.test(text)
+    || /^(?:wo\s+ho\s+te\s+s[ɛe]n|ete\s+s[ɛe]n|akwaaba|maakye|maaha|maadwo)\b/i.test(text);
+
+  if (isTwiRequest) {
+    globalThis.language = "tw";
+    try { localStorage.setItem("sentinel_voice_language", "tw"); } catch {}
+    if (globalThis.setSentinelLanguage) globalThis.setSentinelLanguage("tw");
+
+    const tLower = text.toLowerCase();
+    let replyTwi = "Akwaaba. Mɛkasa Twi seesei.";
+
+    if (/how\s+are\s+you|wo\s+ho\s+te\s+s[ɛe]n|ete\s+s[ɛe]n/i.test(tLower)) {
+      replyTwi = "Me ho yɛ, medaase! Wo nso wo ho te sɛn? Mɛkasa Twi seesei ara na maboa wo.";
+    } else if (/can\s+you\s+(?:answer|respond|speak|talk)/i.test(tLower)) {
+      replyTwi = "Aane, mitumi kasa Twi yiye pa ara! Yɛbɛbɔ nkɔmmɔ wɔ Twi mu seesei ara.";
+    } else if (/conversation|all\s+the\s+conversation/i.test(tLower)) {
+      replyTwi = "Ɛyɛ me dɛ! Yɛbɛbɔ nkɔmmɔ nyinaa wɔ Twi mu seesei. Mɛtumi aboa wo sɛn nnɛ?";
+    } else if (/^(?:maakye|good\s+morning)/i.test(tLower)) {
+      replyTwi = "Maakye! Wo ho te sɛn anɔpa yi?";
+    } else if (/^(?:maaha|good\s+afternoon)/i.test(tLower)) {
+      replyTwi = "Maaha! Me ho yɛ papa.";
+    } else if (/^(?:maadwo|good\s+evening)/i.test(tLower)) {
+      replyTwi = "Maadwo! Gye w'ahome kakra.";
+    }
+
+    say(replyTwi, { source: "local" });
+    followUp();
+    return;
+  }
+
+  const isEngRequest = /(?:respond|speak|answer|reply|talk|switch)(?:\s+\w+){0,3}\s+in\s+english\b/i.test(text)
+    || /\b(?:in\s+english|switch\s+to\s+english|let'?s\s+(?:have\s+)?(?:the\s+)?conversation\s+in\s+english|talk\s+in\s+english)\b/i.test(text);
+
+  if (isEngRequest) {
+    globalThis.language = "en";
+    try { localStorage.setItem("sentinel_voice_language", "en"); } catch {}
+    if (globalThis.setSentinelLanguage) globalThis.setSentinelLanguage("en");
+    say("Switched to English. I'll speak English from now on.", { source: "local" });
+    followUp();
+    return;
+  }
+  const msgMatch = text.match(/^(?:message|tell|to|send to|chat with)\s+([a-zA-Z]+)[:\s]+(.+)$/i) || text.match(/^@([a-zA-Z]+)[:\s]+(.+)$/i);
+  if (msgMatch) {
+    const targetName = msgMatch[1].toLowerCase();
+    const messageContent = msgMatch[2].trim();
+    const targetCrew = view.crew?.find((c) => c.display_name.toLowerCase() === targetName || c.crew_id.toLowerCase() === targetName);
+    if (targetCrew) {
+      try {
+        await api.post("../api/crew/message", { from_cid: view.crewId, to_cid: targetCrew.crew_id, text: messageContent });
+        logLine(`${view.profile?.display_name || "You"} -> ${targetCrew.display_name}`, messageContent, "Intercom");
+        say(globalThis.language === "tw" ? `Wɔamana ${targetCrew.display_name} nkrasɛm no.` : `Message delivered to ${targetCrew.display_name}.`, { source: "local" });
+        return;
+      } catch (err) {
+        showNotice(`Failed to send message: ${err.message}`);
+      }
+    }
+  }
   let m = matchIntent(text, { wearOpen: stages.current === "vitals" });
-  // "I have a headache", "my stomach is not well": straight into triage, then the steps one at a time
+  // "I have a headache", "I've had a headache since morning and feel dizzy": structured extraction -> astronaut confirms -> deterministic rules pick protocol
   {
     const t = ` ${text.toLowerCase().replace(/[\u2019']/g, "")} `;
     const asks = /^ (what|why|how|should|is it|is that|do i|does|can i|could|would|when) /.test(t);
     const unwell = / (dont|do not|not) feel(ing)? (so |very |too )?(well|good|great|right) | feel(ing)? (sick|ill|unwell|bad|terrible|awful|off) | (is|are|feels?) not (well|right|good) /.test(t);
     const hurts = / (hurts?|aches?|aching|sore|pain|painful|headache|dizzy|nauseous|nausea|queasy|blurry|cant breathe|cant see|racing|fever|rash|cramp|numb|tingling|swollen|itchy|coughing|cough|bleeding|sprained) /.test(t);
     if (!asks && (unwell || hurts || (m?.intent === "check" && m.action === "report_symptom"))) {
-      const sy = symptomFromSpeech(text, m?.intent === "check" ? m.target : "");
-      if (sy) { closeMenus(); screens.open("care", { ...sy, voice: true }); return; }
+      let extracted = null;
+      try {
+        extracted = await api.symptomExtract(text, view.crewId);
+      } catch (err) {
+        // offline fallback
+        const sy = symptomFromSpeech(text, m?.intent === "check" ? m.target : "");
+        if (sy) {
+          extracted = {
+            zone: sy.zone,
+            zone_label: ZONE_NAMES[sy.zone] || sy.zone,
+            symptom: sy.symptom,
+            onset: "today",
+            severity: 2,
+            confirmation: `I noted: ${ZONE_NAMES[sy.zone] || sy.zone}, ${sy.symptom}. Confirm symptom entry?`,
+            twi_confirmation: `M'atwerɛ: ${sy.symptom}. Wopɛ sɛ yɛde to hɔ?`,
+            raw_text: text,
+            protocol: null
+          };
+        }
+      }
+      if (extracted) {
+        pendingSymptom = extracted;
+        showSymptomConfirmation(extracted);
+        const promptText = globalThis.language === "tw"
+          ? (extracted.twi_confirmation || extracted.confirmation)
+          : extracted.confirmation;
+        say(promptText, { source: "local" });
+        followUp();
+        return;
+      }
       if (unwell) { closeMenus(); screens.open("care", { view: "triage", voice: true }); return; }
     }
   }
-  if (m && (m.local === "yes" || m.local === "no") && !pendingEnv) m = null;
+  if (m && (m.local === "yes" || m.local === "no") && !pendingEnv && !pendingSymptom) m = null;
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
     if (m.local === "digest") { await sendDigest(); followUp(); return; }
@@ -1195,7 +1481,7 @@ async function handleCommand(text, meta = {}) {
       if (first) { emit("voice:thinking", false); first = false; }
       spoke = true;
       say(sentence, { source: source === "llm" ? "LLM" : "rules", append: !isFirst });
-    }, { screen: screens.current?.() || "", view: stages.current, theme: document.documentElement.dataset.theme === "light" ? "light" : "dark" });
+    }, { screen: screens.current?.() || "", view: stages.current, theme: document.documentElement.dataset.theme === "light" ? "light" : "dark", language: globalThis.language || "en" });
     // commands for the app itself (theme, who is here); the rest go to the director
     for (const c of r.commands || []) {
       if (c.cmd === "set_theme") ctx.setTheme?.(c.theme);
@@ -1620,7 +1906,19 @@ async function routineTick() {
       escalated[due.id] = true;
       say(`Gentle reminder: your ${due.label} is still open. It takes about a minute; want to do it now?`, { source: "local", append: true, unprompted: true });
     }
-    if (!nudged.has(k)) { nudged.add(k); emit("reminder.due", { type: due.id === "vitals" || due.id === "log" ? "checkin" : "measurement", crewId: view.crewId, label: due.label }); cue.nudge(); note(`Due now: ${due.label}.`); lastActionKey = ""; }
+    if (!nudged.has(k)) {
+      nudged.add(k);
+      emit("reminder.due", { type: due.id === "vitals" || due.id === "log" ? "checkin" : "measurement", crewId: view.crewId, label: due.label });
+      cue.nudge();
+      note(`Due now: ${due.label}.`);
+      lastActionKey = "";
+      askBanner(
+        `Daily Roadmap: ${due.label}`,
+        `It is time for your scheduled ${due.label}. Tap to log your activities now and save them into the system.`,
+        due.button || "Log activities now",
+        () => director.run([{ cmd: "open_screen", name: due.screen }])
+      );
+    }
   }
 }
 on("state", () => { if (lastDay == null && view.aux?.clock) lastDay = view.aux.clock.mission_day; });

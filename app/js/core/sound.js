@@ -32,8 +32,71 @@ export function unlockAudio() {
   return c;
 }
 
-export function setMuted(m) { muted = m; if (m) stopAlarm(); }
+let introAudio = null;
+
+export function setMuted(m) {
+  muted = m;
+  if (m) {
+    stopAlarm();
+    stopIntroSound(0);
+  }
+}
 export function isMuted() { return muted; }
+
+/** Play cinematic intro sound from the sound folder on the first page */
+export function playIntroSound() {
+  if (muted) return null;
+  if (!introAudio) {
+    introAudio = new Audio("sound/shortintro.mp3");
+    introAudio.preload = "auto";
+  }
+  introAudio.currentTime = 0;
+  const p = introAudio.play();
+  if (p && typeof p.catch === "function") {
+    p.catch(() => {
+      // Browser blocked autoplay before gesture: play on next user tap/interaction
+      const onFirstTap = () => {
+        document.removeEventListener("pointerdown", onFirstTap);
+        document.removeEventListener("keydown", onFirstTap);
+        if (introAudio && introAudio.paused && !muted) {
+          introAudio.play().catch(() => {});
+        }
+      };
+      document.addEventListener("pointerdown", onFirstTap, { once: true, passive: true });
+      document.addEventListener("keydown", onFirstTap, { once: true, passive: true });
+    });
+  }
+  return introAudio;
+}
+
+/** Fade out intro sound when leaving the first page / starting the app */
+export function stopIntroSound(fadeMs = 800) {
+  if (!introAudio || introAudio.paused) return;
+  if (fadeMs <= 0) {
+    introAudio.pause();
+    introAudio.currentTime = 0;
+    return;
+  }
+  const startVol = introAudio.volume || 1;
+  const stepTime = 50;
+  const steps = Math.max(1, fadeMs / stepTime);
+  const volStep = startVol / steps;
+  const fade = setInterval(() => {
+    if (!introAudio) {
+      clearInterval(fade);
+      return;
+    }
+    if (introAudio.volume > volStep) {
+      introAudio.volume = Math.max(0, introAudio.volume - volStep);
+    } else {
+      introAudio.volume = 0;
+      introAudio.pause();
+      introAudio.currentTime = 0;
+      introAudio.volume = startVol;
+      clearInterval(fade);
+    }
+  }, stepTime);
+}
 
 function tone(freq, dur = 0.12, gain = 0.05, type = "sine", when = 0) {
   if (muted) return;

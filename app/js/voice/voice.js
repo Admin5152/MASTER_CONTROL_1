@@ -67,6 +67,14 @@ function outChain() {
     outAnalyser.fftSize = 512;
     outGain.connect(outAnalyser); outAnalyser.connect(ctx.destination);
   }
+  if (typeof window !== "undefined") {
+    window.__outChain = outChain;
+    window.__getOutGain = () => outGain;
+    window.__startLevel = startLevel;
+    window.__pauseListening = pauseListening;
+    window.__resumeListening = resumeListening;
+    window.__voice = voice;
+  }
   return ctx;
 }
 function startLevel() {
@@ -398,11 +406,24 @@ async function transcribe(audio) {
   emit("voice:thinking", true);
   let text = "";
   try {
-    // speed (the team's choice): every utterance goes to the cloud recogniser (Groq, ~0.4 s), so "Hey Sentinel ..."
-    // is answered at once; the on-laptop recogniser (~3 s here) is the fallback when the cloud cannot be reached
-    const d = await sttText(audio, true);
-    text = d.text;
-    voice.sttSource = d.source;
+    // English: every utterance goes to the cloud recogniser (Groq, ~0.4 s; the on-laptop one is the fallback).
+    // Twi: Khaya AI transcribes and translates, and Sentinel works on the English.
+    const isTwi = (globalThis.language === "tw" || (typeof language !== "undefined" && language === "tw"));
+    if (isTwi) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 20000);
+      const r = await fetch("../api/twi/listen", { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
+      clearTimeout(t);
+      if (!r.ok) throw new Error(`stt ${r.status}`);
+      const d = await r.json();
+      text = (d.eng_text || d.twi_text || "").trim();
+      voice.sttSource = "khaya";
+      if (d.twi_text) emit("voice:transcript", { text: `${d.twi_text} (${text})`, final: true });
+    } else {
+      const d = await sttText(audio, true);
+      text = d.text;
+      voice.sttSource = d.source;
+    }
     sttFails = 0;
   } catch {
     emit("voice:thinking", false);
@@ -550,4 +571,15 @@ export async function testVoice() {
   const engine = voice.ttsSource;
   await new Promise((resolve) => { queue.push({ text: "Voice check. This is Sentinel.", audio: Promise.resolve(buf), resolve }); pump(); });
   return { engine, ok: true };
+}
+
+if (typeof window !== "undefined") {
+  window.__outChain = outChain;
+  window.__getOutGain = () => { outChain(); return outGain; };
+  window.__startLevel = startLevel;
+  window.__pauseListening = pauseListening;
+  window.__resumeListening = resumeListening;
+  window.__stopSpeaking = stopSpeaking;
+  window.__pushToTalk = pushToTalk;
+  window.__voice = voice;
 }

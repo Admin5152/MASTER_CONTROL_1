@@ -1,0 +1,23 @@
+{
+  "name": "sentinel-master-control",
+  "version": "5.0.0",
+  "description": "Sentinel Onboard Medical & Mission Intelligence with Twi Voice Support",
+  "scripts": {
+    "start:twi": "node server/server.js",
+    "test:twi": "node tests/test_twi.js"
+  },
+  "keywords": [
+    "sentinel",
+    "astronaut-health",
+    "khaya-ai",
+    "twi-voice",
+    "elevenlabs"
+  ],
+  "author": "COSMOcare",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "multer": "^2.5.0"
+  }
+}
