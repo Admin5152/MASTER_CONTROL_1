@@ -1,0 +1,90 @@
+{
+  "callsign": "Eliah",
+  "language": "en",
+  "units": "metric",
+  "preferences": {
+    "voice": "calm",
+    "gloveMode": false,
+    "reminderTimes": {
+      "checkin": "08:00",
+      "winddown": "21:30"
+    }
+  },
+  "mission": {
+    "environmentId": "",
+    "mode": "routine",
+    "dutySchedule": "work 08-18, sleep 22-06",
+    "sleepBlock": "22:00-06:00",
+    "evaRoster": false,
+    "mission_day": "0"
+  },
+  "health": {
+    "allergies": [
+      "none"
+    ],
+    "conditions": [
+      "none"
+    ],
+    "regularMedicines": [
+      "none"
+    ],
+    "pastKitReactions": [
+      "none"
+    ],
+    "updatedBy": "astronaut",
+    "sensitive": true,
+    "includeInDigest": false
+  },
+  "baselines": {},
+  "wellbeingPlan": {
+    "earlySigns": [
+      "short temper",
+      "skipping meals"
+    ],
+    "whatHelps": [
+      "orb_calm",
+      "greenhouse"
+    ],
+    "whoToTalkTo": "Annie",
+    "cameraMoodAnalysis": true,
+    "homeMessages": false
+  },
+  "sharing": {
+    "buddy": "Annie",
+    "shareUrgentWithCommander": true,
+    "shareTrendsWithSurgeon": "on_request",
+    "crewPulse": false
+  },
+  "emergency": {
+    "buddy": "Annie",
+    "commander": "",
+    "orderOfContact": [
+      "buddy",
+      "commander",
+      "ground"
+    ]
+  },
+  "onboarding": {
+    "stage": "day_0",
+    "preloaded": true,
+    "preloadedBy": "mission_planner_demo",
+    "confirmed": false,
+    "confirmedAt": "0.0"
+  },
+  "crewId": "james",
+  "completeness": 1,
+  "missing": [],
+  "next_question": null,
+  "next_question_prompt": null,
+  "completed_count": 11,
+  "total_count": 11,
+  "calibration": {
+    "stage": "day_0",
+    "stage_label": "Day 0 Onboarding",
+    "mission_day": 0,
+    "total_calibration_days": 7,
+    "status_text": "Onboarding (Day 0)",
+    "calibrating": false,
+    "calibrated": false
+  }
+}

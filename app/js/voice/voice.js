@@ -62,6 +62,14 @@ function outChain() {
     outAnalyser.fftSize = 512;
     outGain.connect(outAnalyser); outAnalyser.connect(ctx.destination);
   }
+  if (typeof window !== "undefined") {
+    window.__outChain = outChain;
+    window.__getOutGain = () => outGain;
+    window.__startLevel = startLevel;
+    window.__pauseListening = pauseListening;
+    window.__resumeListening = resumeListening;
+    window.__voice = voice;
+  }
   return ctx;
 }
 function startLevel() {
@@ -328,12 +336,17 @@ async function transcribe(audio) {
     // privacy: until someone addresses Sentinel (wake word, mic tap, reply window), speech is transcribed on this
     // laptop and nothing leaves it; addressed speech goes to the faster cloud service
     const addressed = ptt || awaiting || openMic();
-    const r = await fetch(`../api/stt${addressed ? "" : "?prefer=local"}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
+    const isTwi = (globalThis.language === "tw" || (typeof language !== "undefined" && language === "tw"));
+    const endpoint = isTwi ? "../api/twi/listen" : `../api/stt${addressed ? "" : "?prefer=local"}`;
+    const r = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
     clearTimeout(t);
     if (!r.ok) throw new Error(`stt ${r.status}`);
     const d = await r.json();
-    text = (d.text || "").trim();
-    voice.sttSource = d.source;
+    text = (isTwi ? (d.eng_text || d.twi_text || "") : (d.text || "")).trim();
+    voice.sttSource = isTwi ? "khaya" : d.source;
+    if (isTwi && d.twi_text) {
+      emit("voice:transcript", { text: `${d.twi_text} (${text})`, final: true });
+    }
     sttFails = 0;
   } catch {
     emit("voice:thinking", false);
@@ -481,4 +494,15 @@ export async function testVoice() {
   const engine = voice.ttsSource;
   await new Promise((resolve) => { queue.push({ text: "Voice check. This is Sentinel.", audio: Promise.resolve(buf), resolve }); pump(); });
   return { engine, ok: true };
+}
+
+if (typeof window !== "undefined") {
+  window.__outChain = outChain;
+  window.__getOutGain = () => { outChain(); return outGain; };
+  window.__startLevel = startLevel;
+  window.__pauseListening = pauseListening;
+  window.__resumeListening = resumeListening;
+  window.__stopSpeaking = stopSpeaking;
+  window.__pushToTalk = pushToTalk;
+  window.__voice = voice;
 }

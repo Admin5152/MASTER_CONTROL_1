@@ -106,21 +106,99 @@ body.offline .stages { filter: grayscale(0.85) opacity(0.8); }
 .sb-link { width: 7px; height: 7px; border-radius: 50%; background: var(--nominal); margin: 0 var(--s-2); font-size: 0; overflow: hidden; flex: none; }
 body.offline .sb-link { background: var(--alert); }
 
-/* ---------- banner ---------- */
-.banner { --bn: var(--alert); position: fixed; left: 50%; transform: translateX(-50%); width: min(760px, calc(100vw - 2 * var(--gutter))); top: calc(var(--top-h) + 8px + env(safe-area-inset-top)); z-index: var(--z-banner); display: flex; align-items: center; gap: var(--s-4); padding: 16px 16px 16px 18px; border-radius: var(--radius-card); color: var(--ink);
-  background: var(--surface-solid);
-  border: 1px solid color-mix(in srgb, var(--bn) 50%, transparent); box-shadow: var(--shadow-float, 0 18px 48px rgba(0, 0, 0, .45)); }
+/* ---------- banner: full-width HCI alert card (text first, then action bar) ---------- */
+.banner {
+  --bn: var(--alert);
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 2 * var(--gutter)));
+  top: calc(var(--top-h) + 10px + env(safe-area-inset-top));
+  z-index: var(--z-banner);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3, 12px);
+  padding: 18px 22px 16px 22px;
+  border-radius: var(--radius-card);
+  color: var(--ink);
+  background: var(--surface-solid, #090f1d);
+  border: 1px solid color-mix(in srgb, var(--bn) 50%, transparent);
+  box-shadow: var(--shadow-float, 0 18px 48px rgba(0, 0, 0, .45));
+}
 .banner.is-watch { --bn: var(--watch); }
-.banner-mark { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--bn); animation: bn-beat 1.4s ease-in-out infinite; }
+
+.banner-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3, 14px);
+  width: 100%;
+}
+.banner-mark {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--bn);
+  animation: bn-beat 1.4s ease-in-out infinite;
+  margin-top: 2px;
+}
 .banner.is-watch .banner-mark { color: #1a1204; animation: none; }
 @keyframes bn-beat { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bn) 22%, transparent); } }
 .banner-mark span { width: 3px; height: 12px; background: currentColor; border-radius: 2px; position: relative; top: -3px; }
 .banner-mark span::after { content: ""; position: absolute; left: 0; top: 16px; width: 3px; height: 3px; border-radius: 2px; background: currentColor; }
-.banner-text { display: grid; gap: 3px; min-width: 0; }
-.banner-title { font-size: 17px; font-weight: var(--fw-semi); color: var(--ink); }
-.banner-detail { font-size: 14px; line-height: 1.45; color: var(--ink-2); }
-.banner-ground { font-size: 12px; line-height: 1.4; color: var(--ink-3); margin-top: 2px; }
-.banner .pill { margin-left: auto; flex: none; }
+
+.banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+.banner-title {
+  font-size: 16.5px;
+  font-weight: var(--fw-semi, 600);
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.banner-detail {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  width: 100%;
+  word-break: break-word;
+}
+.banner-ground {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-3);
+  margin-top: 4px;
+}
+
+.banner-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3, 12px);
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  margin-top: 4px;
+  width: 100%;
+}
+.banner-btns {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2, 10px);
+  margin-left: auto;
+}
+.banner .pill { flex: none; min-height: 38px; padding: 0 18px; font-size: 13px; font-weight: 500; }
+@media (max-width: 600px) {
+  .banner-actions { flex-direction: column; align-items: stretch; gap: 8px; }
+  .banner-btns { width: 100%; justify-content: flex-end; }
+}
 @media (prefers-reduced-motion: reduce) { .banner-mark { animation: none; } }
 
 /* ---------- stages: layers over the world ---------- */

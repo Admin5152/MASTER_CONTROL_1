@@ -14,16 +14,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preload" href="assets/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/michroma-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/app.css?v=planet-fullscreen-10">
-  <link rel="stylesheet" href="css/layout.css">
-  <link rel="stylesheet" href="css/wellbeing.css">
+  <link rel="stylesheet" href="css/tokens.css?v=cosmocare-v12">
+  <link rel="stylesheet" href="css/app.css?v=cosmocare-v12">
+  <link rel="stylesheet" href="css/layout.css?v=cosmocare-v12">
+  <link rel="stylesheet" href="css/wellbeing.css?v=cosmocare-v12">
+  <link rel="stylesheet" href="css/messages.css?v=cosmocare-v12">
   <script type="importmap">
   { "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/jsm/" } }
   </script>
   <script src="vendor/gsap/gsap.min.js" defer></script>
   <script src="vendor/chartjs/chart.umd.js" defer></script>
-  <script type="module" src="js/main.js?v=planet-fullscreen-10"></script>
+  <script type="module" src="js/main.js?v=cosmocare-v11"></script>
 </head>
 <body data-stage="intro">
   <!-- ONE full-screen world: intro solar system, Sentinel's orb, Earth, the body -->
@@ -96,15 +97,21 @@
     </header>
 
     <div id="banner" class="banner" role="alert" hidden>
-      <div class="banner-mark" aria-hidden="true"><span></span></div>
-      <div class="banner-text">
-        <strong id="banner-title" class="banner-title">Alert</strong>
-        <span id="banner-detail" class="banner-detail"></span>
-        <span id="banner-ground" class="banner-ground"></span>
+      <div class="banner-top">
+        <div class="banner-mark" aria-hidden="true"><span></span></div>
+        <div class="banner-text">
+          <strong id="banner-title" class="banner-title">Alert</strong>
+          <span id="banner-detail" class="banner-detail"></span>
+          <span id="banner-ground" class="banner-ground"></span>
+        </div>
       </div>
-      <span id="banner-badge" class="badge badge-sim">SIM</span>
-      <button id="banner-details" class="pill pill-ghost" type="button" title="Open what this is about and the recommended steps">Details</button>
-      <button id="banner-ack" class="pill pill-light" type="button">Acknowledge</button>
+      <div class="banner-actions">
+        <span id="banner-badge" class="badge badge-sim">SIM</span>
+        <div class="banner-btns">
+          <button id="banner-details" class="pill pill-ghost" type="button" title="Open what this is about and the recommended steps">Details</button>
+          <button id="banner-ack" class="pill pill-light" type="button">Acknowledge</button>
+        </div>
+      </div>
     </div>
 
     <main id="stages" class="stages">
@@ -241,8 +248,12 @@
       </form>
 <button id="btn-key" class="legend-mini" type="button" aria-label="Badge key: LIVE measured now, SIM simulated, DESIGNED design only">
           <span class="badge badge-live">LIVE</span><span class="badge badge-sim">SIM</span><span class="badge badge-designed">DESIGNED</span></button>
-      <button id="btn-convo" class="menu-btn" type="button" aria-label="Conversation history" aria-expanded="false">
+      <button id="btn-convo" class="menu-btn" type="button" aria-label="Conversation history" aria-expanded="false" title="AI Conversation history">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14v9H10l-4 3v-3H5z"/></svg>
+      </button>
+      <button id="btn-messages" class="menu-btn" type="button" aria-label="Crew messages" aria-expanded="false" title="Crew messages">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h2a2 2 0 0 1 2 2v7l-4-3h-4"/><path d="M15 4H5a2 2 0 0 0-2 2v10l4-3h8a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/></svg>
+        <span id="messages-badge" class="messages-badge" hidden>0</span>
       </button>
     </div>
 
@@ -314,6 +325,8 @@
     </section>
 
     <aside id="demo-panel" class="demo-panel panel" hidden aria-label="Demo panel"></aside>
+    <div id="messages-backdrop" class="messages-backdrop" hidden></div>
+    <aside id="messages-panel" class="messages-panel panel" hidden aria-label="Crew messages"></aside>
   </div>
 </body>
 </html>

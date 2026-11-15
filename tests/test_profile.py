@@ -4,6 +4,9 @@
 - Section 14.3: How it is built (Day 0 -> Days 1-3 -> Days 3-7 Calibrating -> Completeness meter)
 - Section 14.4: What the profile changes (AC-17 allergy block, AC-18 incomplete note, surgeon baseline adjustment, export, digest privacy)
 """
+import os
+os.environ["SENTINEL_NO_NETWORK"] = "1"
+os.environ["SENTINEL_NO_WARM"] = "1"
 from brain.profile import Profiles, kit_filter, calibration_info
 from brain.store import Store
 from brain.ops import Ops
@@ -199,40 +202,38 @@ def test_section_14_morning_checkin_integration():
 
 
 def test_delete_and_endpoints():
-    from fastapi.testclient import TestClient
     import server
-    c = TestClient(server.app)
-    cid = c.get("/api/crew").json()[0]["crew_id"]
+    cid = server.store.crew()[0]["crew_id"]
 
     # Patch and check
-    assert c.patch(f"/api/profile/{cid}", json={"wellbeingPlan": {"whatHelps": ["orb_calm"]}}).json()["wellbeingPlan"]["whatHelps"] == ["orb_calm"]
+    assert server.profile_update(cid, {"wellbeingPlan": {"whatHelps": ["orb_calm"]}})["wellbeingPlan"]["whatHelps"] == ["orb_calm"]
 
     # Preload endpoint
-    preload_resp = c.post(f"/api/profile/{cid}/preload", json={"callsign": "TestCall", "preloadedBy": "flight_surgeon"}).json()
+    preload_resp = server.profile_preload(cid, {"callsign": "TestCall", "preloadedBy": "flight_surgeon"})
     assert preload_resp["onboarding"]["preloaded"] is True
 
     # Confirm endpoint
-    confirm_resp = c.post(f"/api/profile/{cid}/confirm").json()
+    confirm_resp = server.profile_confirm(cid)
     assert confirm_resp["onboarding"]["confirmed"] is True
 
     # Baseline adjustment endpoint
-    base_resp = c.post(f"/api/profile/{cid}/baseline", json={"indicator": "heart_rate", "value": 72.0, "adjustedBy": "flight_surgeon"}).json()
+    base_resp = server.profile_baseline_adjust(cid, {"indicator": "heart_rate", "value": 72.0, "adjustedBy": "flight_surgeon"})
     assert base_resp["baselines"]["heart_rate"]["value"] == 72.0
 
     # Export endpoint (full and redacted)
-    export_full = c.get(f"/api/profile/{cid}/export?sensitive=true").json()
+    export_full = server.profile_export(cid, sensitive=True)
     assert export_full["format"] == "sentinel_profile_export_v1"
 
-    export_redacted = c.get(f"/api/profile/{cid}/export?sensitive=false").json()
+    export_redacted = server.profile_export(cid, sensitive=False)
     assert export_redacted["format"] == "sentinel_profile_export_v1"
 
     # Clinic morning check-in endpoint
-    checkin_resp = c.post(f"/api/clinic/{cid}/checkin", json={"vitals": {"heart_rate": 65}, "reaction_ms": 280}).json()
+    checkin_resp = server.clinic_checkin(cid, {"vitals": {"heart_rate": 65}, "reaction_ms": 280})
     assert checkin_resp["ok"] is True
     assert "Check-in complete" in checkin_resp["summary_line"]
 
     # Delete resets profile
-    assert c.delete(f"/api/profile/{cid}").json()["completeness"] < 0.2
+    assert server.profile_delete(cid)["completeness"] < 0.2
 
 
 def test_section_14_4_table_row_early_signs_recognized():
@@ -290,17 +291,15 @@ def test_section_14_4_table_row_duty_and_sleep_schedule_rest_respect():
 
 def test_section_14_4_table_row_buddy_and_consent_crisis_routing():
     """Row 6: Buddy and consent choices -> Urgent alerts go to the right person; nothing else is shared."""
-    from fastapi.testclient import TestClient
     import server
-    c = TestClient(server.app)
 
     # Crew member sets designated buddy and opts out of commander alert
-    c.patch("/api/profile/kenji", json={
+    server.profile_update("kenji", {
         "sharing": {"buddy": "Eliah", "shareUrgentWithCommander": False},
         "emergency": {"buddy": "Eliah"},
     })
 
-    resp = c.post("/api/safety/kenji", json={"category": "severe_distress"}).json()
+    resp = server.safety_alert("kenji", {"category": "severe_distress"})
     assert resp["buddy"] == "Eliah"
     assert "consent withheld" in resp["commander"].lower()
     assert "Eliah" in resp["lines"][1]

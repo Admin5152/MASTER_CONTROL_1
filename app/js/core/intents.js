@@ -31,8 +31,8 @@ export const METRIC_WORDS = {
 
 export const SCREEN_WORDS = {
   care: ["i don't feel well", "i dont feel well", "i do not feel well", "i feel sick", "i feel unwell", "i feel ill", "not feeling well", "triage", "care log", "protocols"],
-  checkin: ["daily check in", "daily check-in", "daily checkin", "start my check in", "start my check-in", "morning check in", "check in now"],
-  today: ["my reminders", "reminders", "my day", "today's plan", "todays plan", "my schedule"],
+  checkin: ["daily check in", "daily check-in", "daily checkin", "start my check in", "start my check-in", "morning check in", "check in now", "checkin roadmap", "daily checkin roadmap", "daily check-in roadmap"],
+  today: ["my reminders", "reminders", "my day", "today's plan", "todays plan", "my schedule", "roadmap", "my roadmap", "plan schedule", "schedule roadmap"],
   journal: ["private journal", "my journal", "journal", "diary"],
   alerts: ["why this", "my alerts", "open alerts", "alerts"],
   record: ["my saved record", "saved record", "my record", "my baseline", "my normal", "health history", "my history", "log history", "logs history", "my logs", "history of my logs", "what have i logged", "my data"],

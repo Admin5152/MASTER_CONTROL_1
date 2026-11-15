@@ -205,15 +205,71 @@
 }
 
 /* ---------- game screens are always in space: dark tokens whatever the app theme ---------- */
-.race-ui, .gh, .wb2, .calm2 {
+.race-ui, .gh, .calm2 {
   --ink: #eef2f8; --ink-2: rgba(238, 242, 248, 0.68); --ink-3: rgba(238, 242, 248, 0.44);
   --rule: rgba(255, 255, 255, 0.09); --rule-2: rgba(255, 255, 255, 0.18);
   --surface: rgba(10, 16, 30, 0.6); --surface-strong: rgba(10, 16, 30, 0.9); --surface-sunk: rgba(255, 255, 255, 0.05);
   --assist: #6fd0ff; --assist-soft: rgba(111, 208, 255, 0.14);
   color: var(--ink);
 }
-:root[data-theme="light"] .sheet.is-full .sheet-head { color: #eef2f8; }
-:root[data-theme="light"] .sheet.is-full .sheet-head .icon-btn, :root[data-theme="light"] .sheet.is-full #sheet-close { color: #eef2f8; }
+:root:not([data-theme="light"]) .wb2 {
+  --ink: #eef2f8; --ink-2: rgba(238, 242, 248, 0.68); --ink-3: rgba(238, 242, 248, 0.44);
+  --rule: rgba(255, 255, 255, 0.09); --rule-2: rgba(255, 255, 255, 0.18);
+  --surface: rgba(10, 16, 30, 0.6); --surface-strong: rgba(10, 16, 30, 0.9); --surface-sunk: rgba(255, 255, 255, 0.05);
+  --assist: #6fd0ff; --assist-soft: rgba(111, 208, 255, 0.14);
+  color: var(--ink);
+}
+:root[data-theme="light"] .wb2 {
+  --ink: #0f1d33;
+  --ink-2: rgba(15, 29, 51, 0.78);
+  --ink-3: rgba(15, 29, 51, 0.58);
+  --rule: rgba(15, 29, 51, 0.14);
+  --rule-2: rgba(15, 29, 51, 0.24);
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-sunk: rgba(15, 29, 51, 0.06);
+  --assist: #1f5fe0;
+  --assist-soft: rgba(31, 95, 224, 0.12);
+  color: var(--ink) !important;
+  background: linear-gradient(180deg, #f4f7fc 0%, #e9eef8 100%) !important;
+}
+:root[data-theme="light"] .sheet.is-full .sheet-head { color: #0f1d33 !important; }
+:root[data-theme="light"] .sheet.is-full .sheet-head .icon-btn, :root[data-theme="light"] .sheet.is-full #sheet-close { color: #0f1d33 !important; }
+:root[data-theme="light"] .wb2-head h1 { color: #0f1d33 !important; }
+:root[data-theme="light"] .wb2-lede { color: #1e293b !important; }
+:root[data-theme="light"] .wb2-tilt {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 29, 51, 0.16) !important;
+  box-shadow: 0 16px 36px -12px rgba(15, 29, 51, 0.16) !important;
+}
+:root[data-theme="light"] .wb2-body h2 { color: #0f1d33 !important; }
+:root[data-theme="light"] .wb2-body > p { color: #2d3e58 !important; }
+:root[data-theme="light"] .wb2-tag { color: #0b327b !important; font-weight: 700 !important; }
+:root[data-theme="light"] .wb2-time { color: #43546f !important; font-weight: 500 !important; }
+:root[data-theme="light"] .wb2-why { color: #0b327b !important; font-weight: 600 !important; }
+:root[data-theme="light"] .wb2-why:hover { color: #1f5fe0 !important; }
+:root[data-theme="light"] .wb2-play {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #16366f, #0d2044) !important;
+  box-shadow: 0 10px 24px -6px rgba(13, 32, 68, 0.45) !important;
+}
+:root[data-theme="light"] .wb2-play svg { fill: #ffffff !important; }
+:root[data-theme="light"] .wb2-you {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #064e3b !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+}
+:root[data-theme="light"] .wb2-you .label { color: #047857 !important; }
+:root[data-theme="light"] .wb2-more button {
+  background: #ffffff !important;
+  color: #0f1d33 !important;
+  border-color: rgba(15, 29, 51, 0.22) !important;
+}
+:root[data-theme="light"] .wb2-more button:hover {
+  background: #f0f4fa !important;
+  border-color: #1f5fe0 !important;
+  color: #1f5fe0 !important;
+}
 /* the race menu covers whatever scene was behind it until the course loads */
 .race-ui .race-menu { background: radial-gradient(90% 80% at 50% 30%, #12213b 0%, #070b16 60%, #03050a 100%); overflow-y: auto; align-content: safe center; }
 .race-ui .race-menu.race-end { background: radial-gradient(90% 80% at 50% 40%, rgba(18, 33, 59, 0.82), rgba(3, 5, 10, 0.9)); }

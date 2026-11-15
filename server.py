@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+import time
+import httpx
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
@@ -54,6 +56,7 @@ from brain.radiation import SpaceWeather, storm_dose_step, feed_freshness  # noq
 from brain.store import Store  # noqa: E402
 from systems import speaker  # noqa: E402
 from brain.race_rooms import RaceRooms  # noqa: E402
+from brain.messages import crew_messages  # noqa: E402
 from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
@@ -270,6 +273,160 @@ def notifications_clear(cid: str, body: dict = Body(default={})):
     n = notes.clear(cid, body.get("id"))
     audit.record("brain", "notify.cleared", cid, {"count": n})
     return {"cleared": n, **notes.list(cid)}
+
+
+@app.api_route("/api/twi/{path:path}", methods=["GET", "POST", "OPTIONS"])
+async def twi_proxy_route(path: str, request: Request):
+    """Proxy Twi voice calls from https://localhost:8443 to the Node microservice on port 3001."""
+    if request.method == "OPTIONS":
+        return Response(status_code=204, headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "*", "Access-Control-Allow-Headers": "*"})
+    url = f"http://127.0.0.1:3001/api/twi/{path}"
+    body = await request.body()
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.request(
+                method=request.method,
+                url=url,
+                content=body,
+                params=dict(request.query_params),
+                headers=headers,
+            )
+            return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type"))
+    except Exception as e:
+        return JSONResponse({"ok": False, "fallback": True, "error": str(e)}, status_code=502)
+
+
+@app.post("/api/crew/message")
+def crew_message_send(body: dict = Body(default={})):
+    """Send a direct message from one crew member to another or to all crew."""
+    from_cid = body.get("from_cid", "")
+    to_cid = body.get("to_cid", "")
+    text = (body.get("text") or "").strip()
+    if not text:
+        raise HTTPException(400, "Message text is required")
+    crew_list = store.crew()
+    by_name = {c["crew_id"]: c.get("display_name", c["crew_id"]) for c in crew_list}
+    me = by_name.get(from_cid, "Crew")
+    recipients = [to_cid] if to_cid and to_cid != "all" else [c["crew_id"] for c in crew_list if c["crew_id"] != from_cid]
+    delivered = []
+    for r in recipients:
+        notes.add(r, f"Message from {me}", text, about_cid=from_cid, about_name=me, level=1, kind="message")
+        delivered.append(r)
+    # Persist in data/crew_chat.json
+    chat_file = Path(__file__).resolve().parent / "data" / "crew_chat.json"
+    history = []
+    try:
+        if chat_file.exists():
+            with open(chat_file, "r", encoding="utf-8") as f:
+                history = json.load(f)
+    except Exception:
+        history = []
+    msg_entry = {
+        "id": f"msg_{int(time.time()*1000)}",
+        "from_cid": from_cid,
+        "from_name": me,
+        "to_cid": to_cid,
+        "text": text,
+        "t": time.time(),
+    }
+    history.append(msg_entry)
+    if len(history) > 100:
+        history = history[-100:]
+    try:
+        chat_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(chat_file, "w", encoding="utf-8") as f:
+            json.dump(history, f)
+    except Exception:
+        pass
+    return {"ok": True, "message": msg_entry, "delivered_to": delivered}
+
+
+@app.get("/api/crew/messages")
+def crew_messages_get(limit: int = 50):
+    """Get recent crew intercom chat history."""
+    chat_file = Path(__file__).resolve().parent / "data" / "crew_chat.json"
+    history = []
+    try:
+        if chat_file.exists():
+            with open(chat_file, "r", encoding="utf-8") as f:
+                history = json.load(f)
+    except Exception:
+        history = []
+    return {"messages": history[-limit:]}
+
+
+# ---- Crew-to-Crew Messaging (Phase 1 & 2) ----
+@app.post("/api/messages/{from_cid}/send")
+def messages_send(from_cid: str, body: dict = Body(default={})):
+    """Send a direct message from `from_cid` to another crew member."""
+    _need(from_cid)
+    to_cid = str(body.get("to_cid", "")).strip().lower()
+    _need(to_cid)
+    text = str(body.get("text", "")).strip()
+    via = str(body.get("via", "typed")).strip().lower()
+
+    valid_ids = {c["crew_id"] for c in store.crew()}
+    try:
+        msg = crew_messages.send_message(
+            from_cid=from_cid,
+            to_cid=to_cid,
+            text=text,
+            via=via,
+            valid_crew_ids=valid_ids,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    # Notify recipient via inbox note
+    sender_name = store.get(from_cid).get("display_name", from_cid)
+    notes.add(to_cid, f"Message from {sender_name}", text[:120], about_cid=from_cid, about_name=sender_name, level=1, kind="message")
+    audit.record("brain", "messages.sent", from_cid, {"to": to_cid, "via": via, "len": len(text)})
+    return {"ok": True, "message": msg}
+
+
+@app.get("/api/messages/{cid}/conversations")
+def messages_conversations(cid: str):
+    """List all conversation threads for crew member `cid`."""
+    _need(cid)
+    crew_list = store.crew()
+    # Enrich with callsigns from profiles
+    enriched_crew = []
+    for c in crew_list:
+        p = profiles.get(c["crew_id"])
+        enriched_crew.append({
+            "crew_id": c["crew_id"],
+            "display_name": c["display_name"],
+            "callsign": p.get("callsign", ""),
+        })
+    convos = crew_messages.list_conversations(cid, enriched_crew)
+    return {"ok": True, "conversations": convos}
+
+
+@app.get("/api/messages/{cid}/conversation/{other_cid}")
+def messages_conversation_thread(cid: str, other_cid: str, limit: int = 30, before: float | None = None):
+    """Fetch message history for conversation between `cid` and `other_cid`."""
+    _need(cid)
+    _need(other_cid)
+    data = crew_messages.get_conversation(cid, other_cid, limit=limit, before_time=before)
+    return {"ok": True, **data}
+
+
+@app.post("/api/messages/{cid}/read/{other_cid}")
+def messages_mark_read(cid: str, other_cid: str):
+    """Mark all unread messages received by `cid` from `other_cid` as read."""
+    _need(cid)
+    _need(other_cid)
+    count = crew_messages.mark_read(cid, other_cid)
+    return {"ok": True, "read_count": count}
+
+
+@app.get("/api/messages/{cid}/unread")
+def messages_unread_count(cid: str):
+    """Get total unread message count for crew member `cid`."""
+    _need(cid)
+    count = crew_messages.get_unread_count(cid)
+    return {"ok": True, "unread_count": count}
 
 
 _ALERT_LEVEL = {"info": 1, "watch": 2, "alert": 3}
@@ -894,6 +1051,21 @@ def care_triage_questions(zone: str = "head"):
     return {"zone": zone, "questions": care.get_triage_questions(zone)}
 
 
+@app.post("/api/symptom/extract")
+def symptom_extract(body: dict = Body(...)):
+    """Voice symptom intake: LLM extracts fields (zone, symptom, onset, severity);
+    astronaut confirms before recording. Deterministic clinical rules pick the protocol."""
+    text = str(body.get("text", "")).strip()
+    cid = str(body.get("crew_id", ""))
+    if not text:
+        raise HTTPException(400, "text required")
+    res = llm.extract_symptom(text, crew_id=cid)
+    # Deterministic rules pick the clinical protocol (model never decides care)
+    matching = protomod.find_matching_protocols(res["symptom"], zone=res["zone"])
+    res["protocol"] = matching[0] if matching else None
+    return res
+
+
 @app.post("/api/care/triage/{cid}")
 def care_triage_evaluate(cid: str, body: dict = Body(...)):
     """Evaluate triage inputs, check for red flags, and determine protocol (Section 16.1)."""
@@ -1238,9 +1410,9 @@ def chat(body: dict = Body(...)):
 
 
 def _app_context(ctx) -> dict:
-    """What is on screen and who the crew are, for the brain (strings only, bounded)."""
+    """What is on screen, language, and who the crew are, for the brain (strings only, bounded)."""
     ctx = ctx if isinstance(ctx, dict) else {}
-    out = {k: str(ctx[k])[:40] for k in ("screen", "view", "theme") if isinstance(ctx.get(k), str)}
+    out = {k: str(ctx[k])[:40] for k in ("screen", "view", "theme", "language") if isinstance(ctx.get(k), str)}
     out["crew"] = [c["display_name"] for c in store.crew()] if hasattr(store, "crew") else []
     return out
 
@@ -1967,7 +2139,9 @@ async def revalidate_static(request, call_next):
 
 
 app.mount("/app", StaticFiles(directory=ROOT / "app", html=True), name="app")
+app.mount("/src", StaticFiles(directory=ROOT / "src"), name="src")
 app.mount("/shared", StaticFiles(directory=ROOT / "shared"), name="shared")
+app.mount("/sound", StaticFiles(directory=ROOT / "sound"), name="sound")
 
 
 @app.get("/api/radiation/events")

@@ -158,7 +158,7 @@ PROTOCOLS_CATALOG: dict[str, dict[str, Any]] = {
     "high_resting_hr_tx": {
         "id": "high_resting_hr_tx",
         "title": "Tachycardia & Autonomic Dysregulation Protocol",
-        "zone": "heart",
+        "zone": "chest",
         "hazard": "Microgravity Fluid Redistribution / Deconditioning",
         "hrp_risk": "Cardiovascular Adaptations",
         "source": {
@@ -167,7 +167,7 @@ PROTOCOLS_CATALOG: dict[str, dict[str, Any]] = {
             "url": "https://www.nasa.gov/hrp/cardiovascular",
         },
         "verified": True,
-        "triggers": ["heart_rate", "tachycardia", "high_pulse"],
+        "triggers": ["heart_rate", "tachycardia", "high_pulse", "chest", "chest_tightness", "racing_heart", "palpitations", "racing"],
         "recheck_interval_min": 30,
         "kit_item": None,
         "red_flags": [
