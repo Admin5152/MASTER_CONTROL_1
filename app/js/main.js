@@ -436,8 +436,11 @@ async function mountApp() {
   on("vision:open", () => vision.start());
   on("intervention:open", openIntervention);
   on("crew:changed", () => { invalidateSparks(); lastZone = null; });
-  let bodySeen = false;
+  let bodySeen = false, prevStage = "";
   on("stage", (name) => {
+    // on a tablet, face tracking is heavy: it runs only while the face scan is on screen
+    if (isTablet && prevStage === "vision" && name !== "vision" && vision.state.on && ctx.screens?.current?.() !== "eyes") vision.stop();
+    prevStage = name;
     if (name === "vision" && !vision.state.on) vision.start();
     if (name === "body" && !bodySeen) { bodySeen = true; selectSystem(defaultSystem(view)); }
     if (name === "vitals") renderVitals(view);

@@ -119,7 +119,7 @@ export function createOrb() {
   const op = { value: 1 };
 
   // ---- the particles: one instanced draw ----
-  const N = TABLET ? 9000 : 20000;
+  const N = TABLET ? 6000 : 20000;
   const box = new THREE.BoxGeometry(1, 1, 1);
   const geo = new THREE.InstancedBufferGeometry();
   geo.index = box.index; geo.attributes.position = box.attributes.position; geo.attributes.normal = box.attributes.normal;

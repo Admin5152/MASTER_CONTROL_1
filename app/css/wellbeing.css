@@ -667,3 +667,11 @@
 .iv-rank h3 { font-size: var(--fs-sm); margin-bottom: 6px; }
 .iv-rank ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 .iv-rank li { display: flex; justify-content: space-between; gap: 10px; font-size: var(--fs-sm); } .iv-rank li span { color: var(--ink-3); font-size: var(--fs-xs); }
+
+/* the race on a touch screen: a joystick under the finger, and a one-line hint until the first touch */
+.hud-stick { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); background: rgba(5, 7, 13, .25); pointer-events: none; }
+.hud-stick i { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, .85); box-shadow: 0 4px 16px rgba(0, 0, 0, .4); transform: translate(-50%, -50%); }
+.hud-steer { position: absolute; left: 50%; bottom: calc(var(--s-5) + 96px + env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0; padding: 8px 16px; border-radius: 999px; background: rgba(5, 7, 13, .6); color: var(--ink); font-size: 14px; display: none; transition: opacity .4s; pointer-events: none; }
+@media (pointer: coarse) { .hud-steer { display: block; } }
+.hud-steer.is-gone { opacity: 0; }
+.boost-btn { width: 96px; height: 96px; }

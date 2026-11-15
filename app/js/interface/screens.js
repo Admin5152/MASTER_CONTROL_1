@@ -552,6 +552,8 @@ function renderCabin(el, ctx) {
 function renderSettings(el, ctx) {
   const st = ctx.settings;
   el.innerHTML = `
+    <h3>Sentinel's voice</h3><div class="field"><select data-voice></select><span class="hint" data-voice-note></span></div>
+    <p style="margin-top:var(--s-3)"><button class="pill pill-ghost" type="button" data-test-voice>Test voice</button> <span class="note" data-voice-res aria-live="polite"></span></p>
     <h3>You and the mission</h3>
     <div class="hub">${[["profile", "My health profile", "Allergies, wellbeing plan, buddy, consent"], ["environment", "Environment and mode", "Station, transit, base; routine, EVA, rest"], ["onboarding", "First run", "Consent, kit, voice, calibration"], ["kit", "Medical kit", "On board, filtered for you"]].map(([k, t, d]) => `<button type="button" data-set-open="${k}"><strong>${t}</strong><span>${d}</span></button>`).join("")}</div>
     <h3>Theme</h3>
@@ -564,8 +566,6 @@ function renderSettings(el, ctx) {
     <div class="mood-row"><button type="button" data-mood-optin="on" aria-pressed="${st.get(`mood_optin:${ctx.view.crewId}`) !== "off"}">On</button><button type="button" data-mood-optin="off" aria-pressed="${st.get(`mood_optin:${ctx.view.crewId}`) === "off"}">Off</button></div>
     <p class="hint fine">For the current crew member. On: about once a second the face scan sends a face crop to the model on this laptop to read expression; no image is stored. Off: no face crop is sent and expression is not read; pulse and breathing still work.</p>
     <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
-    <h3>Sentinel's voice</h3><div class="field"><select data-voice></select><span class="hint" data-voice-note></span></div>
-    <p style="margin-top:var(--s-3)"><button class="pill pill-ghost" type="button" data-test-voice>Test voice</button> <span class="note" data-voice-res aria-live="polite"></span></p>
     <h3>Listening</h3>
     <div class="mood-row"><button type="button" data-listen="wake" aria-pressed="${st.get("listen") !== "ptt"}">Wake phrase</button><button type="button" data-listen="ptt" aria-pressed="${st.get("listen") === "ptt"}">Push to talk only</button></div>
     <p class="hint fine">Wake phrase: say "Hey Sentinel" any time. Push to talk: tap the microphone or the orb, then speak.</p>`;

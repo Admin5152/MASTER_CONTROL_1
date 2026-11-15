@@ -277,6 +277,8 @@ export function renderRace(el, ctx) {
       <div class="hud-toast" data-toast></div>
       <div class="hud-boost"><span class="label">Boost</span><span class="boost-bar"><i data-boost></i></span><span class="hud-chip" data-draft>Slipstream</span></div>
       <div class="hud-touch" data-touch><button type="button" data-tilt class="pill pill-ghost">Use tilt</button><button type="button" class="boost-btn" data-boostbtn>BOOST</button></div>
+      <div class="hud-stick" data-stick hidden><i data-thumb></i></div>
+      <p class="hud-steer" data-steerhint>Drag anywhere to steer · hold BOOST</p>
     </div>
     <section class="race-menu race-end" data-end hidden></section>
   </div>`;
@@ -729,9 +731,20 @@ export function renderRace(el, ctx) {
     window.addEventListener("keydown", kd, true);
     window.addEventListener("keyup", ku, true);
     const hud = $("[data-hud]");
-    const pd = (e) => { if (e.target.closest("button")) return; input.drag = { x0: e.clientX, y0: e.clientY, x: 0, y: 0 }; hud.setPointerCapture?.(e.pointerId); };
-    const pm = (e) => { if (!input.drag) return; input.drag.x = Math.max(-1, Math.min(1, (e.clientX - input.drag.x0) / 90)); input.drag.y = Math.max(-1, Math.min(1, (e.clientY - input.drag.y0) / 90)); };
-    const pu = () => { input.drag = null; };
+    // a joystick that appears under the finger: where you touch is the centre, the thumb shows the steering
+    const stick = $("[data-stick]"), thumb = $("[data-thumb]"), steerHint = $("[data-steerhint]");
+    const pd = (e) => {
+      if (e.target.closest("button")) return;
+      input.drag = { x0: e.clientX, y0: e.clientY, x: 0, y: 0 }; hud.setPointerCapture?.(e.pointerId);
+      stick.hidden = false; stick.style.left = `${e.clientX}px`; stick.style.top = `${e.clientY}px`; thumb.style.transform = "translate(-50%, -50%)";
+      steerHint.classList.add("is-gone");
+    };
+    const pm = (e) => {
+      if (!input.drag) return;
+      input.drag.x = Math.max(-1, Math.min(1, (e.clientX - input.drag.x0) / 70)); input.drag.y = Math.max(-1, Math.min(1, (e.clientY - input.drag.y0) / 70));
+      thumb.style.transform = `translate(calc(-50% + ${input.drag.x * 40}px), calc(-50% + ${input.drag.y * 40}px))`;
+    };
+    const pu = () => { input.drag = null; stick.hidden = true; };
     hud.addEventListener("pointerdown", pd); hud.addEventListener("pointermove", pm); hud.addEventListener("pointerup", pu); hud.addEventListener("pointercancel", pu);
     const orient = (e) => { if (e.gamma == null) return; input.tilt = { x: Math.max(-1, Math.min(1, e.gamma / 25)), y: Math.max(-1, Math.min(1, ((e.beta ?? 45) - 45) / 25)) }; };
     const bb = $("[data-boostbtn]");

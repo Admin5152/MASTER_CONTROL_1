@@ -41,7 +41,7 @@ export function createWorld(canvas) {
   renderer.toneMappingExposure = 1.0;
   canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); canvas.classList.add("is-lost"); });
   canvas.addEventListener("webglcontextrestored", () => canvas.classList.remove("is-lost"));
-  const maxDpr = isTablet ? 1.25 : 1.5;
+  const maxDpr = isTablet ? 1.0 : 1.5;   // a tablet draws at its CSS resolution: about a third fewer pixels
   const fpsCap = isTablet ? 30 : 60;
   const loader = new THREE.TextureLoader();
   let W = 1, H = 1;
@@ -112,7 +112,7 @@ export function createWorld(canvas) {
     const dpr = Math.max(0.5, Math.min(window.devicePixelRatio || 1, maxDpr) * quality);
     renderer.setPixelRatio(dpr); renderer.setSize(W, H, false);
     composer.setPixelRatio(dpr); composer.setSize(W, H);
-    bloom.resolution.set(W * dpr * (isTablet ? 0.5 : 0.75), H * dpr * (isTablet ? 0.5 : 0.75));
+    bloom.resolution.set(W * dpr * (isTablet ? 0.35 : 0.75), H * dpr * (isTablet ? 0.35 : 0.75));
     skyCam.aspect = W / H; skyCam.updateProjectionMatrix();
     orbCam.aspect = W / H; orbCam.updateProjectionMatrix();
     for (const s of scenes.values()) s.resize?.(W, H);
