@@ -136,6 +136,8 @@ function goQuiet() {
 tabs?.addEventListener("message", (e) => { if (e.data?.type === "active" && e.data.id !== instanceId && document.getElementById("app") && !$("app").hidden) goQuiet(); });
 
 async function start() {
+  // every device opens in full screen: browsers allow it only inside a tap, and Begin is that tap (first, before any await)
+  toggleFullscreen(true);
   tabs?.postMessage({ type: "active", id: instanceId });   // any other open Sentinel goes quiet
   audioContext();
   voiceMod.unlockSpeech();

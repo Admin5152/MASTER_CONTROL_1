@@ -247,8 +247,8 @@ export function createDirector(deps) {
       ${skinBlock(zone)}
       <button class="pill pill-dark pill-block" type="button" data-next>${esc(next.label)}</button>`;
     const co = showCallout(zone, html, SEV_COLOR[sev] || SEV_COLOR.alert, token, next);
-    if (!silent) say(sentenceFor(zone, readings), { kind: "point" });
-    await Promise.race([co.wait, sleep(8000, token)]);
+    const spoken = silent ? Promise.resolve() : say(sentenceFor(zone, readings), { kind: "point" });
+    await Promise.race([co.wait, untilSaid(spoken, token), sleep(45000, token)]);
     if (token.cancelled) return;
     await easeOut(token, wasX);
     const acted = co.acted();
@@ -325,8 +325,8 @@ export function createDirector(deps) {
       if (!token.cancelled) { await b.setXray(false, 1.0); document.getElementById("btn-xray")?.setAttribute("aria-pressed", "false"); }
     } else {
       const n = results.filter((r) => r.sev !== "ok").length;
-      say(`Scan complete. ${n} area${n > 1 ? "s" : ""} need${n > 1 ? "" : "s"} a look; the most important is ${ZONE_NAMES[worst.zone].toLowerCase()}.`, { kind: "scan" });
-      await sleep(2200, token);
+      await say(`Scan complete. ${n} area${n > 1 ? "s" : ""} need${n > 1 ? "" : "s"} a look; the most important is ${ZONE_NAMES[worst.zone].toLowerCase()}.`, { kind: "scan" });
+      await sleep(700, token);
       if (!token.cancelled) await pointTo(worst.zone, token);
     }
   }
@@ -392,8 +392,8 @@ export function createDirector(deps) {
       }
       void lower;
       const co = showCallout(zone, html, color, token, next);
-      say(spoken, { kind: "check" });
-      await Promise.race([co.wait, sleep(zones.length > 1 ? 7000 : 9000, token)]);
+      const said = say(spoken, { kind: "check" });
+      await Promise.race([co.wait, untilSaid(said, token), sleep(45000, token)]);
       if (token.cancelled) return;
       const acted = co.acted();
       if (acted?.cmd) { await easeOut(token, false); await step(acted.cmd, token); return; }
@@ -402,6 +402,13 @@ export function createDirector(deps) {
       body.setTarget(null);
     }
     await easeOut(token, false);
+  }
+
+  /** Smooth pacing: a card stays until Sentinel has finished saying it (and at least long enough to read), then a
+   *  short breath; the next step never cuts a sentence off. */
+  async function untilSaid(spoken, token) {
+    await Promise.all([Promise.resolve(spoken).catch(() => {}), sleep(reduced() ? 0 : 4000, token)]);
+    await sleep(reduced() ? 0 : 1200, token);
   }
 
   function shortName(zone) {
