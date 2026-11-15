@@ -133,7 +133,20 @@ export function createVision({ video, overlay, msg, badge, pulseValue, pulseQual
     setMsg("Loading face and pose models…");
     mp = await import("../../vendor/mediapipe/vision_bundle.mjs");
     const fileset = await mp.FilesetResolver.forVisionTasks(new URL("vendor/mediapipe/wasm", document.baseURI).href);
-    const opts = (model) => ({ baseOptions: { modelAssetPath: new URL(`vendor/mediapipe/models/${model}`, document.baseURI).href, delegate: "GPU" }, runningMode: "VIDEO" });
+    // the bundled model first; if this host doesn't serve it (some static hosts drop .task files), the same model from
+    // MediaPipe's official storage
+    const REMOTE = {
+      "face_landmarker.task": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      "pose_landmarker_lite.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+    };
+    const paths = {};
+    await Promise.all(Object.keys(REMOTE).map(async (m) => {
+      const local = new URL(`vendor/mediapipe/models/${m}`, document.baseURI).href;
+      let ok = false;
+      try { const r = await fetch(local, { method: "HEAD", cache: "no-store" }); ok = r.ok; } catch { /* offline check failed */ }
+      paths[m] = ok ? local : REMOTE[m];
+    }));
+    const opts = (model) => ({ baseOptions: { modelAssetPath: paths[model], delegate: "GPU" }, runningMode: "VIDEO" });
     const make = async (Cls, model, extra) => {
       try { return await Cls.createFromOptions(fileset, { ...opts(model), ...extra }); }
       catch { const o = opts(model); o.baseOptions.delegate = "CPU"; return Cls.createFromOptions(fileset, { ...o, ...extra }); }
