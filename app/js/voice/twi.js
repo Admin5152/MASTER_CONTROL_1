@@ -15,6 +15,7 @@
 
 import { emit } from "../core/bus.js";
 import { audioContext } from "../core/sound.js";
+import { cleanLang, langInfo, isLocal, khayaCode } from "./languages.js";
 
 const STORAGE_KEY = "sentinel_voice_language";
 const TIMEOUT_MS = 10000;
@@ -39,7 +40,7 @@ export function getLanguage() {
  * Persist language selection ("en" or "tw").
  */
 export function setLanguage(lang) {
-  const clean = lang === "tw" ? "tw" : "en";
+  const clean = cleanLang(lang);
   try {
     localStorage.setItem(STORAGE_KEY, clean);
   } catch {
@@ -163,7 +164,7 @@ function displayDualCaption(twiText, englishText, source = "") {
     const li = document.createElement("li");
     li.className = "sentinel twi-spoken";
     li.innerHTML = `
-      <span class="who">Sentinel ${source ? `<span class="src">${escHtml(source)} [Twi]</span>` : "<span class=\"src\">[Twi]</span>"}</span>
+      <span class="who">Sentinel <span class="src">${source ? `${escHtml(source)} ` : ""}[${escHtml(langInfo(globalThis.language).name)}]</span></span>
       <span class="msg">
         <strong>${escHtml(twiText || "")}</strong><br>
         <small style="opacity:0.75; font-style:italic;">${escHtml(englishText || "")}</small>
@@ -350,7 +351,7 @@ function noteResting(iso) {
   if (restingNoted === iso) return;
   restingNoted = iso;
   const at = new Date(iso);
-  console.warn(`[twi] Khaya's call allowance is used up until ${at.toLocaleString()}: Twi is shown on screen, spoken in English.`);
+  console.warn(`[khaya] call allowance used up until ${at.toLocaleString()}: ${langInfo(globalThis.language).name} is shown on screen, spoken in English.`);
   window.dispatchEvent(new CustomEvent("sentinel:twi-resting", { detail: iso }));
 }
 
@@ -384,6 +385,7 @@ export function speakTwi(englishText, options = {}) {
         body: JSON.stringify({
           text: chunk,
           speaker: options.speaker || "female",
+          lang: khayaCode(globalThis.language),
           is_critical: isCritical,
         }),
       }, TIMEOUT_MS);
@@ -429,7 +431,7 @@ export async function listenTwi(audioData, mimeType = "audio/wav") {
     base64Audio = `data:${mimeType};base64,${btoa(binary)}`;
   }
 
-  const result = await apiFetch("/api/twi/listen", {
+  const result = await apiFetch(`/api/twi/listen?lang=${khayaCode(globalThis.language)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

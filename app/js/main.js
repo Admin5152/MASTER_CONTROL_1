@@ -4,6 +4,7 @@ import { emit, on } from "./core/bus.js";
 import { createDirector } from "./core/director.js";
 import { crewFromSpeech, matchIntent, wellbeingConcern } from "./core/intents.js";
 import { audioContext, cue, setMuted, isMuted, playIntroSound, stopIntroSound } from "./core/sound.js";
+import { cleanLang, langInfo, isLocal, matchLanguageRequest } from "./voice/languages.js";
 import { setAmbient, duckAmbient, asideAmbient, refreshAmbient } from "./core/ambient.js";
 import { createStages } from "./core/stages.js";
 import { patch, pollOnce, setCrew, startPolling, view } from "./core/state.js";
@@ -56,10 +57,10 @@ const settings = {
   set(k, v) { try { localStorage.setItem(`sentinel:${k}`, v); } catch { /* storage blocked */ } },
 };
 
-// Global Sentinel Language State (English / Twi)
+// The language Sentinel speaks and listens in (app/js/voice/languages.js): English, or a local language through Khaya
 const initialLang = (() => {
   try {
-    return localStorage.getItem("sentinel_voice_language") || settings.get("language") || "en";
+    return cleanLang(localStorage.getItem("sentinel_voice_language") || settings.get("language") || "en");
   } catch {
     return "en";
   }
@@ -69,7 +70,7 @@ window.language = initialLang;
 window.__sentinelLanguage = initialLang;
 
 globalThis.setSentinelLanguage = (lang) => {
-  const clean = lang === "tw" ? "tw" : "en";
+  const clean = cleanLang(lang);
   globalThis.language = clean;
   window.language = clean;
   window.__sentinelLanguage = clean;
@@ -1002,7 +1003,7 @@ function say(text, opts = {}) {
   if (sleeping) return Promise.resolve();   // the quiet tab never speaks
   // during a spoken answer, anything else (a screen's narration) is queued after it, never cut into it
   const append = opts.append || (answering && opts.source !== "LLM" && opts.source !== "rules" && !opts.interrupt);
-  return ((globalThis.language === "tw" || (typeof language !== "undefined" && language === "tw")) ? (globalThis.speakTwi ? globalThis.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }) : import("./voice/twi.js").then((m) => m.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }))) : voiceMod.speak(text, { interrupt: !append }));
+  return (isLocal(globalThis.language) ? (globalThis.speakTwi ? globalThis.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }) : import("./voice/twi.js").then((m) => m.speakTwi(text, { interrupt: !append, source: opts.source, fallback: () => voiceMod.speak(text, { interrupt: !append }) }))) : voiceMod.speak(text, { interrupt: !append }));
 }
 
 function logLine(who, text, source) {
@@ -1284,7 +1285,17 @@ async function handleCommand(text, meta = {}) {
       followUp(); return;
     }
   }
-  const isTwiRequest = /(?:respond|speak|answer|reply|talk|conversation|chat|say\s+it|tell\s+me)(?:\s+\w+){0,4}\s+in\s+twi\b/i.test(text)
+  // "speak Ewe", "switch to Ga", "answer in Fante", "speak English": Sentinel changes language and confirms in it
+  const asked = matchLanguageRequest(text);
+  if (asked && asked !== "tw") {
+    globalThis.setSentinelLanguage(asked);
+    const L = langInfo(asked);
+    say(asked === "en" ? "Switched to English. I'll speak English from now on." : `From now on I'll speak ${L.name} with you.`, { source: "local" });
+    followUp();
+    return;
+  }
+  const isTwiRequest = asked === "tw"
+    || /(?:respond|speak|answer|reply|talk|conversation|chat|say\s+it|tell\s+me)(?:\s+\w+){0,4}\s+in\s+twi\b/i.test(text)
     || /\b(?:in\s+twi|switch\s+to\s+twi|kasa\s+twi|let'?s\s+(?:have\s+)?(?:all\s+)?(?:the\s+)?conversation\s+(?:right\s+now\s+)?in\s+twi|can\s+you\s+(?:answer|respond|speak|talk)\s+(?:in\s+)?twi)\b/i.test(text)
     || /^(?:wo\s+ho\s+te\s+s[ɛe]n|ete\s+s[ɛe]n|akwaaba|maakye|maaha|maadwo)\b/i.test(text);
 

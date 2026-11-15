@@ -18,6 +18,7 @@ import { medianPitch, rms, talkTime } from "./pitch.js";
 import { encodeWav, resample } from "./wav.js";
 import { createVad } from "./vad.js";
 import { classifyInterruption, isEcho } from "./bargein.js";
+import { isLocal, khayaCode } from "./languages.js";
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -407,12 +408,12 @@ async function transcribe(audio) {
   let text = "";
   try {
     // English: every utterance goes to the cloud recogniser (Groq, ~0.4 s; the on-laptop one is the fallback).
-    // Twi: Khaya AI transcribes and translates, and Sentinel works on the English.
-    const isTwi = (globalThis.language === "tw" || (typeof language !== "undefined" && language === "tw"));
-    if (isTwi) {
+    // A local language (Twi, Ewe, Ga, Fante, Dagbani, Yoruba): Khaya AI transcribes it and translates it to English,
+    // and Sentinel works on the English.
+    if (isLocal(globalThis.language)) {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 20000);
-      const r = await fetch("../api/twi/listen", { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
+      const r = await fetch(`../api/twi/listen?lang=${khayaCode(globalThis.language)}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
       clearTimeout(t);
       if (!r.ok) throw new Error(`stt ${r.status}`);
       const d = await r.json();

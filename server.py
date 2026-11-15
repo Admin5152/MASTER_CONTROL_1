@@ -289,9 +289,11 @@ def notifications_clear(cid: str, body: dict = Body(default={})):
     return {"cleared": n, **notes.list(cid)}
 
 
+@app.api_route("/api/lang/{path:path}", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/twi/{path:path}", methods=["GET", "POST", "OPTIONS"])
 async def twi_proxy_route(path: str, request: Request):
-    """Proxy Twi voice calls from https://localhost:8443 to the Node microservice on port 3001."""
+    """Local-language voice (Khaya AI): proxied to the Node service in services/twi on port 3001.
+    /api/lang/* and /api/twi/* are the same endpoints (see docs/API.md)."""
     if request.method == "OPTIONS":
         return Response(status_code=204, headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "*", "Access-Control-Allow-Headers": "*"})
     url = f"http://127.0.0.1:3001/api/twi/{path}"

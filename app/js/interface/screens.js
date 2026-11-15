@@ -1,5 +1,6 @@
 // Screen manager. Stages (assistant, mission, body, vision, radiation) go through the stage manager;
 // everything else opens in the side sheet so detail is one tap away and the stage stays in view.
+import { LANGUAGES, cleanLang } from "../voice/languages.js";
 import { api } from "../core/api.js";
 import { emit } from "../core/bus.js";
 import { STAGES } from "../core/stages.js";
@@ -633,9 +634,9 @@ function renderSettings(el, ctx) {
     <div class="mood-row"><button type="button" data-mood-optin="on" aria-pressed="${st.get(`mood_optin:${ctx.view.crewId}`) !== "off"}">On</button><button type="button" data-mood-optin="off" aria-pressed="${st.get(`mood_optin:${ctx.view.crewId}`) === "off"}">Off</button></div>
     <p class="hint fine">For the current crew member. On: about once a second the face scan sends a face crop to the model on this laptop to read expression; no image is stored. Off: no face crop is sent and expression is not read; pulse and breathing still work.</p>
     <h3>Microphone</h3><div class="field"><select data-mic><option value="">Default</option></select><span class="hint">Used for listening, talk time, pitch and speaker ID.</span></div>
-    <h3>Voice language</h3>
-    <div class="mood-row"><button type="button" data-lang-set="en" aria-pressed="${(localStorage.getItem("sentinel_voice_language") || "en") !== "tw"}">English (ElevenLabs)</button><button type="button" data-lang-set="tw" aria-pressed="${(localStorage.getItem("sentinel_voice_language") || "en") === "tw"}">Twi (Khaya AI)</button></div>
-    <p class="hint fine">Twi: Sentinel answers in English and Khaya AI translates and speaks it in Twi. Critical safety and medical alerts always also play in English.</p>
+    <h3>Language</h3>
+    <div class="mood-row lang-row">${LANGUAGES.map((l) => `<button type="button" data-lang-set="${l.code}" aria-pressed="${cleanLang(localStorage.getItem("sentinel_voice_language") || "en") === l.code}" title="${esc(l.engine)}">${esc(l.name)}${l.native !== l.name ? ` <span class="fine">${esc(l.native)}</span>` : ""}</button>`).join("")}</div>
+    <p class="hint fine">English is spoken by the ElevenLabs voice above (ElevenLabs voices speak English). Twi, Ewe, Ga, Fante, Dagbani and Yoruba go through Khaya AI (GhanaNLP): it hears you in that language, Sentinel thinks in English, and Khaya translates and speaks the answer. Critical safety alerts also play in English. You can also say "speak Ewe" or "speak English".</p>
     <p class="hint fine" data-twi-status aria-live="polite"></p>
     <h3>Listening</h3>
     <div class="mood-row"><button type="button" data-listen="wake" aria-pressed="${st.get("listen") !== "ptt"}">Wake phrase</button><button type="button" data-listen="ptt" aria-pressed="${st.get("listen") === "ptt"}">Push to talk only</button></div>
@@ -668,9 +669,9 @@ function renderSettings(el, ctx) {
   fetch("../api/twi/health").then((r) => r.json()).then((h) => {
     const n = el.querySelector("[data-twi-status]");
     if (!n) return;
-    if (h.ok) n.textContent = "Twi voice: ready.";
-    else if (h.resting_until) n.textContent = `Twi voice: Khaya's call allowance is used up until ${new Date(h.resting_until).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}. Until then Twi is shown on screen and spoken in English.`;
-    else n.textContent = "Twi voice: Khaya can't be reached right now; Twi is shown on screen and spoken in English.";
+    if (h.ok) n.textContent = "Local-language voice (Khaya AI): ready.";
+    else if (h.resting_until) n.textContent = `Local-language voice: Khaya's call allowance is used up until ${new Date(h.resting_until).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}. Until then the translation is shown on screen and spoken in English.`;
+    else n.textContent = "Local-language voice: Khaya can't be reached right now; replies are spoken in English.";
   }).catch(() => {});
   (async () => {
     try {

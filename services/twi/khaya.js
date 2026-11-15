@@ -293,9 +293,10 @@ async function translate(text, sourceLanguage = "eng", targetLanguage = "twi") {
 /**
  * Generate a cache key for TTS text and speaker.
  */
-function getCacheKey(text, speaker = "female") {
+function getCacheKey(text, speaker = "female", language = "twi") {
   const norm = text.trim().toLowerCase().replace(/\s+/g, " ");
-  return crypto.createHash("md5").update(`${norm}:${speaker}`).digest("hex");
+  // Twi keeps its original key, so audio cached before other languages existed is still used
+  return crypto.createHash("md5").update(language === "twi" ? `${norm}:${speaker}` : `${language}:${norm}:${speaker}`).digest("hex");
 }
 
 /**
@@ -312,13 +313,13 @@ function getCacheKey(text, speaker = "female") {
  * @param {string} speaker - "female", "male_low", or "male_high"
  * @returns {Promise<Buffer>} audio/wav buffer
  */
-async function synthesize(text, speaker = "female") {
+async function synthesize(text, speaker = "female", language = "twi") {
   if (!text || typeof text !== "string" || !text.trim()) {
     throw new Error("Text is required for speech synthesis");
   }
 
   const cleanText = text.trim();
-  const cacheKey = getCacheKey(cleanText, speaker);
+  const cacheKey = getCacheKey(cleanText, speaker, language);
 
   // 1. Check in-memory cache
   if (memoryCache.has(cacheKey)) {
@@ -340,7 +341,7 @@ async function synthesize(text, speaker = "female") {
   // 3. Call Khaya TTS v2 API
   const payload = {
     text: cleanText,
-    language: "twi",
+    language,
     speaker: speaker || "female",
   };
 
@@ -512,7 +513,14 @@ async function prewarmCache() {
   }
 }
 
+// The languages Sentinel offers besides English (checked against Khaya on 15 Nov 2026: each translates from English
+// and speaks with the multilingual voices; ASR v3 lists each too).
+const LANGUAGES = {
+  twi: "Twi", ewe: "Ewe", gaa: "Ga", fat: "Fante", dag: "Dagbani", yor: "Yoruba",
+};
+
 module.exports = {
+  LANGUAGES,
   restingUntil,
   translate,
   synthesize,

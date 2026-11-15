@@ -13,7 +13,15 @@
  * - Critical alerts are flagged so the client can double-speak in English via ElevenLabs.
  */
 
-const { translate, synthesize, transcribe, checkHealth, restingUntil } = require("../khaya");
+const { translate, synthesize, transcribe, checkHealth, restingUntil, LANGUAGES } = require("../khaya");
+
+/** The Khaya language for this request: ?lang= or body.lang, one of LANGUAGES; Twi when not given. */
+function langOf(req) {
+  let q = "";
+  try { q = new URL(req.url || "", "http://x").searchParams.get("lang") || ""; } catch {}
+  const l = String((req.body && !Buffer.isBuffer(req.body) && req.body.lang) || q || "twi").toLowerCase();
+  return LANGUAGES[l] ? l : "twi";
+}
 
 // Twi spelling uses the letters ɛ and ɔ, which English never does: such a line is already Twi and is not translated
 const looksTwi = (t) => /[ɛɔƐƆ]/.test(t || "");
@@ -86,8 +94,9 @@ async function handleListen(req, res) {
     }
 
     // Step 1: Transcribe Twi speech to text
+    const lang = langOf(req);
     const twiText = await withTimeout(
-      transcribe(audioBuffer, mimeType, "twi"),
+      transcribe(audioBuffer, mimeType, lang),
       TIMEOUT_MS,
       "Twi ASR"
     );
@@ -100,7 +109,7 @@ async function handleListen(req, res) {
 
     // Step 2: Translate Twi text to English for Sentinel's existing logic
     const engText = await withTimeout(
-      translate(twiText, "twi", "eng"),
+      translate(twiText, lang, "eng"),
       TIMEOUT_MS,
       "Twi->English translation"
     );
@@ -108,7 +117,9 @@ async function handleListen(req, res) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
       ok: true,
-      twi_text: twiText,
+      lang,
+      text: twiText,          // what was said, in the language
+      twi_text: twiText,      // the same (kept for older clients)
       eng_text: engText,
     }));
   } catch (err) {
@@ -146,27 +157,29 @@ async function handleSpeak(req, res) {
     // Already Twi: spoken as it is. An exact known phrase: its fixed Twi (no call). Anything else: Khaya translates the
     // whole reply (the loose patterns in twi_rules matched part of a reply and dropped the rest, so they are now only
     // the offline fallback).
-    const exact = TWI_SYSTEM_RULES.phrases?.[text.trim().toLowerCase().replace(/[.,!?;:]/g, "")];
-    let twiText = looksTwi(text) || body.lang === "tw" ? text.trim() : (exact || null);
+    const lang = langOf(req);
+    const isTwi = lang === "twi";
+    const exact = isTwi ? TWI_SYSTEM_RULES.phrases?.[text.trim().toLowerCase().replace(/[.,!?;:]/g, "")] : null;
+    let twiText = (isTwi && looksTwi(text)) || body.already_translated ? text.trim() : (exact || null);
     if (!twiText) {
       try {
         twiText = await withTimeout(
-          translate(text, "eng", "twi"),
+          translate(text, "eng", lang),
           TIMEOUT_MS,
           "English->Twi translation"
         );
       } catch (trErr) {
         console.warn("[twi speak] Khaya translation failed, using rule translation:", trErr.message);
-        twiText = translateEnglishToTwi(text);
+        twiText = isTwi ? translateEnglishToTwi(text) : text;   // offline: Twi phrase rules, or the English as it is
       }
     }
-    if (!twiText) twiText = translateEnglishToTwi(text);
+    if (!twiText) twiText = isTwi ? translateEnglishToTwi(text) : text;
 
     // Step 2: Synthesize Twi speech via Khaya TTS (or graceful fallback)
     let audioBuffer = null;
     try {
       audioBuffer = await withTimeout(
-        synthesize(twiText, speaker),
+        synthesize(twiText, speaker, lang),
         TIMEOUT_MS,
         "Twi TTS"
       );
@@ -179,8 +192,10 @@ async function handleSpeak(req, res) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
       ok: true,
+      lang,
       eng_text: text,
-      twi_text: twiText,
+      text: twiText,          // the reply in the language
+      twi_text: twiText,      // the same (kept for older clients)
       audio: base64Audio,
       is_critical: isCritical,
       resting_until: restingUntil() ? new Date(restingUntil()).toISOString() : null,
@@ -256,6 +271,12 @@ function handleTwiRequest(req, res) {
 
   if (url === "/api/twi/health" && req.method === "GET") {
     handleHealth(req, res);
+    return true;
+  }
+
+  if (url === "/api/twi/languages" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ languages: Object.entries(LANGUAGES).map(([code, name]) => ({ code, name })), english: "eng" }));
     return true;
   }
 
