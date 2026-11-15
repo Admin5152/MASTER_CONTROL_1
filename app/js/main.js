@@ -27,6 +27,7 @@ import { renderRadiation } from "./systems/radiation.js";
 import { createVision } from "./vision/vision.js";
 import { CameraLog } from "./systems/face.js";
 import * as voiceMod from "./voice/voice.js";
+import { isResume, ACK } from "./voice/bargein.js";
 import { createWorld, isTablet } from "./world/world.js";
 import { createSpace } from "./world/space.js";
 import { createIntro } from "./world/intro.js";
@@ -272,7 +273,7 @@ async function mountApp() {
     settings.set("theme", light ? "light" : "dark");
     world.setTheme(light ? "light" : "dark");
   };
-  voiceMod.setVoice(settings.get("voice") || "river");
+  voiceMod.setVoice(settings.get("voice") || "samara");
   ctx.setCrew = (id, src) => switchCrew(id, src);
   ctx.onCheckin = onCheckin;
   ctx.openIntervention = openIntervention;
@@ -819,6 +820,15 @@ function wireVoice() {
   });
   on("voice:thinking", (t) => { if (t) orb.setState("thinking"); else if (orb.getState() === "thinking") orb.setState("idle"); });
   on("voice:speaking-start", () => { orb.setState("speaking"); stages.setOrbBig(true); });
+  // talking over Sentinel (barge-in): stop, then do what was meant
+  on("voice:interrupt", ({ kind, text, rest }) => {
+    turn++; answering = false; lastTurnAt = Date.now();
+    if (kind === "command") { handleCommand(rest, { via: "voice", heard: text }); return; }
+    logLine("You", text);
+    say(kind === "stop" ? ACK.stop : ACK.hold, { source: "local" });
+    orb.setState("listening");
+    if (settings.get("listen") !== "ptt") voiceMod.expectReply(kind === "stop" ? 12000 : 15000);   // "go on" or the new request needs no wake word
+  });
   on("voice:speaking-end", () => { answering = false; orb.setState("idle"); orb.setSpeakLevel(0); stages.setOrbBig(false); });
   on("voice:status", (t) => note(t));
   on("voice:notice", (t) => showNotice(t));
@@ -875,6 +885,7 @@ function resetCaption() {
 
 let speakingSource = "";
 let answering = false;   // a streamed answer is being spoken
+let turn = 0;            // each spoken request is a turn; an interruption ends the current one
 function say(text, opts = {}) {
   if (!text) return Promise.resolve();
   logLine("Sentinel", text, opts.source);
@@ -977,6 +988,11 @@ async function handleCommand(text, meta = {}) {
     caption(choosing ? "Who's here? Say your name." : "I'm listening.", "");
     orb.setState("listening"); stages.setOrbBig(true);
     voiceMod.expectReply(8000);
+    return;
+  }
+  if (isResume(text) && voiceMod.hasInterrupted()) {   // "go on" after being interrupted: pick up where it stopped
+    say(voiceMod.takeInterrupted().join(" "), { source: "local" });
+    if (meta.via === "voice" && settings.get("listen") !== "ptt") voiceMod.expectReply(9000);
     return;
   }
   const firstTime = !interacted;
@@ -1117,7 +1133,9 @@ async function handleCommand(text, meta = {}) {
   try {
     let spoke = false, first = true;
     answering = true;
+    const myTurn = ++turn;
     const r = await api.chatStream(view.crewId, text, (sentence, source) => {
+      if (myTurn !== turn) { voiceMod.noteInterrupted(sentence); return; }
       const isFirst = first;
       if (first) { emit("voice:thinking", false); first = false; }
       spoke = true;
@@ -1131,6 +1149,7 @@ async function handleCommand(text, meta = {}) {
     }
     r.commands = (r.commands || []).filter((c) => c.cmd !== "set_theme" && c.cmd !== "switch_crew" && c.cmd !== "suit");
     emit("voice:thinking", false);
+    if (myTurn !== turn) return;   // interrupted while the answer was arriving
     if (!spoke && r.reply) say(r.reply, { source: r.source === "llm" ? "LLM" : "rules" });
     followUp();
     if (r.commands?.length) director.run(r.commands);   // straight away: the screen moves while Sentinel is still speaking

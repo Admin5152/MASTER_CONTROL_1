@@ -30,15 +30,17 @@ DATA = ROOT / "data"
 CACHE = DATA / "tts_cache"
 USAGE = DATA / "tts_usage.json"
 
-# premade ElevenLabs voices only (never the account's personal or cloned voices)
+# ElevenLabs premade voices, plus Samara X from the public voice library (chosen by the team as Sentinel's voice);
+# never the account's personal or cloned voices
 ELEVEN_VOICES = {
+    "samara": ("19STyYD15bswVz51nqLf", "Samara (British)"),
     "river": ("SAz9YHcvj6GT2YYXdXww", "River"),
     "eric": ("cjVigY5qzO86Huf0OWal", "Eric"),
     "sarah": ("EXAVITQu4vr4xnSDxMaL", "Sarah"),
     "daniel": ("onwK4e9ZLuTAKqWW03F9", "Daniel"),
 }
 KOKORO_VOICES = {"af_heart": "Heart (Kokoro)", "af_nova": "Nova (Kokoro)", "am_michael": "Michael (Kokoro)", "bm_george": "George (Kokoro)"}
-DEFAULT_VOICE = "river"
+DEFAULT_VOICE = "samara"
 ELEVEN_MODEL = "eleven_flash_v2_5"
 MAX_TTS_CHARS = 400
 
@@ -210,11 +212,21 @@ def eleven_budget() -> int:
         return 9000
 
 
+def _key_fp() -> str:
+    """A short fingerprint of the ElevenLabs key (never the key): the meter counts per key."""
+    import hashlib
+    return hashlib.sha256(eleven_key().encode()).hexdigest()[:12] if eleven_key() else ""
+
+
 def usage() -> dict:
+    """Characters sent to ElevenLabs with the current key. A new key starts its own count at zero."""
     try:
-        return json.loads(USAGE.read_text(encoding="utf-8"))
+        u = json.loads(USAGE.read_text(encoding="utf-8"))
     except Exception:
-        return {"eleven_chars": 0, "requests": 0}
+        u = {}
+    if u.get("key_fp") != _key_fp():
+        return {"eleven_chars": 0, "requests": 0, "key_fp": _key_fp()}
+    return u
 
 
 def _add_usage(chars: int) -> None:
@@ -223,6 +235,7 @@ def _add_usage(chars: int) -> None:
         u["eleven_chars"] = u.get("eleven_chars", 0) + chars
         u["requests"] = u.get("requests", 0) + 1
         u["updated"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        u["key_fp"] = _key_fp()
         DATA.mkdir(exist_ok=True)
         USAGE.write_text(json.dumps(u), encoding="utf-8")
 

@@ -6,7 +6,9 @@
 // only the last fallback, when /api/stt keeps failing. Talk time, pitch and speaker ID use the same audio.
 // Speaking: each sentence is fetched from /api/tts (ElevenLabs -> Kokoro) while the previous one plays,
 // played through Web Audio so the orb follows the real audio level; browser speech is the last fallback.
-// Listening pauses while Sentinel speaks so it never hears itself.
+// While Sentinel speaks, normal listening pauses so it never answers itself; a stricter barge-in detector keeps
+// listening, so a person can talk over it ("wait", "stop", a new question): the voice dips at once, the words are
+// transcribed, its own echo is ignored, and what was cut short is kept for "go on" (./bargein.js decides).
 import { emit } from "../core/bus.js";
 import { audioContext, unlockAudio } from "../core/sound.js";
 import { matchWake } from "./wake.js";
@@ -14,6 +16,7 @@ import { matchIntent, wellbeingConcern } from "../core/intents.js";
 import { medianPitch, rms, talkTime } from "./pitch.js";
 import { encodeWav, resample } from "./wav.js";
 import { createVad } from "./vad.js";
+import { classifyInterruption, isEcho } from "./bargein.js";
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -44,8 +47,8 @@ function voiceProblem(what, detail) {
 
 let onCommand = () => {};
 let onUtteranceAudio = () => {};
-let voiceId = "river";
-export function setVoice(id) { voiceId = id || "river"; }
+let voiceId = "samara";
+export function setVoice(id) { voiceId = id || "samara"; }
 export function initVoice({ onCommand: oc, onUtterance }) {
   onCommand = oc;
   onUtteranceAudio = onUtterance || (() => {});
@@ -165,6 +168,7 @@ async function pump() {
       const buffer = await job.audio;
       if (myGen !== gen) { job.resolve(); return; }
       emit("voice:sentence", job.text);
+      lastSentence = job.text;
       if (buffer) {
         const ctx = outChain();
         if (ctx.state === "suspended") { try { await ctx.resume(); } catch { /* ignore */ } }
@@ -199,6 +203,7 @@ async function pump() {
 function finishSpeaking() {
   if (!voice.speaking) return;
   voice.speaking = false;
+  duck(false); bargeVad?.reset(); bargeStart = null;
   emit("voice:speak-level", 0);
   emit("voice:speaking-end");
   setTimeout(resumeListening, 350);   // let the room's echo die down first
@@ -223,6 +228,7 @@ export function speak(text, { interrupt = true } = {}) {
 
 export function stopSpeaking() {
   gen++; pendingReply = 0;
+  duck(false);
   const q = queue; queue = [];
   q.forEach((j) => j.resolve());
   if (playing?.src) { try { playing.src.onended = null; playing.src.stop(); } catch { /* already stopped */ } }
@@ -256,6 +262,57 @@ export function expectReply(ms = 8000) {
 let sttFails = 0;
 let rec = null;                // browser SpeechRecognition fallback
 
+// ---- barge-in: someone talks while Sentinel is speaking ----
+let bargeVad = null, bargeCount = 0, bargeStart = null, ducked = false, duckTimer = null;
+let lastSentence = "";
+let interrupted = null;        // {texts, at}: what was cut short, for "go on"
+/** The voice dips at once when someone starts talking over it (it yields), and comes back if it was nothing. */
+function duck(on) {
+  const ctx = audioContext();
+  if (!outGain || !ctx) { ducked = false; return; }
+  if (on === ducked) return;
+  ducked = on;
+  outGain.gain.cancelScheduledValues(ctx.currentTime);
+  outGain.gain.setTargetAtTime(on ? 0.2 : 1, ctx.currentTime, on ? 0.04 : 0.12);
+  clearTimeout(duckTimer);
+  if (on) duckTimer = setTimeout(() => duck(false), 8000);   // never stays dipped
+}
+function onBarge(events) {
+  for (const e of events) {
+    if (e.type === "start") {
+      bargeStart = written - (bargeCount - e.at) - Math.round(ringRate * 0.2);
+      duck(true);
+      emit("voice:capture", true);
+    } else if (e.type === "end" || e.type === "drop") {
+      emit("voice:capture", false);
+      if (e.type === "end" && bargeStart != null) {
+        const end = Math.min(written, written - (bargeCount - e.to) + Math.round(ringRate * 0.2));
+        const audio = slice(bargeStart, end);
+        if (audio) bargeIn(audio); else duck(false);
+      } else duck(false);
+      bargeStart = null;
+    }
+  }
+}
+async function bargeIn(audio) {
+  const spokenNow = `${lastSentence} ${playing?.job?.text || ""} ${queue[0]?.text || ""}`;
+  let text = "";
+  try { text = (await sttText(audio, true)).text; } catch { duck(false); return; }
+  if (!text || /^[\s.,!?-]*$/.test(text) || /^(thank you|thanks for watching|you)\.?$/i.test(text) || isEcho(text, spokenNow)) { duck(false); return; }
+  const { kind, rest } = classifyInterruption(text);
+  if (kind === "resume") { duck(false); return; }   // "go on" said over it: just carry on
+  const left = [playing?.job?.text, ...queue.map((j) => j.text)].filter(Boolean);
+  if (left.length) interrupted = { texts: left, at: Date.now() };
+  stopSpeaking();
+  emit("voice:transcript", { text, final: true });
+  emit("voice:interrupt", { kind, text, rest });
+}
+/** What was cut short by an interruption (within 2 minutes), for "go on"; taking it clears it. */
+export function hasInterrupted() { return !!interrupted && Date.now() - interrupted.at < 120000 && interrupted.texts.length > 0; }
+export function takeInterrupted() { const t = hasInterrupted() ? interrupted.texts : []; interrupted = null; return t; }
+/** A streamed answer's later sentences, arriving after the interruption, are kept for "go on" instead of spoken. */
+export function noteInterrupted(text) { if (interrupted && text) interrupted.texts.push(text); }
+
 export async function initMic(stream) {
   const ctx = audioContext();
   if (!ctx || !stream) return false;
@@ -266,6 +323,8 @@ export async function initMic(stream) {
   ringRate = ctx.sampleRate;
   ring = new Float32Array(Math.round(ringRate * 18));
   vad = createVad(ringRate);
+  // stricter than the normal VAD: 160 ms of speech, clearly above the floor (which rises with Sentinel's own echo)
+  bargeVad = createVad(ringRate, { startFrames: 8, ratio: 3.5, minRms: 0.02, hangMs: 450, minMs: 300, floorInit: 0.01 });
   // ScriptProcessor is deprecated but universally available (Android Chrome included); it only copies samples.
   const proc = ctx.createScriptProcessor(4096, 1, 1);
   proc.onaudioprocess = (e) => {
@@ -273,6 +332,7 @@ export async function initMic(stream) {
     for (let i = 0; i < d.length; i++) { ring[ringPos] = d[i]; ringPos = (ringPos + 1) % ring.length; }
     written += d.length;
     if (!paused && (wake || Date.now() < pttUntil || Date.now() < awaitingUntil || openMic())) { vadCount += d.length; onVad(vad.push(d)); }
+    else if (paused && voice.speaking && wake && bargeVad) { bargeCount += d.length; onBarge(bargeVad.push(d)); }
   };
   const mute = ctx.createGain();
   mute.gain.value = 0;
@@ -317,22 +377,29 @@ function slice(from, to) {
   return { samples: out, rate: ringRate };
 }
 
+/** One transcription. Addressed speech goes to the fast cloud service; the room's speech stays on this laptop. */
+async function sttText(audio, addressed) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const r = await fetch(`../api/stt${addressed ? "" : "?prefer=local"}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
+    if (!r.ok) throw new Error(`stt ${r.status}`);
+    const d = await r.json();
+    return { text: (d.text || "").trim(), source: d.source };
+  } finally { clearTimeout(t); }
+}
+
 async function transcribe(audio) {
   const ptt = Date.now() < pttUntil, awaiting = Date.now() < awaitingUntil;
   pttUntil = 0;
   emit("voice:thinking", true);
   let text = "";
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 20000);
     // privacy: until someone addresses Sentinel (wake word, mic tap, reply window), speech is transcribed on this
     // laptop and nothing leaves it; addressed speech goes to the faster cloud service
     const addressed = ptt || awaiting || openMic();
-    const r = await fetch(`../api/stt${addressed ? "" : "?prefer=local"}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
-    clearTimeout(t);
-    if (!r.ok) throw new Error(`stt ${r.status}`);
-    const d = await r.json();
-    text = (d.text || "").trim();
+    const d = await sttText(audio, addressed);
+    text = d.text;
     voice.sttSource = d.source;
     sttFails = 0;
   } catch {
@@ -399,7 +466,7 @@ export function stopListening() {
   emit("voice.listening", { active: false });
 }
 
-function pauseListening() { paused = true; vad?.reset(); if (voice.capturing) { voice.capturing = false; emit("voice:capture", false); } try { rec?.abort(); } catch { /* none */ } }
+function pauseListening() { paused = true; vad?.reset(); bargeVad?.reset(); bargeStart = null; if (voice.capturing) { voice.capturing = false; emit("voice:capture", false); } try { rec?.abort(); } catch { /* none */ } }
 function resumeListening() { paused = false; if (pendingReply) { awaitingUntil = Date.now() + pendingReply; emit("voice:open", pendingReply); pendingReply = 0; } if (rec && wake) { try { rec.start(); } catch { /* running */ } } }
 
 /** Push-to-talk: the next utterance (within 8 s) is a command, no wake phrase needed. */

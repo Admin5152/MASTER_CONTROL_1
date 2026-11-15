@@ -193,3 +193,17 @@ def test_health_questions_carry_the_matching_nasa_mrids():
     assert "NASA MRID EVIDENCE" not in llm.build_messages({"crew_id": "x"}, "tell me a joke")[-1]["content"]
     ev = llm.evidence_for("how are my bones")
     assert llm.numbers_ok("NASA scans bone density before and after flight, MEDB 1.11.", {}, "how are my bones " + ev)
+
+
+def test_elevenlabs_meter_starts_fresh_for_a_new_key(tmp_path, monkeypatch):
+    from brain import speech
+    monkeypatch.setattr(speech, "USAGE", tmp_path / "tts_usage.json")
+    monkeypatch.setattr(speech, "DATA", tmp_path)
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "old-key")
+    speech._add_usage(25000)
+    assert speech.usage()["eleven_chars"] == 25000
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "new-key")        # a new key with its own credits
+    assert speech.usage()["eleven_chars"] == 0
+    speech._add_usage(120)
+    assert speech.usage()["eleven_chars"] == 120
+    assert "new-key" not in (tmp_path / "tts_usage.json").read_text()   # only a fingerprint is stored
