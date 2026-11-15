@@ -19,3 +19,6 @@ tests/screenshots/**/*.webm
 presentation/
 python-*.exe
 scratch/
+
+# Windows PowerShell cache created by accident in the project folder
+Microsoft/
