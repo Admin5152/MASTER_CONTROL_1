@@ -851,7 +851,8 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
 @keyframes bubble-in { from { opacity: 0; transform: translateY(6px) scale(.98); transform-origin: bottom left; } }
 @media (prefers-reduced-motion: reduce) { .bubble.is-beside { animation: none; } }
 /* while Sentinel talks on the Body screen, the insights card under the bubble steps back */
-body.has-bubble[data-stage="body"] .insights { opacity: 0; pointer-events: none; }
+body.has-bubble[data-stage="body"] .insights, body.has-bubble[data-stage="body"] .body-tools { opacity: 0; pointer-events: none; }
+#stage-body .body-tools, #stage-body .insights { transition: opacity .35s ease; }
 :root { --safe-b: env(safe-area-inset-bottom, 0px); }
 
 /* a small notice never sits on an open side panel: it moves to the left of it */

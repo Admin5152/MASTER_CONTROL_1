@@ -889,16 +889,16 @@ function placeSubtitle() {
   const cs = getComputedStyle(document.documentElement);
   const dock = parseFloat(cs.getPropertyValue("--dock-h")) || 88, g = parseFloat(cs.getPropertyValue("--gutter")) || 24;
   const safe = parseFloat(cs.getPropertyValue("--safe-b")) || 0;
-  const ox = g + 40, oy = window.innerHeight - dock / 2 - 6 - safe, r = 34;   // the docked orb (see stages.js)
-  let bottom = window.innerHeight - oy + r + 6;
-  if (stages.current === "body") {   // above the body tools (Full scan, X-ray...), never over them
-    const tools = document.querySelector("#stage-body .body-tools")?.getBoundingClientRect();
-    if (tools?.height) bottom = Math.max(bottom, window.innerHeight - tools.top + 10);
-  }
-  b.style.left = `${Math.round(ox + r * 0.35)}px`;
+  // the docked orb (see stages.js): x, y and its visible radius (particles spread a little past the sphere)
+  const ox = g + 40, oy = window.innerHeight - dock / 2 - 6 - safe, r = 0.6 * (voiceMod.voice.speaking ? 74 : 58);
+  // the bubble starts at the orb's upper-right shoulder, so the words come out of the orb
+  const left = Math.round(ox + r * 0.55);
+  const bottom = window.innerHeight - oy + r * 0.55;
+  const maxW = Math.min(400, window.innerWidth - left - g);   // on the Body screen the tools step back while it shows (CSS)
+  b.style.left = `${left}px`;
   b.style.bottom = `${Math.round(bottom)}px`;
   b.style.top = "auto"; b.style.right = "auto";
-  b.style.maxWidth = `${Math.min(420, window.innerWidth - ox - g)}px`;
+  b.style.maxWidth = `${Math.round(maxW)}px`;
 }
 ctx.placeSubtitle = placeSubtitle;
 
