@@ -8,7 +8,7 @@ passed their tests, but the app called almost none of them. This pass connected 
 NOT BUILT = not in this build.
 
 **How it was checked:** `pytest` 270 passed, 6 skipped. `node --test tests/js` 75 passed.
-`tests/clinic_ui_check.py` (a real browser driving the app) 62 checks.
+`tests/browser/clinic_ui_check.py` (a real browser driving the app) 62 checks.
 The new screens were also looked at in the light theme at 1270 x 548, 1024 x 768 and 768 x 1024.
 
 ## 1. What the audit found
@@ -55,7 +55,7 @@ The new screens were also looked at in the light theme at 1270 x 548, 1024 x 768
 
 ## 1d. Fourth pass: less friction, visible state, detail pages, crew and notifications
 
-Checked by: `pytest` 276 passed, 6 skipped; `node --test tests/js` 75 passed; `tests/clinic_ui_check.py` 100 of 100.
+Checked by: `pytest` 276 passed, 6 skipped; `node --test tests/js` 75 passed; `tests/browser/clinic_ui_check.py` 100 of 100.
 
 | Asked for | Done |
 | --- | --- |

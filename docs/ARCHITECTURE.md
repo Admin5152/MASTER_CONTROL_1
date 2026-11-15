@@ -14,8 +14,8 @@
  │ ─────────────────────────────────────────────────────── │        │   /api/ground          store and forward   │
  │ World: ONE full-screen three.js canvas                   │        │   /api/log, /scenario, /spaceweather, ...  │
  │   sky (gradient + stars) → content scene → orb → bloom   │        │                                           │
- │   scenes: intro | space (Earth, Moon, Mars) | body | race│        │ brain/   store → drift → decision (rules)  │
- │ ─────────────────────────────────────────────────────── │        │          llm (Groq) · speech · ground       │
+ │   scenes: intro | space (Earth, Moon, Mars) | body | race│        │ brain/   core · rules · clinical · ai ·    │
+ │ ─────────────────────────────────────────────────────── │        │          mission · crew (Claude, Groq)     │
  │ Voice: mic → VAD → /api/stt ; /api/tts → Web Audio → orb │        │ systems/ speaker ID · scenarios            │
  │ Vision: MediaPipe face mesh + pose → rPPG pulse          │        │ data/    state.json, tts_cache, ground     │
  └─────────────────────────────────────────────────────────┘        └───────────────────────────────────────────┘
@@ -53,20 +53,30 @@ Three sources feed it: the **rules engine** (when `action.zone` changes, Sentine
 
 `brain/core/store.py` holds state per crew member (from `shared/mock_data.json`, persisted to `data/state.json`) and an append-only history. On every patch: `drift.py` computes change from each person's baseline per metric (thresholds in `shared/thresholds.json`, all `demo_placeholder` percentages), `thresholds.py` checks absolute limits with their `kind` and `source`, and `decision.py` sets `action` by an ordered list of rules (cabin alert, radiation storm, alert vitals, symptom with a kit match, stress, fatigue or low mood, mild drift, none). The LLM never touches `action`.
 
-## LLM, TTS and STT chains
+## Brain, speech and language chains
 
 ```
-Brain:  question ──► health or general? ──► Groq openai/gpt-oss-120b (stream, reasoning_effort low, last 8 turns)
-                                             │ sentence by sentence; health sentences checked: every number must be in the state
-                                             ├─ any failure before speaking ──► rules bank (health) / "needs a connection" (general)
+Brain:  question ──► health or general? ──► Claude Sonnet 5.5 (brain/ai/claude.py: no thinking pause, low effort,
+                                             │  instructions cached, stops at CLAUDE_BUDGET_USD)
+                                             ├─ Claude fails or declines before speaking ──► Groq openai/gpt-oss-120b,
+                                             │  then gpt-oss-20b, qwen (brain/ai/llm.py; a rate-limited model rests)
+                                             │ streamed sentence by sentence (at most 2, or 5 when asked to explain);
+                                             │ health sentences checked: every number must be in the record
+                                             ├─ no model reachable ──► rules bank (health) / "I can't reach my knowledge" (general)
                                              └─ COMMANDS line ──► validate ──► Director
 
-Speech out: sentence ──► /api/tts ──► disk cache? ──► ElevenLabs flash (River; char budget) ──► Kokoro af_heart (local) ──► browser speechSynthesis
+Speech out: sentence ──► /api/tts ──► disk cache? ──► ElevenLabs Flash v2.5 (Nathaniel, Jon, Bri, Samara; character
+            budget; 7 s timeout + one retry) ──► Kokoro (local) ──► browser speechSynthesis
             played through Web Audio; the analyser drives the orb's speaking pulse; listening pauses while speaking
 
-Speech in:  mic ──► VAD (energy + zero-crossing, adaptive floor, 700 ms hangover, 15 s cap) ──► 16 kHz WAV ──► /api/stt
-            ──► Groq whisper-large-v3-turbo ──► local faster-whisper base.en (separate process) ──► browser SpeechRecognition
+Speech in:  mic ──► VAD (energy + zero-crossing, adaptive floor, 650 ms hangover) ──► 16 kHz WAV ──► /api/stt
+            ──► Groq whisper-large-v3 (phantom phrases filtered) ──► local faster-whisper (a kept-warm worker process)
             transcript ──► wake phrase "hey Sentinel" or push-to-talk ──► local intent or the brain
+            while Sentinel speaks: barge-in ("stop", "wait", "go on"; "yeah" and "okay" are listening noises)
+
+Languages:  a local language (Twi, Ewe, Ga, Fante, Dagbani, Yoruba) ──► /api/lang/listen ──► Khaya ASR + translate to
+            English ──► the brain (always English) ──► /api/lang/speak ──► Khaya translate + TTS ──► orb
+            (services/twi, Node, port 3001; see LANGUAGES.md)
 ```
 
 ## Data honesty in the pipeline

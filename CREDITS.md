@@ -27,15 +27,17 @@ Show these on the About panel (in the app) and in the presentation.
 
 | What | Source | Licence / terms |
 |---|---|---|
-| Primary voice | ElevenLabs (premade voices River, Eric, Sarah, Daniel; flash v2.5 model) | ElevenLabs terms of service (Starter plan) |
+| Primary voice (English) | ElevenLabs (voices Nathaniel, Jon, Bri, Samara; Flash v2.5 model) | ElevenLabs terms of service |
 | Fallback voice | Kokoro-82M (ONNX via kokoro-onnx) | Apache 2.0 |
-| Speech recognition | OpenAI Whisper: whisper-large-v3-turbo on Groq; base.en via faster-whisper / CTranslate2 locally | MIT (model and libraries); Groq terms of service |
-| Brain | openai/gpt-oss-120b on Groq | Apache 2.0 (model); Groq terms of service |
+| Speech recognition | OpenAI Whisper: whisper-large-v3 on Groq; base.en via faster-whisper / CTranslate2 locally | MIT (model and libraries); Groq terms of service |
+| Brain | Claude Sonnet 5.5 (Anthropic API) | Anthropic terms of service |
+| Fallback brain | openai/gpt-oss-120b and gpt-oss-20b on Groq | Apache 2.0 (models); Groq terms of service |
+| Local languages | Khaya AI by GhanaNLP: speech recognition, translation and speech for Twi, Ewe, Ga, Fante, Dagbani, Yoruba | GhanaNLP / Khaya API terms of service |
 | Speaker ID | Resemblyzer | Apache 2.0 |
 
 ## Libraries (vendored or installed)
 
-three.js (MIT), GSAP (GreenSock standard licence), Chart.js (MIT), MediaPipe Tasks Vision (Apache 2.0), FastAPI (MIT), uvicorn (BSD), httpx (BSD), numpy (BSD), onnxruntime (MIT), hsemotion-onnx (Apache 2.0; the enet_b0_8_va_mtl model was trained on AffectNet, a research-only dataset) with opencv-python (Apache 2.0), Playwright (Apache 2.0, tests only).
+three.js (MIT), GSAP (GreenSock standard licence), Chart.js (MIT), MediaPipe Tasks Vision (Apache 2.0), FastAPI (MIT), uvicorn (BSD), httpx (BSD), numpy (BSD), onnxruntime (MIT), hsemotion-onnx (Apache 2.0; the enet_b0_8_va_mtl model was trained on AffectNet, a research-only dataset) with opencv-python (Apache 2.0), Playwright (Apache 2.0, tests only), the Anthropic Python SDK (Apache 2.0), and for the local-language service Express (MIT), multer (MIT) and dotenv (BSD-2-Clause).
 
 ## Reference images
 

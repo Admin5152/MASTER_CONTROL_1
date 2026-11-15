@@ -89,7 +89,7 @@ Links and detail: `docs/INTEGRATION.md`.
 | --- | --- |
 | Backend tests | 280 passing (`pytest`) |
 | Front-end logic tests | 75 passing (`node --test tests/js`) |
-| Real-browser checks driving the app | 105 of 105 (`tests/clinic_ui_check.py`) |
+| Real-browser checks driving the app | 105 of 105 (`tests/browser/clinic_ui_check.py`) |
 | Golden scenarios and acceptance criteria from our spec | S1 to S19 and AC-1 to AC-22, each with a test |
 | NASA requirement documents parsed | 68 JSC 28913 MRIDs |
 | NASA human research datasets catalogued | 691 of 2,593 in the NASA Life Sciences Portal index |

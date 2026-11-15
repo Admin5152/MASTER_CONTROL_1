@@ -32,6 +32,6 @@ A real face on the webcam (face mesh, pulse), the real microphone in a real room
 
 ## Three things I'd fix next
 
-1. **Port the v1 browser checks** (`tests/browser_check.py`, `offline_check.py`, `resource_check.py`) to the v2 interface so CI covers every screen, the offline state and zero external requests.
+1. **Port the v1 browser checks** (`tests/browser/browser_check.py`, `offline_check.py`, `resource_check.py`) to the v2 interface so CI covers every screen, the offline state and zero external requests.
 2. **Tune voice on the real mic and tablet**: the VAD thresholds, wake-phrase sensitivity and the tablet layout of the body screen in portrait.
 3. **Show the reference line in "all normal" verdicts** (the optic nerve sheath reading is listed, but its 5.0 mm line only appears in the ultrasound caption and on finding cards).

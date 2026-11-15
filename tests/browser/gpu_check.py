@@ -5,7 +5,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 BASE = next((a for a in sys.argv[1:] if a.startswith("http")), "https://127.0.0.1:8444")
-OUT = Path(__file__).resolve().parent / "screenshots" / "v2" / "gpu"
+OUT = Path(__file__).resolve().parent.parent / "screenshots" / "v2" / "gpu"
 OUT.mkdir(parents=True, exist_ok=True)
 STEPS = [
     ("home", "void window.sentinel.stages.go('assistant')", 4000),

@@ -194,5 +194,5 @@ transit, surface base and critical phases, with its own escalation policy, wait 
 In the app, open the menu and choose **Devices** to see what is connected and send simulated readings from the
 watch, chest hub, suit and cabin sensors.
 
-Checks: `pytest -q`, `node --test tests/js`, and `tests/clinic_ui_check.py` against a clean server.
+Checks: `pytest -q`, `node --test tests/js`, and `tests/browser/clinic_ui_check.py` against a clean server.
 Status by requirement: `docs/checklists/CHECKLIST_PART4_5_UI_INTEGRATION.md`. Sources: `shared/SOURCES.md`.

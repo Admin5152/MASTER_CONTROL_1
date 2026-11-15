@@ -16,21 +16,24 @@ Welcome. This page tells you where things live, how to run everything, and the f
 ```
 server.py                FastAPI app: serves /app and /shared, all /api routes (proxies /api/twi to the Twi service)
 run.ps1                  one command to run everything (HTTPS for the tablet, the Twi service, the browser)
-brain/                   Python logic
-  contract.py              the state contract (shared/contract.json): validation, deep merge
-  store.py                 in-memory state + history, persisted to data/state.json; LOG_FIELDS whitelist
-  drift.py, decision.py    change-from-baseline engine and the ordered rules that set `action`
-  thresholds.py            absolute thresholds with kind + source
-  llm.py                   the brain: prompt, health vs general, memory, streaming, numeric guard, command validator
-  claude.py                Claude (Anthropic) first, with a spending stop; Groq after (in llm.py)
-  speech.py                /api/stt (Groq Whisper -> local worker) and /api/tts (ElevenLabs -> Kokoro), cache, budget
-  whisper_worker.py        local faster-whisper in its own process
-  ground.py, messages.py   store-and-forward queue to ground (SIM transport); crew messaging
-  suit.py, ops.py          EVA suit (SIM telemetry), EVA readiness, the flight-surgeon digest
-  eyes.py, radiation.py, medicine.py, care.py, protocols.py, alerts.py, vault.py (encrypted record) ...
+brain/                   Python logic, grouped by purpose (each sub-package's __init__.py says what it holds)
+  core/                    the record: store.py (state + history, data/state.json), contract.py (validation, deep merge),
+                           pipeline.py (readings), devices.py (one door for every device), audit.py, vault.py
+                           (encryption at rest), profile.py, onboarding.py
+  rules/                   assessment: thresholds.py (limits with kind + source), drift.py (change from baseline),
+                           decision.py (the ordered rules that set `action`), indicators.py, trends.py, safety.py
+                           (fixed urgent-concern script), mrid.py (NASA MRID evidence)
+  clinical/                care: care.py (triage, protocol runner, care log), clinic.py, protocols.py, medicine.py
+                           (kit), eyes.py (eye check), alerts.py (alert lifecycle), plan.py (reminders)
+  ai/                      the brain and voice: llm.py (prompts, health vs general, memory, streaming, numeric guard,
+                           command validator, Groq), claude.py (Claude first, spending stop), speech.py (/api/stt,
+                           /api/tts: Groq Whisper -> local; ElevenLabs -> Kokoro; caches, budgets), whisper_worker.py
+  mission/                 space and operations: radiation.py, suit.py (EVA suit, SIM), ops.py (modes, EVA readiness,
+                           digest), ground.py (store-and-forward link, SIM delay), environment.py
+  crew/                    people: messages.py, notify.py (inboxes), crew_pulse.py, wellbeing.py, race_rooms.py
 systems/                 speaker ID (Resemblyzer), Sentinel Skin feed, scripted scenarios
-services/twi/            Twi voice: a small Node service on port 3001 that calls Khaya AI (GhanaNLP)
-  server.js, routes/twi.js   /api/twi/listen, /speak, /translate, /health
+services/twi/            local languages (Twi, Ewe, Ga, Fante, Dagbani, Yoruba): a Node service on port 3001 calling Khaya AI
+  server.js, routes/twi.js   /api/lang/* (= /api/twi/*): languages, listen, speak, translate, health
   khaya.js, twi_rules.js     the Khaya client (quota, caches) and the offline phrase rules
   examples/                  React versions of the language switch (not used by the app)
 shared/                  contract, mock crew, thresholds, med kit, facts (all cited), NASA MRIDs, NOAA snapshot, environments
@@ -43,16 +46,20 @@ app/                     the browser app (plain ES modules, no build step)
   js/core/               api.js, bus.js, director.js (command bus), commands.js (whitelist), intents.js, stages.js, state.js, sound.js
   js/world/              world.js (one full-screen three.js canvas), intro.js, space.js, body3d.js (body, anatomy, X-ray, scan)
   js/interface/          orb.js, bodypanel.js (rail, system panel, insights, chips), vitals.js, ranges.js, readings.js, screens.js, tiles.js, charts.js, banner.js, demopanel.js, dashboard.js
-  js/voice/              voice.js (VAD capture, STT, TTS playback), bargein.js, vad.js, wake.js, pitch.js, wav.js, twi.js
+  js/voice/              voice.js (VAD capture, STT, TTS playback), bargein.js, vad.js, wake.js, pitch.js, wav.js,
+                         languages.js (the language list), twi.js (speaking through Khaya)
   js/vision/             MediaPipe face mesh + pose, rPPG pulse, eye metrics
   js/systems/            cognitive.js + pvt.js (reaction test, Fitts's Law), radiation.js, symptom intake
   js/experience/         race/ (space race), eyecheck.js, missionmed.js (exam, ground, measures, wellbeing, organ view), hardware.js (Sentinel Skin), orbcalm.js, greenhouse.js, ...
   js/comms/              crew messages
   assets/                body3d (bodies + anatomy GLB), game (Blender GLBs), organs (Blender PNGs), space (planet textures), sound, fonts
   vendor/                three.js, MediaPipe, Chart.js, GSAP (all local; nothing loads from the internet)
-tools/                   make_cert.py, mrid_extract.py, nlsp_fetch.py; anatomy/ and game/ (Blender); recording and build scripts
-tests/                   pytest (test_*.py), node --test (tests/js), test_twi.js, Playwright scripts (*_shots.py, race_check.py)
-docs/                    ARCHITECTURE, INTEGRATION, HOW-TO-RUN, JUDGE_WALKTHROUGH, TWI_VOICE_INTEGRATION, model card
+tools/                   make_cert.py, mrid_extract.py, nlsp_fetch.py, gen_api_docs.py (docs/API.md); anatomy/ and game/
+                         (Blender); recording and build scripts
+tests/                   pytest (test_*.py, conftest.py), js/ (node --test), test_twi.js (language service),
+  browser/                 Playwright checks driving the real app (see tests/browser/README.md)
+docs/                    README (index), HOW-TO-RUN, CONFIGURATION, API, LOGS, LANGUAGES, ARCHITECTURE, INTEGRATION,
+                         JUDGE_WALKTHROUGH, model card
   product/                 the product document, build spec, v2 redesign
   pitch/                   pitch deck notes, slides.html, the ASTRA blueprint
   checklists/              integration checklists, morning notes
@@ -71,7 +78,11 @@ data/, models/, certs/   local only (git-ignored): the record, caches, usage met
 | Readings, badges, range bars | `js/interface/readings.js`, `js/interface/ranges.js`, `js/interface/tiles.js` | `brain/rules/thresholds.py`, `brain/rules/drift.py` |
 | Reaction test | `js/systems/cognitive.js`, `js/systems/pvt.js` | baseline in `brain/core/store.py` |
 | Exam, ground, measures | `js/experience/missionmed.js` | `brain/mission/ground.py`, `/api/ground`, `/api/log` |
-| Space race | `js/experience/race/` | `/api/log` (session fields) |
+| Space race | `js/experience/race/` | `/api/log` (session fields), `brain/crew/race_rooms.py` (multiplayer) |
+| EVA and suit | `js/main.js` (`suitCommand`), `js/core/intents.js` (EVA phrases), `js/interface/demopanel.js` | `brain/mission/suit.py`, `brain/mission/ops.py`, `/api/suit`, `/api/ops/{cid}/readiness` |
+| Eye check | `js/experience/eyecheck.js`, `js/vision/eyemetrics.js` | `brain/clinical/eyes.py`, `/api/eyes` |
+| Languages | `js/voice/languages.js`, `js/voice/twi.js`, `js/voice/voice.js` | `services/twi/`, `/api/lang/*` ([docs/LANGUAGES.md](docs/LANGUAGES.md)) |
+| Brain models | — | `brain/ai/claude.py` (Claude), `brain/ai/llm.py` (Groq fallback, rules bank) |
 
 ## Run it
 
@@ -87,15 +98,17 @@ The server has no auto-reload: restart it after changing Python. Front-end chang
 .venv\Scripts\python -m pytest                      # backend: brain, systems, radiation, voice, ground
 node --test tests/js                                 # pure front-end logic
 # with a server running (pip install -r requirements-dev.txt):
-.venv\Scripts\python tests\layout_shots.py http://127.0.0.1:8000 both     # every main screen, dark and light
-.venv\Scripts\python tests\body_shots.py http://127.0.0.1:8000            # X-ray, zone check, pointing, female body
-.venv\Scripts\python tests\body_zones_check.py http://127.0.0.1:8000      # Product Document SB1-SB7 (server started with SENTINEL_FRESH=1)
-.venv\Scripts\python tests\race_check.py http://127.0.0.1:8000            # the race from menu to saved mood
+.venv\Scripts\python tests\browser\layout_shots.py http://127.0.0.1:8000 both     # every main screen, dark and light
+.venv\Scripts\python tests\browser\body_shots.py http://127.0.0.1:8000            # X-ray, zone check, pointing, female body
+.venv\Scripts\python tests\browser\body_zones_check.py http://127.0.0.1:8000      # Product Document SB1-SB7 (server started with SENTINEL_FRESH=1)
+.venv\Scripts\python tests\browser\race_check.py http://127.0.0.1:8000            # the race from menu to saved mood
 ```
 
 Playwright scripts use Edge with software WebGL; they disable GSAP lag smoothing so animations run on time at 1-4 fps. Set `SENTINEL_TTS=kokoro` on the server you test against so you don't spend ElevenLabs credit.
 
-Add a test with every change to pure logic: Python in `tests/test_*.py` (use the `client` and `store` fixtures in `tests/conftest.py`; they run with no network, no key and no persistence), JavaScript in `tests/js/pure.test.mjs` (keep those modules free of DOM and three.js).
+Add a test with every change to pure logic: Python in `tests/test_*.py` (use the `client` and `store` fixtures in `tests/conftest.py`; they run with no network, no key and no persistence, so no credit is spent), JavaScript in `tests/js/*.test.mjs` (keep those modules free of DOM and three.js).
+
+After adding or changing an endpoint, run `.venv\Scripts\python tools\gen_api_docs.py` to refresh [docs/API.md](docs/API.md).
 
 ## The shared state contract
 
