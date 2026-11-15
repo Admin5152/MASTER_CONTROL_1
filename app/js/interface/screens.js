@@ -204,12 +204,14 @@ function renderHealthLog(el, ctx) {
         <input id="f-${f.key}" name="${f.key}" type="number" inputmode="decimal" min="${f.min}" max="${f.max}" step="${f.step}" placeholder="last: ${esc(fmt(lastOf(f), pathOf(f)))}${badgeFor(pathOf(f), ctx.view.state, ctx.view.aux) === "LIVE" ? " (LIVE)" : " (SIM)"}">
         <span class="hint">How in microgravity: ${esc(f.hint)}</span>
         <span class="why">Why it matters: ${esc(f.why)}</span>
+        <span class="srcs" data-srcs="${pathOf(f)}"></span>
         <span class="err" aria-live="polite"></span></div>`).join("")}
       <div class="field" data-key="mood">
         <label>Mood today <span class="note">(1 low to 5 good)</span></label>
         <div class="mood-row">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-mood="${n}" aria-pressed="false">${n}</button>`).join("")}</div>
         <span class="hint">Tap the number that fits right now; there is no right answer.</span>
         <span class="why">Why it matters: isolation and confinement is one of NASA's five hazards.</span>
+        <span class="srcs" data-srcs="manual.mood"></span>
       </div>
       ${[["energy_self", "Energy today", "1 drained to 5 full"], ["stress_self", "Stress today", "1 calm to 5 very stressed"], ["connection_self", "Connection with the crew", "1 distant to 5 close"]].map(([k, label, hint]) => `<div class="field" data-key="${k}">
         <label>${label} <span class="note">(${hint})</span></label>
@@ -319,6 +321,17 @@ function renderHealthLog(el, ctx) {
   // a value the save rejects sends you to its step
   el.querySelector("[data-save]").addEventListener("click", () => setTimeout(() => { const bad = formEl.querySelector(".field.has-err"); if (bad) { hwStep = Number(bad.dataset.hwStep); hwDraw(); } }, 0));
   hwDraw();
+  // "Data used": where each reading's ranges come from, and the NASA documents (MRIDs) behind it, as links
+  const srcEls = [...el.querySelectorAll("[data-srcs]")];
+  api.sources(srcEls.map((s) => s.dataset.srcs)).then((all) => {
+    for (const s of srcEls) {
+      const d = all?.[s.dataset.srcs];
+      if (!d || (!d.references.length && !d.nasa.length)) continue;
+      const refs = d.references.map((r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>`);
+      const nasa = d.nasa.filter((n) => n.url).map((n) => `<a href="${esc(n.url)}" target="_blank" rel="noopener" title="${esc(n.title)}">NASA ${esc(n.id)}</a>`);
+      s.innerHTML = `Data used: ${[...refs, ...nasa].join(" · ")}. <a href="https://github.com/Admin5152/MASTER_CONTROL_1/blob/main/docs/DATASETS.md" target="_blank" rel="noopener">All datasets</a>`;
+    }
+  }).catch(() => {});
   el.querySelectorAll(".form-grid .field").forEach((f) => {   // less to read: the guidance opens on demand
     if (!f.querySelector(".hint, .why")) return;
     const b = document.createElement("button");

@@ -8,6 +8,11 @@ it. Each number's source is listed in [shared/SOURCES.md](../shared/SOURCES.md);
 datasets supply the **limits** those rules use, the **evidence** shown to the crew, and the **context** for the 3D
 views and the demo.
 
+**In the app:** tap the **i** next to any reading in the health log. Under how to measure it and why it matters,
+**Data used** links to the reading's reference ranges and to the NASA documents (MRIDs) it is grounded in. The PDFs
+are served by Sentinel itself (`/dataset/...`), so the links work offline on the tablet. The same data is available
+from `GET /api/dataset/sources?paths=vitals.heart_rate,manual.temp_c`.
+
 ## At a glance
 
 | # | Dataset | Owner | Type | In the repo | Used for |

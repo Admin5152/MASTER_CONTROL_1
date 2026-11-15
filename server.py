@@ -52,6 +52,7 @@ from brain.core.devices import Devices  # noqa: E402
 from brain.clinical import protocols as protomod  # noqa: E402
 from brain.core.skin import Skin  # noqa: E402
 import json  # noqa: E402
+from urllib.parse import quote  # noqa: E402
 import threading  # noqa: E402
 from brain.core.contract import ContractError  # noqa: E402
 from brain.mission.radiation import SpaceWeather, storm_dose_step, feed_freshness  # noqa: E402
@@ -1512,6 +1513,33 @@ def pattern_evaluate(body: dict = Body(...)):
     return indmod.evaluate_pattern_layer(drifts, absolutes)
 
 
+@app.get("/api/dataset/sources")
+def dataset_sources(paths: str = ""):
+    """The data behind each reading, for the "i" panels: ?paths=vitals.heart_rate,manual.temp_c ->
+    {path: {"references": [{title, url, kind}], "nasa": [{id, title, url}]}}. References are the sources of the
+    reading's ranges (shared/thresholds.json); "nasa" are the NASA MRIDs the indicator is grounded in, linked to the
+    PDF served from /dataset (works offline)."""
+    th = (json.loads((ROOT / "shared" / "thresholds.json").read_text(encoding="utf-8")).get("absolute") or {})
+    docs = {d.get("id"): d for d in indmod.load_mrid_database()}
+    out = {}
+    for path in [p.strip() for p in paths.split(",") if p.strip()][:40]:
+        refs, seen = [], set()
+        for lv in (th.get(path) or {}).get("levels", []):
+            src = lv.get("source") or {}
+            key = src.get("url")
+            if src.get("url") and key not in seen:
+                seen.add(key)
+                refs.append({"title": src.get("title", ""), "url": src["url"], "kind": lv.get("kind", "")})
+        ind_id = indmod.PATH_TO_INDICATOR_ID.get(path)
+        nasa = []
+        for mid in (indmod.TRACKED_INDICATORS.get(ind_id, {}).get("nasa_mrids", []) if ind_id else []):
+            d = docs.get(mid) or {}
+            f = str(d.get("file", "")).split("/")[-1]
+            nasa.append({"id": mid, "title": d.get("title", ""), "url": f"/dataset/{quote(f)}" if f else ""})
+        out[path] = {"references": refs, "nasa": nasa}
+    return out
+
+
 @app.get("/api/dataset/mrid")
 def dataset_mrid_list():
     """Authoritative NASA JSC 28913 MRID dataset single source of truth (68 documents)."""
@@ -2179,6 +2207,7 @@ async def revalidate_static(request, call_next):
 
 app.mount("/app", StaticFiles(directory=ROOT / "app", html=True), name="app")
 app.mount("/shared", StaticFiles(directory=ROOT / "shared"), name="shared")
+app.mount("/dataset", StaticFiles(directory=ROOT / "dataset"), name="dataset")   # the NASA MRID PDFs, linked from the "i" panels
 
 
 @app.get("/api/radiation/events")

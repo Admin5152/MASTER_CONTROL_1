@@ -177,7 +177,7 @@ POST /api/scenario/{name}?speed=1        run one (e.g. solar_storm); "reset" ret
 
 <!-- ROUTES:BEGIN -->
 
-_150 endpoints, generated from `server.py` by `tools/gen_api_docs.py`. `{cid}` is a crew member's id (`GET /api/crew` lists them)._
+_151 endpoints, generated from `server.py` by `tools/gen_api_docs.py`. `{cid}` is a crew member's id (`GET /api/crew` lists them)._
 
 ### System and session
 
@@ -382,6 +382,7 @@ _150 endpoints, generated from `server.py` by `tools/gen_api_docs.py`. `{cid}` i
 | --- | --- | --- |
 | GET | `/api/dataset/mrid` | Authoritative NASA JSC 28913 MRID dataset single source of truth (68 documents). |
 | GET | `/api/dataset/mrid/{mrid_id}` | Retrieve specific NASA MRID document by ID from dataset single source of truth. |
+| GET | `/api/dataset/sources` | The data behind each reading, for the "i" panels: ?paths=vitals.heart_rate,manual.temp_c -> {path: {"references": [{title, url, kind}], "nasa": [{id, title, url}]}}. References are the sources of the reading's ranges (shared/thresholds.json); "nasa" are the NASA MRIDs the indicator is grounded in, linked to the PDF served from /dataset (works offline). |
 | GET | `/api/dataset/verify` | Verify that every tracked indicator is grounded in NASA MRIDs and all thresholds have kind and source citations with zero invented limits (Section 17). |
 
 <!-- ROUTES:END -->
