@@ -59,6 +59,8 @@ class Suits:
             st["eva_started"] = time.time() if st["mode"] == "eva" else None
             if st["mode"] == "iva":
                 st["leak"] = None
+                st["tm"] = None
+                st["tm_incident"] = None
         return self.status(cid)
 
     def leak(self, cid: str, region: str = "left_glove", size: str = "leak") -> dict:
@@ -72,6 +74,30 @@ class Suits:
             st["leak"] = {"region": region, "rate": SIZES.get(size, SIZES["leak"]), "t0": time.time(), "id": st["incident"]}
         return self.status(cid)
 
+    def telemetry(self, cid: str, tm: dict, sim: bool = False) -> dict:
+        """Readings from the suit itself (through the device interface). While they are fresh they are what Sentinel
+        reports and judges: integrity comes from the measured pressure and how fast it is changing."""
+        now = time.time()
+        with self.lock:
+            st = self._get(cid)
+            if st["mode"] != "eva":
+                st["mode"], st["eva_started"] = "eva", now
+            prev = st.get("tm")
+            cur = {**(prev or {}), **{k: float(v) for k, v in tm.items()}, "t": now, "sim": bool(sim)}
+            if prev and "suit_pressure_psi" in tm and "suit_pressure_psi" in prev and now - prev["t"] >= 1:
+                cur["rate"] = (float(tm["suit_pressure_psi"]) - prev["suit_pressure_psi"]) / ((now - prev["t"]) / 60.0)   # psi per minute, negative when falling
+            if "rate" not in cur:
+                cur["rate"] = 0.0
+            falling = max(0.0, -cur["rate"])
+            bad = cur.get("suit_pressure_psi", NOMINAL_PSI) < BREACH_PSI or falling >= WATCH_RATE
+            if bad and not st.get("tm_incident"):
+                st["incident"] += 1
+                st["tm_incident"] = st["incident"]
+            elif not bad:
+                st["tm_incident"] = None
+            st["tm"] = cur
+        return self.status(cid)
+
     def seal(self, cid: str) -> dict:
         with self.lock:
             self._get(cid)["leak"] = None
@@ -83,6 +109,18 @@ class Suits:
             st = dict(self._get(cid))
         if st["mode"] != "eva":
             return {"mode": "iva", "integrity": "stowed", "label": "SIM", "note": "Suit stowed: no EVA in progress."}
+        tm = st.get("tm")
+        if tm and now - tm["t"] <= 120:   # the suit is reporting: its numbers, not the model's
+            psi, falling = tm.get("suit_pressure_psi", NOMINAL_PSI), max(0.0, -tm.get("rate", 0.0))
+            integrity = "breach" if (psi < BREACH_PSI or falling >= BREACH_RATE) else "watch" if falling >= WATCH_RATE else "ok"
+            out = {"mode": "eva", "integrity": integrity, "label": "SIM" if tm.get("sim") else "LIVE", "source": "suit telemetry",
+                   "pressure_psi": round(psi, 2), "pressure_rate_psi_min": round(tm.get("rate", 0.0), 2), "nominal_psi": NOMINAL_PSI,
+                   "o2_flow_lb_hr": round(tm.get("suit_o2_flow_lb_hr", O2_FLOW_NOMINAL), 2), "co2_mmhg": round(tm.get("suit_co2_mmhg", CO2_NOMINAL_MMHG), 1),
+                   "eva_minutes": round((now - (st["eva_started"] or now)) / 60, 1)}
+            if integrity != "ok":   # telemetry cannot say where: the whole suit is checked
+                out.update({"region": "torso", "region_label": "suit (location not known from telemetry)", "zone": "whole_body", "incident": st.get("tm_incident") or st["incident"],
+                            "steps": [s.format(label="suit, starting with the gloves and the helmet seal") for s in STEPS]})
+            return out
         lk = st["leak"]
         mins = (now - lk["t0"]) / 60 if lk else 0.0
         # pressure falls at the leak rate; the regulator slows the fall as it feeds more oxygen

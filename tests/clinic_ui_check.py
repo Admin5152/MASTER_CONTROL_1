@@ -68,6 +68,10 @@ def main() -> int:
         page.click(f'#who [data-who="{first}"]')
         page.wait_for_timeout(2600)
         check("after choosing a name: that person's alert appears", page.evaluate("!document.getElementById('banner').hidden"), page.inner_text("#banner-title"))
+        page.click("#banner-details")
+        page.wait_for_timeout(1500)
+        check("alert banner: Details opens what changed, with a way to the steps", page.evaluate("document.getElementById('sheet').dataset.screen") == "zone" and bool(page.query_selector("#sheet-body [data-steps]")))
+        page.evaluate("window.sentinel.screens.close()")
         page.click("#banner-ack")
         api("POST", f"/api/state/{first}/patch", {"manual": {"bp_systolic": 118, "bp_diastolic": 76}})
         page.wait_for_timeout(1200)
@@ -551,6 +555,24 @@ def main() -> int:
             page.click("#sheet-body [data-clear-all]")
             page.wait_for_timeout(1200)
             check("notifications: clear all empties the inbox", "nothing waiting" in text().lower() and api("GET", f"/api/notifications/{told[0]}")["count"] == 0)
+
+        # ---- sixth pass: every device through one door
+        open_screen("devices")
+        page.wait_for_selector('#sheet-body [data-send="watch"]', timeout=8000)
+        check("devices: camera, microphone, watch, chest hub, patch, suit and cabin are listed with their state", page.evaluate("document.querySelectorAll('#sheet-body .ground-list > li').length") == 7 and "spacewear watch" in text().lower())
+        who = page.evaluate("window.sentinel.view.crewId")
+        page.click('#sheet-body [data-send="watch"]')
+        try:
+            page.wait_for_function("document.getElementById('sheet-body').innerText.includes('accepted from the watch')", timeout=8000)
+        except Exception:
+            pass
+        rec = api("GET", f"/api/record/{who}")["fields"]["vitals.heart_rate"]
+        check("devices: a watch reading enters the record, labelled SIM when simulated", "accepted from the watch" in text() and rec["last"] == 74 and rec["last_label"] == "SIM", str(rec)[:100])
+        page.wait_for_timeout(600)
+        check("devices: the watch shows as connected with what it last reported", "heart rate 74" in text().lower() and "connected" in text().lower())
+        shot("devices")
+        say("which devices are connected", 1800)
+        check("said: the assistant can tell what is connected", "spacewear watch" in page.inner_text("#transcript").lower(), page.inner_text("#transcript")[-140:].replace(chr(10), " "))
 
         bad = [e for e in errors if "favicon" not in e and "ERR_CERT" not in e and "/api/tts" not in e and "/api/stt" not in e
                and "503 (Service Unavailable)" not in e]   # no voice engine in the test server: /api/tts answers 503 and the browser voice takes over

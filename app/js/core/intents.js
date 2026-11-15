@@ -40,6 +40,7 @@ export const SCREEN_WORDS = {
   weekly: ["weekly review", "week in review"],
   mind: ["how am i doing mentally", "wellbeing dimensions", "my wellbeing levels", "i'm stressed", "im stressed", "i am stressed"],
   kit: ["medical kit", "med kit", "the kit"],
+  devices: ["my devices", "connected devices", "devices", "my sensors", "what is connected"],
   notifications: ["my notifications", "notifications", "my messages", "my inbox", "inbox"],
   datasets: ["nasa datasets", "research datasets", "life sciences data", "datasets"],
   onboarding: ["first run", "onboarding", "set me up"],

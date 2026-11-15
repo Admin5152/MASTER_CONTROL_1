@@ -79,6 +79,7 @@ export function registerClinic(registerScreen) {
   registerScreen("alerts", { title: "Alerts", render: renderAlerts });
   registerScreen("kit", { title: "Medical kit", badge: "SIM", render: renderKit });
   registerScreen("notifications", { title: "Notifications", render: renderNotifications });
+  registerScreen("devices", { title: "Devices", render: renderDevices });
   registerScreen("datasets", { title: "NASA research datasets", badge: "NLSP", render: renderDatasets });
 }
 
@@ -622,6 +623,49 @@ function renderAlerts(el, ctx) {
   };
   draw();
   const t = setInterval(() => { if (!el.contains(document.activeElement) || document.activeElement === document.body) draw(); }, 8000);
+  return () => { alive = false; clearInterval(t); };
+}
+
+// ================= devices: everything Sentinel can take readings from, through one interface =================
+const DEV_ICON = { camera: '<path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><circle cx="12" cy="12" r="3.2"/>',
+  microphone: '<rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/>', watch: '<rect x="8" y="6" width="8" height="12" rx="2.5"/><path d="M10 6V3.5h4V6M10 18v2.5h4V18M12 10v2.5l1.5 1"/>',
+  chest_hub: '<rect x="6" y="7" width="12" height="10" rx="3"/><path d="M9 12h2l1-2 1.5 4 1-2H17"/>', patch: '<rect x="5" y="9" width="14" height="6" rx="3"/><path d="M9 12h.01M12 12h.01M15 12h.01"/>',
+  suit: '<circle cx="12" cy="7.5" r="3.5"/><path d="M6.5 20v-4a5.5 5.5 0 0 1 11 0v4M9.5 14.5h5"/>', cabin: '<path d="M5 18V9l7-4 7 4v9z"/><path d="M9 18v-5h6v5"/>' };
+const DEMO_SEND = { watch: [{ metric: "heart_rate", value: 74, confidence: 0.95 }, { metric: "spo2", value: 97, confidence: 0.95 }], chest_hub: [{ metric: "heart_rate", value: 73, confidence: 0.98 }, { metric: "breathing_rate", value: 15, confidence: 0.9 }],
+  suit: [{ metric: "suit_pressure_psi", value: 4.3 }, { metric: "suit_o2_flow_lb_hr", value: 0.05 }, { metric: "suit_co2_mmhg", value: 2.0 }, { metric: "heart_rate", value: 92, confidence: 0.9 }],
+  cabin: [{ metric: "cabin_o2", value: 20.9 }, { metric: "cabin_co2", value: 620 }] };
+function renderDevices(el, ctx) {
+  const cid = ctx.view.crewId;
+  let alive = true, msg = "";
+  const draw = async () => {
+    let d;
+    try { d = await api.devices(cid); } catch { if (alive) offline(el); return; }
+    if (!alive) return;
+    el.innerHTML = `<p class="note">Every device hands its readings to Sentinel the same way, so a reading from the watch, the suit or the camera is checked, labelled and used exactly like one you type. ${esc(d.note)}</p>
+      <p class="note" data-msg aria-live="polite">${esc(msg)}</p>
+      <ul class="ground-list">${d.devices.map((x) => `<li class="card cl-alert">
+        <span class="env-ic" aria-hidden="true"><svg viewBox="0 0 24 24">${DEV_ICON[x.id] || DEV_ICON.watch}</svg></span>
+        <strong>${esc(x.name)} ${badgeHTML(x.state)}${x.connected ? ` <span class="fine">connected${x.last_seen_s != null ? ` · heard ${x.last_seen_s} s ago` : ""}</span>` : ` <span class="fine">not sending</span>`}</strong>
+        <p class="note" style="grid-column:1/-1;margin:0">${esc(x.feeds)}</p>
+        ${Object.keys(x.last).length ? `<p class="fine" style="grid-column:1/-1;margin:0">Last reported: ${Object.entries(x.last).map(([k, v]) => `${esc(k.replace(/_/g, " "))} <strong>${esc(v)}</strong>`).join(" · ")} (${x.count} readings so far)</p>` : ""}
+        ${x.suit && x.suit.mode === "eva" ? `<p class="fine" style="grid-column:1/-1;margin:0">Suit now: ${esc(x.suit.pressure_psi)} psi, ${esc(x.suit.pressure_rate_psi_min)} psi/min, integrity ${esc(x.suit.integrity)}</p>` : ""}
+        <p class="fine" style="grid-column:1/-1;margin:0">Link: ${esc(x.transport)}</p>
+        <span class="cl-acts">${DEMO_SEND[x.id] ? `<button class="pill pill-ghost" type="button" data-send="${x.id}">Send a simulated reading (SIM)</button>` : ""}${x.id === "suit" ? `<button class="pill pill-ghost" type="button" data-send="suit-drop">Simulate falling suit pressure (SIM)</button>` : ""}${x.id === "camera" ? `<button class="pill pill-ghost" type="button" data-open="vision">Open the face scan</button>` : ""}</span></li>`).join("")}</ul>
+      <div class="exam-nav"><button class="pill pill-ghost" type="button" data-open="record">My saved record</button><button class="pill pill-ghost" type="button" data-open="hardware">The wearable design</button></div>
+      <p class="fine">Simulated readings are labelled SIM everywhere they appear. A real device sends the same message without the SIM flag and is labelled LIVE.</p>`;
+    el.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => go(ctx, b.dataset.open)));
+    el.querySelectorAll("[data-send]").forEach((b) => b.addEventListener("click", async () => {
+      try {
+        const drop = b.dataset.send === "suit-drop";
+        const r = await api.deviceSend(cid, drop ? "suit" : b.dataset.send, drop ? [{ metric: "suit_pressure_psi", value: 3.6 }, { metric: "suit_o2_flow_lb_hr", value: 0.6 }] : DEMO_SEND[b.dataset.send], true);
+        msg = `${r.accepted.length} reading${r.accepted.length === 1 ? "" : "s"} accepted from the ${b.dataset.send.replace("-drop", "").replace("_", " ")} (SIM)${r.rejected.length ? `, ${r.rejected.length} refused` : ""}.${r.action?.type && r.action.type !== "none" ? ` ${r.action.detail}` : ""}`;
+        pollOnce();
+      } catch (e) { msg = e.message; }
+      draw();
+    }));
+  };
+  draw();
+  const t = setInterval(() => { if (!el.contains(document.activeElement) || document.activeElement === document.body) draw(); }, 5000);
   return () => { alive = false; clearInterval(t); };
 }
 

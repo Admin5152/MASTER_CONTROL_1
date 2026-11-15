@@ -44,6 +44,7 @@ from brain import indicators as indmod  # noqa: E402
 from brain.pipeline import pipeline  # noqa: E402
 from brain.alerts import alerts  # noqa: E402
 from brain.notify import Notifications  # noqa: E402
+from brain.devices import Devices  # noqa: E402
 from brain import protocols as protomod  # noqa: E402
 from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
@@ -57,6 +58,7 @@ from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
 notes = Notifications()
+devices = Devices()
 store.sensitivity = alerts.feedback_adjustments   # "not useful" feedback reaches the decision engine (19.5)
 suits = Suits()
 audit = Audit()
@@ -359,6 +361,39 @@ def scan_save(cid: str, body: dict = Body(...)):
 def scans_list(cid: str):
     _need(cid)
     return {"crew_id": cid, "scans": list(reversed(store.get_non_reading(cid, "scan")))[:50]}
+
+
+@app.post("/api/device/{cid}")
+def device_ingest(cid: str, body: dict = Body(...)):
+    """Readings from any device: {"device": "watch"|"chest_hub"|"suit"|"cabin"|"camera", "readings": [{"metric", "value",
+    "confidence"}], "sim": false}. Each is checked against what that device may report, labelled LIVE (or SIM when a
+    simulator sends it), and enters the same pipeline as a typed entry: ranges, baseline, alerts, the record."""
+    _need(cid)
+    try:
+        r = devices.ingest(store, suits, cid, str(body.get("device", "")), body.get("readings"), sim=bool(body.get("sim", False)))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    s = store.get(cid)
+    if r["accepted"]:
+        _sync_alert(cid, s)
+    st = suits.status(cid)
+    if st.get("source") == "suit telemetry" and st.get("integrity") in ("watch", "breach") and st.get("incident") != getattr(device_ingest, "_told", {}).get(cid):
+        device_ingest._told = {**getattr(device_ingest, "_told", {}), cid: st.get("incident")}   # once per incident
+        ops.set_mode(cid, "eva")
+        me = s["display_name"]
+        for c in store.crew():
+            if c["crew_id"] != cid:
+                notes.add(c["crew_id"], f"{me}: suit pressure dropping", f"{me}'s suit reports {st['pressure_psi']} psi and falling. Be ready to help them back to the airlock.",
+                          about_cid=cid, about_name=me, level=3, kind="suit")
+    audit.record("brain", "device.readings", cid, {"device": r["device"], "label": r["label"], "accepted": [a["metric"] for a in r["accepted"]], "rejected": len(r["rejected"])})
+    return {**r, "action": s.get("action") or {}, "suit": st}
+
+
+@app.get("/api/devices/{cid}")
+def devices_list(cid: str):
+    """Every device Sentinel can take readings from: connected or not, last heard, what it last reported."""
+    _need(cid)
+    return devices.status(cid, suits.status(cid))
 
 
 @app.get("/api/record/{cid}")
@@ -1196,7 +1231,10 @@ def chat(body: dict = Body(...)):
     cid = body.get("crew_id")
     _need(cid)
     transcript = llm.normalize(str(body.get("transcript", ""))[:500])
-    return llm.chat(store.get(cid), transcript, crew_id=cid)
+    state = dict(store.get(cid))
+    state["suit"] = suits.status(cid)
+    state["devices"] = devices.summary(cid, state["suit"])
+    return llm.chat(state, transcript, crew_id=cid)
 
 
 def _app_context(ctx) -> dict:
@@ -1591,6 +1629,7 @@ def chat_stream(body: dict = Body(...)):
     state["app"] = _app_context(body.get("context"))
     state["suit"] = suits.status(cid)
     state["ops"] = ops.status(cid, state)
+    state["devices"] = devices.summary(cid, state["suit"])   # what is connected now and what each last reported
 
     def gen():
         for ev in llm.chat_stream(state, transcript, crew_id=cid):

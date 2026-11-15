@@ -132,6 +132,8 @@ export const api = {
   groundConfirm: (packet, step_num) => req("POST", `../api/ground/${packet}/confirm-step`, { step_num }),
   notifications: (cid, seen = false) => req("GET", `../api/notifications/${cid}${seen ? "?seen=true" : ""}`),
   notificationsClear: (cid, id) => req("POST", `../api/notifications/${cid}/clear`, id ? { id } : {}),
+  devices: (cid) => req("GET", `../api/devices/${cid}`),
+  deviceSend: (cid, device, readings, sim = true) => req("POST", `../api/device/${cid}`, { device, readings, sim }),
   crewAdd: (display_name, body_model) => req("POST", "../api/crew", { display_name, body_model }),
   crewCard: (cid) => req("GET", `../api/crew/${cid}/card`),
   exercise: (cid) => req("GET", `../api/exercise/${cid}`),

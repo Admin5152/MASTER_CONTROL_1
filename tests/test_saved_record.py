@@ -363,3 +363,47 @@ def test_a_suit_leak_puts_a_notice_in_every_crewmates_inbox(client):
     assert all("suit pressure dropping" in client.get(f"/api/notifications/{o}").json()["items"][0]["title"] for o in others)
     assert client.get("/api/notifications/james").json()["count"] == 0
     client.post("/api/suit/james", json={"action": "seal"}); client.post("/api/suit/james", json={"action": "iva"})
+
+
+def test_every_device_feeds_the_same_pipeline_through_one_door(client):
+    # a watch reading is checked, labelled and stored like any other, and marks the watch connected
+    r = client.post("/api/device/james", json={"device": "watch", "readings": [{"metric": "heart_rate", "value": 74, "confidence": 0.95}, {"metric": "spo2", "value": 97}]}).json()
+    assert [a["metric"] for a in r["accepted"]] == ["heart_rate", "spo2"] and r["label"] == "LIVE" and r["rejected"] == []
+    rec = client.get("/api/record/james").json()["fields"]
+    assert rec["vitals.heart_rate"]["last"] == 74 and rec["vitals.heart_rate"]["last_label"] == "LIVE" and rec["vitals.heart_rate"]["last_source"] == "sensor"
+    assert client.get("/api/state/james").json()["vitals"]["sources"]["heart_rate"] == "sensor"
+    d = {x["id"]: x for x in client.get("/api/devices/james").json()["devices"]}
+    assert d["watch"]["connected"] and d["watch"]["state"] == "LIVE" and d["watch"]["last"]["heart_rate"] == 74 and not d["chest_hub"]["connected"]
+    # a simulator is labelled SIM, never LIVE
+    client.post("/api/device/james", json={"device": "chest_hub", "sim": True, "readings": [{"metric": "breathing_rate", "value": 15}]})
+    assert {x["id"]: x for x in client.get("/api/devices/james").json()["devices"]}["chest_hub"]["state"] == "SIM"
+    assert client.get("/api/record/james").json()["fields"]["vitals.breathing_rate"]["last_label"] == "SIM"
+    # a device cannot report what it does not measure; a sensor fault is refused, not stored
+    r = client.post("/api/device/james", json={"device": "watch", "readings": [{"metric": "cabin_co2", "value": 600}, {"metric": "heart_rate", "value": 999}]}).json()
+    assert r["accepted"] == [] and len(r["rejected"]) == 2 and client.get("/api/record/james").json()["fields"]["vitals.heart_rate"]["last"] == 74
+    assert client.post("/api/device/james", json={"device": "toaster", "readings": [{"metric": "heart_rate", "value": 70}]}).status_code == 422
+    # a device reading out of range raises the same alert a typed one would
+    assert client.post("/api/device/kenji", json={"device": "watch", "readings": [{"metric": "spo2", "value": 82}]}).json()["action"]["severity"] == "alert"
+    # the cabin sensors reach the whole crew
+    client.post("/api/device/james", json={"device": "cabin", "sim": True, "readings": [{"metric": "cabin_co2", "value": 900}]})
+    assert client.get("/api/state/amara").json()["cabin"]["co2_ppm"] == 900
+
+
+def test_suit_telemetry_drives_the_suit_state_and_tells_the_crew(client):
+    import server, time as _t
+    server.notes.box.clear()
+    ok = client.post("/api/device/james", json={"device": "suit", "sim": True, "readings": [{"metric": "suit_pressure_psi", "value": 4.3}, {"metric": "heart_rate", "value": 95}]}).json()
+    assert ok["suit"]["mode"] == "eva" and ok["suit"]["integrity"] == "ok" and ok["suit"]["source"] == "suit telemetry" and ok["suit"]["label"] == "SIM"
+    bad = client.post("/api/device/james", json={"device": "suit", "sim": True, "readings": [{"metric": "suit_pressure_psi", "value": 3.6}]}).json()
+    assert bad["suit"]["integrity"] == "breach" and bad["suit"]["pressure_psi"] == 3.6 and len(bad["suit"]["steps"]) == 4
+    assert "suit pressure dropping" in client.get("/api/notifications/amara").json()["items"][0]["title"]
+    assert "EVA suit" in server.devices.summary("james", server.suits.status("james"))
+    client.post("/api/suit/james", json={"action": "iva"})
+    assert client.get("/api/aux/james").json()["suit"]["mode"] == "iva"
+
+
+def test_the_assistant_can_say_what_is_connected():
+    from brain.llm import rules_reply
+    line, cmds = rules_reply({"display_name": "Eliah", "devices": "Connected now: SpaceWear watch: heart rate 74, spo2 97."}, "which devices are connected")
+    assert "SpaceWear watch" in line and cmds == [{"cmd": "open_screen", "name": "devices"}]
+    assert "camera" in rules_reply({"display_name": "Eliah"}, "what sensors are working")[0].lower()

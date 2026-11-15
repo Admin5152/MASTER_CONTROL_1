@@ -614,10 +614,19 @@ function addTooltips() {
 }
 new MutationObserver(() => { clearTimeout(tipT); tipT = setTimeout(addTooltips, 400); }).observe(document.documentElement, { childList: true, subtree: true });
 
-const SHEET_ONLY = ["notifications", "datasets", "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "environment", "onboarding", "kit", "profile"];
+const SHEET_ONLY = ["devices", "notifications", "datasets", "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "environment", "onboarding", "kit", "profile"];
 function wireControls() {
   $("btn-unwell").addEventListener("click", () => screens.open("care", "triage"));
   $("banner-ack").addEventListener("click", () => { if (view.crewId) api.alertsAckOpen(view.crewId, 3).catch(() => {}); });
+  $("banner-details").addEventListener("click", () => {   // what the alert is about, then the steps for it
+    const a = view.state?.action || {};
+    if (a.type === "flag_cabin" || view.state?.cabin?.alert) return screens.open("cabin");
+    if (a.type === "flag_radiation") return director.run([{ cmd: "open_screen", name: "radiation" }]);
+    const zone = a.zone && a.zone !== "cabin" ? a.zone : "";
+    if (!zone) return screens.open("alerts");
+    screens.zone(zone);   // the readings, the trend and the history behind it
+    showNotice("Showing what changed. Tap Recommended steps for what to do.");
+  });
   $("btn-checkin").addEventListener("click", () => screens.open("checkin"));
   $("btn-today").addEventListener("click", () => screens.open("today"));
   $("sb-env").addEventListener("click", () => screens.open("environment"));
@@ -988,6 +997,15 @@ async function handleCommand(text, meta = {}) {
     if (Date.now() > p.until) pendingAsk = null;
     else if (/ (yes|yeah|yep|sure|okay|ok|please|lets do it|go ahead) /.test(t) && t.trim().split(/\s+/).length <= 5) { pendingAsk = null; p.yes(); return; }
     else if (/ (no|nope|not now|later|nah) /.test(t) && t.trim().split(/\s+/).length <= 5) { pendingAsk = null; p.no(); return; }
+  }
+  // "which devices are connected": answered from the real list, before the hardware-viewer phrases can catch "devices"
+  if (/\b(what|which)\b.*\b(devices?|sensors?)\b|\b(devices?|sensors?|watch|suit link)\b.*\b(connected|working|online|sending)\b|\bwhat is connected\b/i.test(text)) {
+    try {
+      const d = await api.devices(view.crewId), on = d.devices.filter((x) => x.connected);
+      say(on.length ? `Connected now: ${on.map((x) => `${x.name}${x.state === "SIM" ? ", simulated" : ""}${Object.keys(x.last).length ? `, ${Object.entries(x.last).slice(0, 2).map(([k, v]) => `${k.replace(/_/g, " ")} ${v}`).join(" and ")}` : ""}`).join("; ")}.`
+        : "No worn device is sending right now. I can use the camera for a pulse and breathing scan, or you can tell me a reading.", { source: "local" });
+    } catch { say("I can't reach the device list right now.", { source: "local" }); }
+    closeMenus(); screens.open("devices"); followUp(); return;
   }
   // a reading said or typed is logged at once and read back, so a slip is caught by ear
   {

@@ -134,7 +134,7 @@ function renderZone(el, ctx, zone) {
     box.innerHTML = `
       <h3>Your readings <span class="co-sev st-cell st-${statusKey(sev)}">${statusHTML(sev)}</span></h3>
       ${rows ? `<table class="readings"><thead><tr><th>Reading</th><th>Value</th><th>Source</th><th>Status</th><th>Change</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="note">No readings for this area yet.</p>`}
-      <p style="margin-top:var(--s-4)" class="zone-acts"><button class="pill pill-dark" type="button" data-check>Check this area</button> <button class="pill pill-ghost" type="button" data-hurt>Log a symptom</button></p>
+      <p style="margin-top:var(--s-4)" class="zone-acts"><button class="pill pill-dark" type="button" data-steps>Recommended steps</button> <button class="pill pill-ghost" type="button" data-check>Check this area</button> <button class="pill pill-ghost" type="button" data-hurt>Log a symptom</button></p>
       ${f.how_to_measure ? `<h3>How to measure</h3><p data-how>${esc(f.how_to_measure)}</p>` : ""}
       ${f.why_it_matters ? `<h3>Why it matters</h3><p data-why>${esc(f.why_it_matters)}</p>` : ""}
       ${f.mrids?.length ? `<details class="mrids-box"><summary class="fine">NASA evidence: ${f.mrids.length} MRID${f.mrids.length > 1 ? "s" : ""} cover this system</summary><p class="fine mrids" data-mrids>${f.mrids.map((m) => `<span class="mrid" title="${esc(m.file)}">${esc(m.id)} ${esc(m.title)}</span>`).join("; ")}. Designed around these requirements, not an implementation of them. <a href="#" data-ev="${esc(zone)}">Open the evidence</a></p></details>` : ""}
@@ -149,6 +149,7 @@ function renderZone(el, ctx, zone) {
     el.querySelector("[data-open]")?.addEventListener("click", () => api_.open("radiation"));
     el.querySelector("[data-check]")?.addEventListener("click", () => { closeScreen(); ctx.director.run([{ cmd: "check_zone", zones: [zone] }]); });
     el.querySelector("[data-hurt]")?.addEventListener("click", () => api_.open("care", { zone: zone === "heart" ? "chest" : zone === "whole_body" ? undefined : zone, view: "triage" }));
+    box.querySelector("[data-steps]")?.addEventListener("click", () => api_.open("care", { zone: zone === "heart" ? "chest" : zone === "whole_body" ? undefined : zone, view: "triage" }));
     box.querySelectorAll("[data-ind]").forEach((r) => r.addEventListener("click", () => api_.open("indicator", r.dataset.ind)));
   };
   draw();
@@ -507,7 +508,7 @@ function renderHub(el, ctx) {
       ["alerts", "Alerts", "What was flagged and why"], ["record", "My saved record", "Everything stored, and my normal"], ["weekly", "Weekly review", "Trends, what worked, what to share"]]],
     ["Check-ins", [["health_log", "Health log", "Pulse, blood pressure, glucose, temperature, sleep, mood"], ["cognitive", "Cognitive check", "25-second reaction test"], ["trends", "Trends", "Every reading over time"]]],
     ["Wellbeing", [["orb_calm", "Stillpoint", "A breathing game, tracked by heart rate"], ["race", "Slipstream", "Race past the planets; boost and draft"], ["greenhouse", "Red Harvest", "Farm on Mars: grow crops, fill crew orders"], ["wellbeing", "Wellbeing hub", "Stillpoint, Slipstream, Red Harvest and the science"], ["mind", "How I'm doing", "Mood, energy, stress, connection"], ["journal", "Private journal", "Kept on this device only"], ["interventions", "Suggestions", "What Sentinel recommends now"]]],
-    ["Crew and ship", [["environment", "Environment and mode", "Where you are; what changes"], ["profile", "My health profile", "Allergies, plan, buddy, consent"], ["onboarding", "First run", "Consent, kit, voice, calibration"], ["kit", "Medical kit", "On board, filtered for you (SIM)"], ["crew", "Crew", "Who is using Sentinel"], ["cabin", "Cabin air", "Oxygen and carbon dioxide (SIM)"], ["hardware", "Sentinel Skin", "The wearable design (DESIGNED)"], ["settings", "Settings", "Theme, camera, microphone, voice"], ["datasets", "NASA research datasets", "Published human datasets behind what is tracked"], ["about", "About and credits", "Sources and licences"]]],
+    ["Crew and ship", [["environment", "Environment and mode", "Where you are; what changes"], ["profile", "My health profile", "Allergies, plan, buddy, consent"], ["onboarding", "First run", "Consent, kit, voice, calibration"], ["kit", "Medical kit", "On board, filtered for you (SIM)"], ["crew", "Crew", "Who is using Sentinel"], ["cabin", "Cabin air", "Oxygen and carbon dioxide (SIM)"], ["hardware", "Sentinel Skin", "The wearable design (DESIGNED)"], ["settings", "Settings", "Theme, camera, microphone, voice"], ["devices", "Devices", "Camera, watch, chest hub, suit, cabin: what is connected"], ["datasets", "NASA research datasets", "Published human datasets behind what is tracked"], ["about", "About and credits", "Sources and licences"]]],
   ];
   el.innerHTML = groups.map(([g, items]) => `<section class="hub-group"><h3>${esc(g)}</h3><div class="hub">${items.map(([k, t, d]) =>
     `<button type="button" data-open="${k}"><strong>${esc(t)}</strong><span>${esc(d)}</span></button>`).join("")}</div></section>`).join("");

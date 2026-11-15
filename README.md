@@ -159,3 +159,7 @@ All limits are in `shared/thresholds.json`, each with `kind` (`nasa`, `clinical_
 ## Repository hygiene
 
 `.gitignore` covers `.env`, `.venv/`, `certs/`, `models/`, `data/` (state, TTS cache, usage, ground queue), `voiceprints/`, caches and screenshots. The largest tracked files are the vendored MediaPipe WASM (14 MB each); nothing is near 50 MB. A scan of all commits found no `gsk_` keys and no ElevenLabs keys; two long tokens flagged by the pattern were minified vendor code.
+
+## How it works and how it would integrate
+
+See [docs/INTEGRATION.md](docs/INTEGRATION.md): the pipeline, the single device interface (camera, watch, chest hub, suit, cabin), where it would connect to NASA systems, and how it runs in space. What is LIVE, SIM and DESIGNED is stated there.

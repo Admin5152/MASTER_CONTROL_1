@@ -28,7 +28,7 @@ import httpx
 SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
            "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "symptom",
            "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence", "profile", "audit", "pulse",
-           "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "indicator", "environment", "onboarding", "kit", "datasets", "notifications"]
+           "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "indicator", "environment", "onboarding", "kit", "datasets", "notifications", "devices"]
 ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
 METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
            "reaction", "talk_time", "pitch", "o2", "co2"]
@@ -75,6 +75,10 @@ There are two kinds of question.
 
 Always: plain spoken English, no markdown, no lists, no emoji, no symbols that cannot be read aloud.
 You cannot raise alerts or change medical actions.
+
+Devices: STATE.devices says which devices are sending readings right now (camera, watch, chest hub, suit, cabin sensors) and
+what each last reported. If asked what is connected, or where a number came from, answer from it. A device marked
+simulated is a simulator, say so. Never claim a device is connected that STATE.devices does not list.
 
 Suit: STATE.suit is the EVA suit's telemetry (SIM). On an EVA, "integrity" is ok, watch or breach; a breach names the
 region. If asked about the suit, answer from it (pressure in psi, how fast it is falling, oxygen flow). A breach is
@@ -361,6 +365,9 @@ def small_talk(t: str, name: str = "") -> str | None:
 def rules_reply(state: dict, transcript: str) -> tuple[str, list[dict]]:
     name = state.get("display_name", "")
     t = (transcript or "").lower()
+    import re as _re
+    if _re.search(r"\b(what|which)\b.*\b(devices?|sensors?|wearables?)\b|\b(devices?|sensors?|watch|suit|wearable)\b.*\b(connected|working|online|linked|sending)\b|\bwhere (do|did) (my|the|these|those) (readings?|numbers?) come from\b", t):
+        return state.get("devices") or "The camera and the microphone are what I can use right now. Worn devices would show here when they send readings.", [{"cmd": "open_screen", "name": "devices"}]
     if t.strip() and not is_health_question(t):
         talk = small_talk(t, name)
         return (talk, []) if talk else (OFFLINE_GENERAL, [])
