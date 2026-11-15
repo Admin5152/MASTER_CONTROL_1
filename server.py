@@ -50,16 +50,16 @@ from brain.clinical.alerts import alerts  # noqa: E402
 from brain.crew.notify import Notifications  # noqa: E402
 from brain.core.devices import Devices  # noqa: E402
 from brain.clinical import protocols as protomod  # noqa: E402
-from systems.skin import Skin  # noqa: E402
+from brain.core.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
 from brain.core.contract import ContractError  # noqa: E402
 from brain.mission.radiation import SpaceWeather, storm_dose_step, feed_freshness  # noqa: E402
 from brain.core.store import Store  # noqa: E402
-from systems import speaker  # noqa: E402
+from brain.ai import speaker  # noqa: E402
 from brain.crew.race_rooms import RaceRooms  # noqa: E402
 from brain.crew.messages import crew_messages  # noqa: E402
-from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
+from brain.demo.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
 notes = Notifications()

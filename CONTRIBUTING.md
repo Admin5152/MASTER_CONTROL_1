@@ -19,19 +19,19 @@ run.ps1                  one command to run everything (HTTPS for the tablet, th
 brain/                   Python logic, grouped by purpose (each sub-package's __init__.py says what it holds)
   core/                    the record: store.py (state + history, data/state.json), contract.py (validation, deep merge),
                            pipeline.py (readings), devices.py (one door for every device), audit.py, vault.py
-                           (encryption at rest), profile.py, onboarding.py
+                           (encryption at rest), profile.py, onboarding.py, skin.py (Sentinel Skin SIM feed)
   rules/                   assessment: thresholds.py (limits with kind + source), drift.py (change from baseline),
                            decision.py (the ordered rules that set `action`), indicators.py, trends.py, safety.py
                            (fixed urgent-concern script), mrid.py (NASA MRID evidence)
   clinical/                care: care.py (triage, protocol runner, care log), clinic.py, protocols.py, medicine.py
                            (kit), eyes.py (eye check), alerts.py (alert lifecycle), plan.py (reminders)
-  ai/                      the brain and voice: llm.py (prompts, health vs general, memory, streaming, numeric guard,
+  ai/                      the brain and voice: speaker.py (who is speaking, Resemblyzer), llm.py (prompts, health vs general, memory, streaming, numeric guard,
                            command validator, Groq), claude.py (Claude first, spending stop), speech.py (/api/stt,
                            /api/tts: Groq Whisper -> local; ElevenLabs -> Kokoro; caches, budgets), whisper_worker.py
   mission/                 space and operations: radiation.py, suit.py (EVA suit, SIM), ops.py (modes, EVA readiness,
                            digest), ground.py (store-and-forward link, SIM delay), environment.py
   crew/                    people: messages.py, notify.py (inboxes), crew_pulse.py, wellbeing.py, race_rooms.py
-systems/                 speaker ID (Resemblyzer), Sentinel Skin feed, scripted scenarios
+  demo/                    scenarios.py: scripted demos (solar storm, cabin CO2, fever, ...), labelled SIM
 services/twi/            local languages (Twi, Ewe, Ga, Fante, Dagbani, Yoruba): a Node service on port 3001 calling Khaya AI
   server.js, routes/twi.js   /api/lang/* (= /api/twi/*): languages, listen, speak, translate, health
   khaya.js, twi_rules.js     the Khaya client (quota, caches) and the offline phrase rules
@@ -48,9 +48,13 @@ app/                     the browser app (plain ES modules, no build step)
   js/interface/          orb.js, bodypanel.js (rail, system panel, insights, chips), vitals.js, ranges.js, readings.js, screens.js, tiles.js, charts.js, banner.js, demopanel.js, dashboard.js
   js/voice/              voice.js (VAD capture, STT, TTS playback), bargein.js, vad.js, wake.js, pitch.js, wav.js,
                          languages.js (the language list), twi.js (speaking through Khaya)
-  js/vision/             MediaPipe face mesh + pose, rPPG pulse, eye metrics
-  js/systems/            cognitive.js + pvt.js (reaction test, Fitts's Law), radiation.js, symptom intake
-  js/experience/         race/ (space race), eyecheck.js, missionmed.js (exam, ground, measures, wellbeing, organ view), hardware.js (Sentinel Skin), orbcalm.js, greenhouse.js, ...
+  js/vision/             MediaPipe face mesh + pose, rPPG pulse, eye metrics, face.js (expression)
+  js/clinical/           care.js, clinic.js, profile.js, eyecheck.js, missionmed.js (exam, ground, measures, organ view),
+                         cognitive.js + pvt.js (reaction test, Fitts's Law), symptom.js + symptomlog.js, audit.js
+  js/wellbeing/          race/ (space race), mars/ (greenhouse base), orbcalm.js, greenhouse.js, grounding.js,
+                         interventions.js, wellbeing.js (hub), science.js, support.js, pulse.js (crew pulse), logic.js
+  js/wearable/           hardware.js, skin.js (Sentinel Skin, the DESIGNED wearable)
+  js/mission/            radiation.js (Radiation Watch), planet-explorer.js
   js/comms/              crew messages
   assets/                body3d (bodies + anatomy GLB), game (Blender GLBs), organs (Blender PNGs), space (planet textures), sound, fonts
   vendor/                three.js, MediaPipe, Chart.js, GSAP (all local; nothing loads from the internet)
@@ -73,14 +77,14 @@ data/, models/, certs/   local only (git-ignored): the record, caches, usage met
 |---|---|---|
 | Talking to Sentinel | `js/main.js` (handleCommand, say, captions), `js/voice/voice.js` | `brain/ai/llm.py`, `brain/ai/speech.py`, routes `/api/chat/stream`, `/api/stt`, `/api/tts` |
 | Screen changes and pointing | `js/core/director.js` (every command), `js/core/intents.js` (local phrases) | `brain/ai/llm.py` `validate_commands` (same whitelist as `js/core/commands.js`) |
-| Body, X-ray, scan, organ view | `js/world/body3d.js`, `js/world/fit.js` (anatomy fitted inside each body at load), `js/interface/bodypanel.js`, `js/interface/body.js` (zone status, pointing regions), `js/experience/missionmed.js` (organ) | readings via `/api/state`, `/api/aux`; how to measure / why it matters with MRIDs in `shared/facts.json` |
-| Symptom entry ("Where does it hurt?") | `js/systems/symptom.js`, `js/systems/symptomlog.js` | `manual.symptom_log` in the contract, kit match in `brain/rules/decision.py` |
+| Body, X-ray, scan, organ view | `js/world/body3d.js`, `js/world/fit.js` (anatomy fitted inside each body at load), `js/interface/bodypanel.js`, `js/interface/body.js` (zone status, pointing regions), `js/clinical/missionmed.js` (organ) | readings via `/api/state`, `/api/aux`; how to measure / why it matters with MRIDs in `shared/facts.json` |
+| Symptom entry ("Where does it hurt?") | `js/clinical/symptom.js`, `js/clinical/symptomlog.js` | `manual.symptom_log` in the contract, kit match in `brain/rules/decision.py` |
 | Readings, badges, range bars | `js/interface/readings.js`, `js/interface/ranges.js`, `js/interface/tiles.js` | `brain/rules/thresholds.py`, `brain/rules/drift.py` |
-| Reaction test | `js/systems/cognitive.js`, `js/systems/pvt.js` | baseline in `brain/core/store.py` |
-| Exam, ground, measures | `js/experience/missionmed.js` | `brain/mission/ground.py`, `/api/ground`, `/api/log` |
-| Space race | `js/experience/race/` | `/api/log` (session fields), `brain/crew/race_rooms.py` (multiplayer) |
+| Reaction test | `js/clinical/cognitive.js`, `js/clinical/pvt.js` | baseline in `brain/core/store.py` |
+| Exam, ground, measures | `js/clinical/missionmed.js` | `brain/mission/ground.py`, `/api/ground`, `/api/log` |
+| Space race | `js/wellbeing/race/` | `/api/log` (session fields), `brain/crew/race_rooms.py` (multiplayer) |
 | EVA and suit | `js/main.js` (`suitCommand`), `js/core/intents.js` (EVA phrases), `js/interface/demopanel.js` | `brain/mission/suit.py`, `brain/mission/ops.py`, `/api/suit`, `/api/ops/{cid}/readiness` |
-| Eye check | `js/experience/eyecheck.js`, `js/vision/eyemetrics.js` | `brain/clinical/eyes.py`, `/api/eyes` |
+| Eye check | `js/clinical/eyecheck.js`, `js/vision/eyemetrics.js` | `brain/clinical/eyes.py`, `/api/eyes` |
 | Languages | `js/voice/languages.js`, `js/voice/twi.js`, `js/voice/voice.js` | `services/twi/`, `/api/lang/*` ([docs/LANGUAGES.md](docs/LANGUAGES.md)) |
 | Brain models | — | `brain/ai/claude.py` (Claude), `brain/ai/llm.py` (Groq fallback, rules bank) |
 

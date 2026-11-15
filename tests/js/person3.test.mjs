@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { matchWake } from "../../app/js/voice/wake.js";
 import { matchIntent } from "../../app/js/core/intents.js";
 import { PulseTracker } from "../../app/js/vision/rppg.js";
-import { classifyBlendshapes, estimateBreathingRate, FaceSystem, EMOTIONS, EMOTION_NOTES, EmotionWindow, faceCropBox, topEmotion } from "../../app/js/systems/face.js";
+import { classifyBlendshapes, estimateBreathingRate, FaceSystem, EMOTIONS, EMOTION_NOTES, EmotionWindow, faceCropBox, topEmotion } from "../../app/js/vision/face.js";
 
 // SF1: Camera scan in good light gives heart rate with confidence >= 0.6, labelled LIVE
 test("SF1: Camera scan in good light gives pulse with confidence >= 0.6", () => {
@@ -161,7 +161,7 @@ test("Expression status lines use the agreed wording; opt-out clears gathered mo
 });
 
 // Face scan -> record: camera readings become contract patches (breathing rate, expression)
-import { CameraLog } from "../../app/js/systems/face.js";
+import { CameraLog } from "../../app/js/vision/face.js";
 
 test("CameraLog: a camera breathing reading becomes a vitals patch marked camera", () => {
   const log = new CameraLog();

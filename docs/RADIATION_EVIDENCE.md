@@ -1,6 +1,6 @@
 # Radiation evidence review
 
-The 11 supplied PDFs were extracted locally with pypdf. Full extraction is in radiation_mrid_extracted.txt; original PDFs remain authoritative.
+The 11 supplied PDFs were extracted locally with pypdf. Full extraction is in [notes/radiation_mrid_extracted.txt](notes/radiation_mrid_extracted.txt); original PDFs remain authoritative.
 
 - MR004L p1: area dosimeters provide location-specific data; mission and accumulated doses support exposure assessment.
 - MR004S: continuous personal passive dosimetry, including EVA; historical Shuttle requirement, not a Mars procedure.

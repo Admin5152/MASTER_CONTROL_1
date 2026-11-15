@@ -95,7 +95,7 @@ def test_api_card_rephrase_endpoint(monkeypatch):
 
 def test_sf8_speaker_identification():
     """SF8: Speaker identification checks availability and handles voiceprint matching."""
-    from systems import speaker
+    from brain.ai import speaker
     # When Resemblyzer is available, enrol and identify; when not, graceful fallback
     avail = speaker.available()
     if not avail:

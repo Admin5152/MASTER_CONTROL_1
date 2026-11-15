@@ -210,10 +210,10 @@
   - Click-to-inspect: tapping the chest immediately loads ECG/HR trends, respiration history, and cardiac clinical guidance.
   - X-Ray & Anatomy toggles reveal underlying organ systems.
   - Glove-friendly UI design: oversized touch targets (minimum 48px hit areas) optimized for pressurized spacesuit operations.
-* **Computer Vision rPPG (`app/js/vision/rppg.js` & `app/js/systems/face.js`):**
+* **Computer Vision rPPG (`app/js/vision/rppg.js` & `app/js/vision/face.js`):**
   - Measures subtle micro-vascular facial skin color variations (photoplethysmography) from standard webcams.
   - Calculates confidence values based on ambient lighting and movement; low-confidence readings are labeled `LIVE estimate` and never trigger false alarms alone.
-* **PVT Cognitive Reaction Test (`app/js/systems/pvt.js`):**
+* **PVT Cognitive Reaction Test (`app/js/clinical/pvt.js`):**
   - 30-second standardized spaceflight psychomotor vigilance test.
   - Measures reaction latency (ms) and attention lapses, providing objective operational fatigue tracking.
 
@@ -281,7 +281,7 @@
   - **Energy:** Sleep duration + sleep quality + PVT cognitive reaction readiness.
   - **Stress:** Self-rated stress + resting heart rate drift + autonomic arousal.
   - **Connection:** Communication balance, talk-time participation, and social engagement.
-* **Empirical Closed-Loop Learning (`app/js/experience/logic.js`):**
+* **Empirical Closed-Loop Learning (`app/js/wellbeing/logic.js`):**
   - Every intervention logs pre-session and post-session stress ratings.
   - Sentinel dynamically ranks which countermeasures actually work for each specific astronaut over time (e.g., ranking Orb Calm ahead of Earth Window if biofeedback produces a greater $\Delta\text{Stress}$ reduction).
 * **Privacy-Preserving Crew Pulse:**

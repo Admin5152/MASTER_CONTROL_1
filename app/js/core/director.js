@@ -6,7 +6,7 @@ import { validateCommands } from "./commands.js";
 import { cue } from "./sound.js";
 import * as body from "../interface/body.js";
 import { ZONE_NAMES, badgeHTML, esc, fmt, statusWord, zoneReadings } from "../interface/readings.js";
-import { skinReadings, mountUltrasound } from "../experience/skin.js";
+import { skinReadings, mountUltrasound } from "../wearable/skin.js";
 
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const SEV_COLOR = { ok: "#3fbf80", watch: "#ffb547", info: "#ffb547", alert: "#ff3b4e" };

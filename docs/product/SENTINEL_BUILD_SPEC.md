@@ -324,7 +324,7 @@ Acceptance: fed a heart-rate series falling from 96 to 70 over 40 seconds, the O
 - `full_demo`: the six demo steps in order with spoken lines from the offline pack.
 - `reset`: back to mock data.
 
-### 6.8 Radiation Watch (`brain/mission/radiation.py`, `app/js/systems/radiation.js`)
+### 6.8 Radiation Watch (`brain/mission/radiation.py`, `app/js/mission/radiation.js`)
 
 Radiation is one of NASA's five hazards and the one a crew cannot feel. This module makes it visible and tells the crew what to do.
 

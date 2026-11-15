@@ -1,6 +1,6 @@
 // Mission hero + five cards (ref 02), and the body screen's findings list (ref 07's problem list).
 import { api } from "../core/api.js";
-import { plantSVG } from "../experience/greenhouse.js";
+import { plantSVG } from "../wellbeing/greenhouse.js";
 import { ZONE_NAMES, badgeHTML, esc, fmt, statusWord, zoneReadings } from "./readings.js";
 import { tileMarkup } from "./tiles.js";
 

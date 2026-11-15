@@ -16,7 +16,7 @@
  │   sky (gradient + stars) → content scene → orb → bloom   │        │                                           │
  │   scenes: intro | space (Earth, Moon, Mars) | body | race│        │ brain/   core · rules · clinical · ai ·    │
  │ ─────────────────────────────────────────────────────── │        │          mission · crew (Claude, Groq)     │
- │ Voice: mic → VAD → /api/stt ; /api/tts → Web Audio → orb │        │ systems/ speaker ID · scenarios            │
+ │ Voice: mic → VAD → /api/stt ; /api/tts → Web Audio → orb │        │          speaker ID · demo scenarios       │
  │ Vision: MediaPipe face mesh + pose → rPPG pulse          │        │ data/    state.json, tts_cache, ground     │
  └─────────────────────────────────────────────────────────┘        └───────────────────────────────────────────┘
 ```

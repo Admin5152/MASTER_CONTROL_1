@@ -57,6 +57,8 @@ Chrome opens **https://localhost:8443/app/**. Tap **Begin** and say **"Hey Senti
 | [Logs and troubleshooting](docs/LOGS.md) | The server window, the audit log, health and usage meters, fixes for common problems |
 | [Datasets](docs/DATASETS.md) | Every dataset we used (NASA, NOAA, clinical, 3D) and how Sentinel uses each |
 | [Languages](docs/LANGUAGES.md) | Twi, Ewe, Ga, Fante, Dagbani and Yoruba through Khaya AI: how it works, setup, adding a language |
+| [Security and privacy](docs/SECURITY.md) | How health data is protected, tablet pairing, keys, what leaves the device |
+| [Model card](docs/model_card.md) | Every model Sentinel uses, how each is kept in check, evaluation and limits |
 | [Architecture](docs/ARCHITECTURE.md) | How the browser, server, rules engine, brain and voice fit together |
 | [Integration and space](docs/INTEGRATION.md) | The device interface, where NASA systems would plug in, how it works in flight |
 | [Judge walkthrough](docs/JUDGE_WALKTHROUGH.md) | The product in one read, and a problem followed start to finish |
@@ -68,11 +70,11 @@ All documents are indexed in [docs/README.md](docs/README.md).
 ## Project layout
 
 ```
-app/            the browser app (what the crew sees): js/ core, voice, vision, world, interface, experience
+app/            the browser app (what the crew sees): js/ core, voice, vision, world, interface, clinical,
+                wellbeing, mission, wearable, comms
 brain/          Python logic, grouped: core (record) · rules (assessment) · clinical (care) · ai (brain, speech)
-                · mission (radiation, EVA, ground) · crew (messages, wellbeing)
+                · mission (radiation, EVA, ground) · crew (messages, wellbeing) · demo (scenarios)
 services/twi/   local-language service (Node, Khaya AI)
-systems/        speaker ID, scripted scenarios, Sentinel Skin feed
 shared/         sourced data: thresholds, NASA MRIDs, crew, environments, med kit
 dataset/        the 68 NASA MRID PDFs
 server.py       the server (FastAPI): the app and every /api endpoint

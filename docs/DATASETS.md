@@ -93,7 +93,7 @@ ejections and solar energetic particle events with their onset times.
 **In the repo:** `shared/donki_sep_events.json`, two 60-day windows (May–June and September–October 2024). DONKI
 refuses ranges over 60 days.
 
-**How Sentinel uses it:** the `solar_storm` demo scenario (`systems/scenarios.py`) replays the real onset of the
+**How Sentinel uses it:** the `solar_storm` demo scenario (`brain/demo/scenarios.py`) replays the real onset of the
 **10 May 2024** GOES >10 MeV event. DONKI gives onset times, not peak flux, so the flux curve is scripted, and the
 screen says so: "SIM · replay of the 2024-05-10 event (NASA DONKI); flux curve scripted".
 

@@ -2,7 +2,7 @@
 
 **Module owner:** Person 3  
 **Files in scope:** `brain/ai/speech.py`, `brain/ai/whisper_worker.py`, `brain/ai/llm.py`,
-`systems/speaker.py`, `app/js/systems/face.js`, `app/js/core/intents.js`,
+`brain/ai/speaker.py`, `app/js/vision/face.js`, `app/js/core/intents.js`,
 `app/js/interface/orb.js`
 
 ---
@@ -14,14 +14,14 @@
 | ID | Requirement | Status | File | Function / Note |
 |---|---|---|---|---|
 | FACE-1 | MediaPipe face mesh (468 landmarks) in camera scan modal | ⚠️ Partly | `app/js/vision/vision.js` `draw()` | Only oval/eyes/lips/brows drawn. Full tessellation missing. Canvas draw loop is in **teammate's file** (`vision.js`). |
-| FACE-2 | Breathing rate from chest displacement, written to `state.vitals.breathing_rate` | ✅ Working | `app/js/systems/face.js` `estimateBreathingRate()` / `emitReadings()` | Emits `reading.added` with `indicator:"breathing_rate"`. State write happens via existing `patchHr`/store path in `vision.js`. |
-| FACE-3 | rPPG heart rate from forehead ROI, confidence 0–1, label LIVE | ✅ Working | `app/js/vision/vision.js` `samplePulse()` / `estimate()` + `app/js/systems/face.js` `estimatePulse()` | POS algorithm in `rppg.js`. `quality < 0.35` suppresses reading. Emits `reading.added` + `vision:hr`. |
-| FACE-4 | Mood opt-in: valence/arousal from blendshapes only if profile opt-in set | ✅ Working | `app/js/systems/face.js` `pushBlendshapes()` / `estimateMood()` | `optInMood` flag; respects `setOptInMood(false)` to suppress. |
+| FACE-2 | Breathing rate from chest displacement, written to `state.vitals.breathing_rate` | ✅ Working | `app/js/vision/face.js` `estimateBreathingRate()` / `emitReadings()` | Emits `reading.added` with `indicator:"breathing_rate"`. State write happens via existing `patchHr`/store path in `vision.js`. |
+| FACE-3 | rPPG heart rate from forehead ROI, confidence 0–1, label LIVE | ✅ Working | `app/js/vision/vision.js` `samplePulse()` / `estimate()` + `app/js/vision/face.js` `estimatePulse()` | POS algorithm in `rppg.js`. `quality < 0.35` suppresses reading. Emits `reading.added` + `vision:hr`. |
+| FACE-4 | Mood opt-in: valence/arousal from blendshapes only if profile opt-in set | ✅ Working | `app/js/vision/face.js` `pushBlendshapes()` / `estimateMood()` | `optInMood` flag; respects `setOptInMood(false)` to suppress. |
 | FACE-5 | VAD + wake phrase "hey Sentinel" + intent matching | ✅ Working | `app/js/core/intents.js` `matchIntent()` | Wake word detection lives in `app/js/voice/voice.js` (teammate file). Intent matching fully implemented here. |
 | FACE-6 | Groq Whisper STT + local faster-whisper fallback | ✅ Working | `brain/ai/speech.py` `stt()` / `stt_groq()` / `stt_local()` + `brain/ai/whisper_worker.py` `main()` | Groq first; subprocess fallback on failure. 16 kHz resampling in worker. |
 | FACE-7 | Brain LLM card rephraser: ≤ 2 sentences, no invented numbers | ✅ Working | `brain/ai/llm.py` `rephrase_card()` + `card_numbers_ok()` | `CARD_SYSTEM_PROMPT`, numeric guard, `rules_rephrase_card()` scripted fallback. |
 | FACE-8 | TTS chain: ElevenLabs → Kokoro → browser fallback, listen paused while speaking | ✅ Working | `brain/ai/speech.py` `tts()` / `tts_eleven()` / `tts_kokoro()` | Disk cache, budget cap (9000 chars default). Browser fallback noted for JS caller. |
-| FACE-9 | Speaker ID with Resemblyzer, graceful fallback when unavailable | ✅ Working | `systems/speaker.py` `identify()` / `available()` / `enrol()` | Returns `{crew_id: null, reason: "..."}` when Resemblyzer not installed or no voiceprints. |
+| FACE-9 | Speaker ID with Resemblyzer, graceful fallback when unavailable | ✅ Working | `brain/ai/speaker.py` `identify()` / `available()` / `enrol()` | Returns `{crew_id: null, reason: "..."}` when Resemblyzer not installed or no voiceprints. |
 
 | Test | Requirement | Status | Note |
 |---|---|---|---|
@@ -83,9 +83,9 @@
 
 | File | Function | What Changed | Why | FACE-n | SF-n |
 |---|---|---|---|---|---|
-| `app/js/systems/face.js` | (new file) `classifyBlendshapes()` | Created: maps 52 blendshapes to valence (1–5) and arousal (0–1) | FACE-4 mood pipeline | FACE-4 | SF5 |
-| `app/js/systems/face.js` | `estimateBreathingRate()` | Created: zero-crossing on smoothed chest-Y signal, 8–32 bpm gate | FACE-2 breathing rate | FACE-2 | — |
-| `app/js/systems/face.js` | `FaceSystem` class | Created: pulse tracker wrapper, pose/blendshape buffers, `emitReadings()` | FACE-1/2/3/4 | FACE-1–4 | SF1,SF5,SF6 |
+| `app/js/vision/face.js` | (new file) `classifyBlendshapes()` | Created: maps 52 blendshapes to valence (1–5) and arousal (0–1) | FACE-4 mood pipeline | FACE-4 | SF5 |
+| `app/js/vision/face.js` | `estimateBreathingRate()` | Created: zero-crossing on smoothed chest-Y signal, 8–32 bpm gate | FACE-2 breathing rate | FACE-2 | — |
+| `app/js/vision/face.js` | `FaceSystem` class | Created: pulse tracker wrapper, pose/blendshape buffers, `emitReadings()` | FACE-1/2/3/4 | FACE-1–4 | SF1,SF5,SF6 |
 | `app/js/core/intents.js` | `matchIntent()` `checkVerb` | Added `has(t,"headache")` and `/ (have|got) (a|an)? /` to symptom clause | SF3: "I have a headache" was not matching | FACE-5 | SF3 |
 | `brain/ai/llm.py` | `rephrase_card()` | Added: CARD_SYSTEM_PROMPT, numeric guard, LLM call, scripted fallback | FACE-7, FACE-9 card rephraser | FACE-7, FACE-9 | SF4, SF7 |
 | `brain/ai/llm.py` | `rules_rephrase_card()` | Added: scripted level 1/2/3 fallback, ≤ 2 sentences, no invented facts | FACE-9 offline fallback | FACE-9 | SF4 |
@@ -100,7 +100,7 @@
 
 | File | Function | What Changed | Why | FACE-n | SF-n |
 |---|---|---|---|---|---|
-| `app/js/systems/face.js` | `drawFaceMesh()` (new export) | Added: draws full 468-landmark triangulated wireframe (thin, 55% opacity using `--line` colour) then overlays bright contour lines for face oval, eyes, lips and brows (using `--accent` colour, 6px shadow blur) | Stage 1 spec: full mesh + brighter contours, colours from existing CSS vars | FACE-1 | SF1 |
+| `app/js/vision/face.js` | `drawFaceMesh()` (new export) | Added: draws full 468-landmark triangulated wireframe (thin, 55% opacity using `--line` colour) then overlays bright contour lines for face oval, eyes, lips and brows (using `--accent` colour, 6px shadow blur) | Stage 1 spec: full mesh + brighter contours, colours from existing CSS vars | FACE-1 | SF1 |
 | `app/js/vision/vision.js` | `draw()` import + call | Replaced 7-line inline contour loop with `drawFaceMesh(ctx2d, lastFaceLm, mp, W, H)`. Added `drawFaceMesh` to import from `face.js`. | Stage 1 spec says drawing logic goes in `face.js`. Vision.js was already modified in the prior pass (documented Rule 2 exception). | FACE-1 | SF1 |
 
 **Note on Rule 2:** `vision.js` belongs to a teammate. This change was made because:
@@ -234,10 +234,10 @@ Other findings from the diagnosis:
 | `brain/ai/llm.py` | `warm_hsemotion()` | No longer swallows errors; logs the warm-up result | A silent failure hid the real state | FACE-3 |
 | `brain/ai/llm.py` | `hsemotion_status()` (new), `FaceModelUnavailable` (new) | Status `{loaded, error, path}` for `/api/health`; typed error for the endpoint | So "model unavailable" is only said when true | FACE-3 |
 | `brain/ai/llm.py` | `predict_face_emotion()`, `FACE_EMOTIONS` | Returns `scores` for all eight emotions; converts OpenCV BGR to the RGB the model expects. Nothing is written to disk. | Eight bars; correct colour order | FACE-3 |
-| `app/js/systems/face.js` | `EMOTIONS`, `faceCropBox()`, `topEmotion()` (new) | Emotion list in model order; padded square face crop from landmarks, clamped to the frame; top emotion | Crop sent to the model; panel rows | FACE-3 |
-| `app/js/systems/face.js` | `EmotionWindow` (new) | Rolling mean over the last 5 replies; `ready` only after 3 | Bars do not flicker; one frame never raises a flag | FACE-3 |
-| `app/js/systems/face.js` | `EMOTION_NOTES` (new) | The status lines: "no face detected", "expression model unavailable", "camera mood analysis is off for this profile", "expression service not reachable", "reading…", "camera off" | Agreed wording in one place | FACE-3, FACE-4 |
-| `app/js/systems/face.js` | `FaceSystem.setOptInMood()` | Opting out now also clears the mood buffer and last mood | Opt-out drops what was gathered | FACE-4, SF5 |
+| `app/js/vision/face.js` | `EMOTIONS`, `faceCropBox()`, `topEmotion()` (new) | Emotion list in model order; padded square face crop from landmarks, clamped to the frame; top emotion | Crop sent to the model; panel rows | FACE-3 |
+| `app/js/vision/face.js` | `EmotionWindow` (new) | Rolling mean over the last 5 replies; `ready` only after 3 | Bars do not flicker; one frame never raises a flag | FACE-3 |
+| `app/js/vision/face.js` | `EMOTION_NOTES` (new) | The status lines: "no face detected", "expression model unavailable", "camera mood analysis is off for this profile", "expression service not reachable", "reading…", "camera off" | Agreed wording in one place | FACE-3, FACE-4 |
+| `app/js/vision/face.js` | `FaceSystem.setOptInMood()` | Opting out now also clears the mood buffer and last mood | Opt-out drops what was gathered | FACE-4, SF5 |
 | `tests/test_person3.py` | 4 new tests | Eight scores returned; bad input is 400; load failure is 503 and logged; no file opened for writing during a request | Proof | FACE-3 |
 | `tests/js/person3.test.mjs` | 4 new tests | Emotion order; crop box; rolling window; status wording and opt-out | Proof | FACE-3, FACE-4, SF5 |
 
@@ -302,7 +302,7 @@ Before this stage only the camera pulse reached the state. Breathing rate and ex
 
 | File | Function | What Changed | Why |
 |---|---|---|---|
-| `app/js/systems/face.js` | `CameraLog` (new export) | Pure class: turns a camera `reading.added` (breathing rate) into `{vitals:{breathing_rate, sources:{breathing_rate:"camera"}}}` and a `vision:emotion` into `{state:{emotion, emotion_confidence}}`. Writes on change, re-writes every 5 s, ignores confidence below 0.35. | Section 8.6 / 8.8: face readings flow into the state contract |
+| `app/js/vision/face.js` | `CameraLog` (new export) | Pure class: turns a camera `reading.added` (breathing rate) into `{vitals:{breathing_rate, sources:{breathing_rate:"camera"}}}` and a `vision:emotion` into `{state:{emotion, emotion_confidence}}`. Writes on change, re-writes every 5 s, ignores confidence below 0.35. | Section 8.6 / 8.8: face readings flow into the state contract |
 | `app/js/main.js` | `mountApp()` | Listens for `reading.added` and `vision:emotion`, sends the patch, and shows "Saved to <name>'s record: …" on the face scan page. Camera stop sets the breathing source back to `sim`. Nothing is written while a scripted scenario runs. | Wiring (teammate file, same kind of exception as `patchHr`) |
 | `app/index.html` | face scan aside | Added `#cam-log` status line | Shows what was saved |
 | `tests/js/person3.test.mjs` | 4 `CameraLog` tests | Patch shape, filtering, throttling, summary | — |

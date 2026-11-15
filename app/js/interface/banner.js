@@ -1,7 +1,7 @@
 // Full-width alert banner: cabin, radiation and crew alerts. Persists until acknowledged.
 import { api } from "../core/api.js";
 import { startAlarm, stopAlarm } from "../core/sound.js";
-import { stormChecklist } from "../systems/radiation.js";
+import { stormChecklist } from "../mission/radiation.js";
 import { zoneReadings } from "./readings.js";
 
 const SIM_DELAY_MIN = 12.7; // SIM: one-way Earth-Mars light time chosen inside NASA's 4-24 minute range

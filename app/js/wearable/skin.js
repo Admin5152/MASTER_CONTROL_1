@@ -1,4 +1,4 @@
-// Sentinel Skin (DESIGNED wearable, SIM data in the demo). The backend's systems/skin.py produces
+// Sentinel Skin (DESIGNED wearable, SIM data in the demo). The backend's brain/core/skin.py produces
 // simulated module readings per zone when the demo panel turns the source on; they arrive in
 // aux.skin and are always badged "SIM · Sentinel Skin", never LIVE.
 // mountUltrasound draws a looping, echo-style picture on canvas: it illustrates what the patch would

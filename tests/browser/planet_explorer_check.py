@@ -9,7 +9,7 @@ with sync_playwright() as p:
     page.route("**/js/main.js*", lambda route: route.abort())
     page.goto("http://127.0.0.1:8000/app/", wait_until="domcontentloaded", timeout=60000)
     page.set_content('''<base href="http://127.0.0.1:8000/app/"><link rel="stylesheet" href="css/tokens.css"><link rel="stylesheet" href="css/app.css"><script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/jsm/"}}</script>''')
-    page.evaluate("async () => { window.explorer = await import('./js/systems/planet-explorer.js'); }")
+    page.evaluate("async () => { window.explorer = await import('./js/mission/planet-explorer.js'); }")
     for profile, name in [("lunar", "Moon"), ("mars_surface", "Mars"), ("mars_transit", "Mars")]:
         page.evaluate("p => { const host = document.createElement('div'); host.id = 'inline-host'; host.className = 'stage stage-radiation is-active'; document.body.append(host); window.cleanup = window.explorer.mountPlanetExplorer(host, p, 'Demo astronaut'); }", profile)
         page.wait_for_selector(".planet-inline")

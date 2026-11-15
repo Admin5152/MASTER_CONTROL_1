@@ -1,9 +1,9 @@
 // node --test tests/js : the wellbeing games' pure logic.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import * as F from "../../app/js/experience/mars/farm.js";
-import { PATTERNS, breathAt, calmSummary } from "../../app/js/experience/logic.js";
-import * as R from "../../app/js/experience/race/logic.js";
+import * as F from "../../app/js/wellbeing/mars/farm.js";
+import { PATTERNS, breathAt, calmSummary } from "../../app/js/wellbeing/logic.js";
+import * as R from "../../app/js/wellbeing/race/logic.js";
 
 // ---------- Mars Colony Farm ----------
 test("farm: a new farm has three planters, starter coins, three orders it can eventually fill", () => {
@@ -202,7 +202,7 @@ test("race: slipstream, near miss and PB delta", () => {
 });
 
 // ---------- tool ranking ----------
-import { rankRows } from "../../app/js/experience/support.js";
+import { rankRows } from "../../app/js/wellbeing/support.js";
 test("ranking: tools with 2+ sessions by mean mood change; the rest after", () => {
   const r = rankRows([
     { id: "a", n: 5, mean: 0.4 }, { id: "b", n: 1, mean: 3 }, { id: "c", n: 3, mean: 1.2 }, { id: "d", n: 0, mean: null }, { id: "e", n: 4, mean: 1.2 },

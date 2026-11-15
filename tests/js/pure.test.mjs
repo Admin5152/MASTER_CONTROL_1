@@ -8,7 +8,7 @@ import { encodeWav, resample } from "../../app/js/voice/wav.js";
 import { estimateBpm, PulseTracker } from "../../app/js/vision/rppg.js";
 import { matchIntent } from "../../app/js/core/intents.js";
 import { validateCommands } from "../../app/js/core/commands.js";
-import { createCalm, updateCalm, moodChange, greenhouseDay, greenhouseCalm, medianReaction, pacer } from "../../app/js/experience/logic.js";
+import { createCalm, updateCalm, moodChange, greenhouseDay, greenhouseCalm, medianReaction, pacer } from "../../app/js/wellbeing/logic.js";
 import { scanOrder } from "../../app/js/interface/body.js";
 
 // deterministic PRNG
@@ -287,7 +287,7 @@ test("VAD caps an utterance at 15 s and keeps a pause inside a sentence", () => 
 });
 
 // ---------- space race (replaces the Aurora Run tests; brief section 7 item 4) ----------
-import * as race from "../../app/js/experience/race/logic.js";
+import * as race from "../../app/js/wellbeing/race/logic.js";
 
 test("race power-ups: each planet's effect and duration", () => {
   const r = race.createRacer({ baseSpeed: 20 });
@@ -359,7 +359,7 @@ test("range bar places the marker against the sourced bands", () => {
 });
 
 // ---------- 3-minute psychomotor vigilance test (brief section 10) ----------
-import * as pvt from "../../app/js/systems/pvt.js";
+import * as pvt from "../../app/js/clinical/pvt.js";
 test("PVT: waits of 2-10 s, lapses over 500 ms, false starts, change from baseline", () => {
   assert.equal(pvt.nextWait("full", 0), 2000); assert.equal(pvt.nextWait("full", 1), 10000);
   assert.equal(pvt.nextWait("practice", 0.5), 2500);
@@ -394,7 +394,7 @@ test("Fitts's Law: ID = log2(D/W + 1), smaller targets take longer MT, throughpu
 
 // ---------- body model and zones (Product Document section 7) ----------
 import { worstSeverity, zoneStatuses, regionOf, REGIONS, REGION_ZONE, ZONES as BODY_ZONES } from "../../app/js/interface/body.js";
-import { buildSymptom, symptomPatch, symptomsFor, zoneFor, describeSymptom, LOG_MAX } from "../../app/js/systems/symptomlog.js";
+import { buildSymptom, symptomPatch, symptomsFor, zoneFor, describeSymptom, LOG_MAX } from "../../app/js/clinical/symptomlog.js";
 import { depthMap, columnAt, conformPoints, conformAnatomy, filterTriangles } from "../../app/js/world/fit.js";
 import { statusHTML, statusKey } from "../../app/js/interface/readings.js";
 

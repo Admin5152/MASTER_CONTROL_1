@@ -29,7 +29,8 @@ Start with [HOW-TO-RUN](HOW-TO-RUN.md) to get it running, then read whichever gu
 | [DATASETS.md](DATASETS.md) | Every dataset used (NASA MRIDs, NASA-STD-3001, NOAA, DONKI, NLSP, research, 3D) and how Sentinel uses each |
 | [../shared/SOURCES.md](../shared/SOURCES.md) | Where every number comes from: NASA standards, MRIDs, NOAA, clinical references, demo placeholders |
 | [RADIATION_EVIDENCE.md](RADIATION_EVIDENCE.md) | The radiation limits and dose rates, with sources |
-| [model_card.md](model_card.md) | What the models do, their limits, and how they are kept in check |
+| [model_card.md](model_card.md) | Every model Sentinel uses, how each is kept in check, what data leaves the device, evaluation, limits |
+| [SECURITY.md](SECURITY.md) | Encryption at rest, who sees what, tablet pairing, API keys, what leaves the device |
 | [../CREDITS.md](../CREDITS.md) | Data, models, assets and their licences |
 
 ## Product and pitch
@@ -40,3 +41,4 @@ Start with [HOW-TO-RUN](HOW-TO-RUN.md) to get it running, then read whichever gu
 | [product/](product/) | The product document, the build spec, the v2 redesign, and the v2 build notes |
 | [pitch/](pitch/) | Pitch deck notes, slides, the ASTRA research blueprint |
 | [checklists/](checklists/) | Integration checklists and status notes |
+| [notes/](notes/) | Working notes: Person 3's change log, the raw radiation MRID extraction |

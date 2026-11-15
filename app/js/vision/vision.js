@@ -2,7 +2,7 @@
 import { emit, on } from "../core/bus.js";
 import { PulseTracker } from "./rppg.js";
 // Person 3 (Stage 1, FACE-1): drawFaceMesh draws the full 468-landmark tessellation + bright contours.
-import { FaceSystem, drawFaceMesh, EMOTIONS, EMOTION_NOTES, EmotionWindow, faceCropBox, topEmotion } from "../systems/face.js";
+import { FaceSystem, drawFaceMesh, EMOTIONS, EMOTION_NOTES, EmotionWindow, faceCropBox, topEmotion } from "./face.js";
 import { api } from "../core/api.js";
 
 const isTablet = /Android|iPad|Tablet/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));

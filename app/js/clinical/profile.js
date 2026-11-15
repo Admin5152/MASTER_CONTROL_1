@@ -2,7 +2,7 @@
 // Grows over time; nothing is forced; a completeness meter shows what is empty. Stays on this device's brain.
 import { api } from "../core/api.js";
 import { esc } from "../interface/readings.js";
-import { TOOLS } from "./support.js";
+import { TOOLS } from "../wellbeing/support.js";
 
 const LIST = (v) => (Array.isArray(v) ? v.join(", ") : "");
 const SPLIT = (s) => String(s || "").split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);

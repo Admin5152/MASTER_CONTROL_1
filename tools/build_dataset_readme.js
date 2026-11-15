@@ -50,8 +50,8 @@ const titleMap = {
 
 md += '### Person 5: Lonely Games & Wellbeing Experiences (Evidence Base)\n\n';
 md += 'No NASA MRIDs govern entertainment or games directly. Instead, Person 5 builds from the following NASA Human Research Program (HRP) published evidence:\n\n';
-md += '- **NASA Space Gardening & Plant Growth Research:** Evidence that caring for living systems in space directly mitigates isolation, confinement, and monotony. Informs the **Hydroponic Greenhouse** (`app/js/experience/greenhouse.js`).\n';
-md += '- **HRP Risk of Behavioral Changes & Psychiatric Disorders:** Establishes the requirement for daily behavioral countermeasures, active mental breaks, and biofeedback-assisted autonomic regulation. Informs **Orb Calm** (`app/js/experience/orbcalm.js`) and **Space Race (Aurora Run)** (`app/js/experience/race/`).\n';
+md += '- **NASA Space Gardening & Plant Growth Research:** Evidence that caring for living systems in space directly mitigates isolation, confinement, and monotony. Informs the **Hydroponic Greenhouse** (`app/js/wellbeing/greenhouse.js`).\n';
+md += '- **HRP Risk of Behavioral Changes & Psychiatric Disorders:** Establishes the requirement for daily behavioral countermeasures, active mental breaks, and biofeedback-assisted autonomic regulation. Informs **Orb Calm** (`app/js/wellbeing/orbcalm.js`) and **Space Race (Aurora Run)** (`app/js/wellbeing/race/`).\n';
 md += '- **Isolation Analog Protocols (HERA, NEK, HI-SEAS):** Operational research showing that self-reported mood tracking before and after breaks helps individuals identify and manage psychological drift.\n\n';
 
 fs.writeFileSync('c:/Users/USER/OneDrive/Desktop/MASTER_CONTROL_1/dataset/README.md', md, 'utf8');

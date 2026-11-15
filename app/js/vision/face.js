@@ -4,7 +4,7 @@
 // Stage 1: exports drawFaceMesh() so vision.js can call it from its draw() loop.
 
 import { emit, on } from "../core/bus.js";
-import { PulseTracker } from "../vision/rppg.js";
+import { PulseTracker } from "./rppg.js";
 
 /**
  * FACE-1: the whole face as one even mesh (all 468 landmarks and the 2,556 edges joining them), with no

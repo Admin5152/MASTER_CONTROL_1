@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from systems import speaker
+from brain.ai import speaker
 
 ROOT = Path(__file__).resolve().parent.parent
 FIX = ROOT / "tests" / "fixtures"

@@ -11,7 +11,7 @@ import json
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 LINES = json.loads((ROOT / "app" / "assets" / "demo_lines.json").read_text(encoding="utf-8"))["lines"]
 DONKI = ROOT / "shared" / "donki_sep_events.json"
 NAMES = ["tired_crew", "calm_down", "cabin_dip", "solar_storm", "full_demo", "reset"]
