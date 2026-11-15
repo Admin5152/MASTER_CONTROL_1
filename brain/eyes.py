@@ -1,20 +1,18 @@
-"""Daily eye check: a screening aid for SANS (Spaceflight-Associated Neuro-ocular Syndrome), never a diagnosis.
+"""Daily eye check: how the eyes move, blink and open, and how the person sees, against their own baseline.
 
-What a tablet camera CAN follow day to day, against the person's own baseline:
-- how open each eye is (eye aperture), and left/right symmetry;
-- puffiness around the eyes and face (the microgravity fluid shift): brow-to-lid distance and cheek width,
-  both relative to the distance between the pupils, so distance from the camera does not matter;
-- redness of the white of the eye;
-plus two self-tests that NASA uses for eye health: near vision (blurred near vision is the symptom crews most often
-notice) and the Amsler grid (wavy, blurred or missing lines).
+What a tablet camera and the face mesh can measure meaningfully, day to day:
+- blinking: blinks a minute and the share of incomplete blinks. Dry, tired eyes are common in the dry cabin air of
+  a spacecraft; blinking changes with them;
+- eyelid opening, and left/right evenness: drooping lids with fatigue; one lid suddenly lower is worth a look;
+- eye tracking: following a moving dot, how closely the irises follow it (correlation) and how late (lag).
+  Tiredness, and the body adapting its balance in weightlessness, both affect it;
+plus two self-tests NASA uses for eye health: near vision (blurred close-up vision is the change crews notice
+first with SANS) and the Amsler grid.
 
-What it CANNOT do: SANS is diagnosed by imaging the back of the eye (fundoscopy, optical coherence tomography) and
-eye pressure (tonometry), as NASA does in flight (MEDB 1.10, MR014S, NASA JSC 28913). A photo of the front of the
-eye cannot show optic disc swelling or choroidal folds, so this check never claims to. A change here means: show
-the flight surgeon, who can arrange the eye exam.
-
-Eye photos stay on this device, encrypted (brain/vault.py), and can be deleted. Thresholds are illustrative
-(team-chosen) until a clinician reviews them.
+What it does not do: see inside the eye. SANS (Spaceflight-Associated Neuro-ocular Syndrome) needs an eye exam
+(fundoscopy, OCT, eye pressure; MEDB 1.10, MR014S, NASA JSC 28913). A change here means "show the flight surgeon".
+A close-up of the eye area with the face mesh drawn on it is kept with each check, on this device, encrypted.
+Thresholds are illustrative (team-chosen) until a clinician reviews them.
 """
 from __future__ import annotations
 
@@ -25,16 +23,14 @@ import time
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parent.parent / "data"
-METRICS = {   # key: (label, change that is worth a look, in percent of the baseline)
-    "aperture": ("how open your eyes are", 15.0),
-    "brow_lid": ("puffiness above the eyes", 8.0),
-    "cheek_width": ("puffiness of the face", 5.0),
-    "redness": ("redness of the eyes", 20.0),
+METRICS = {   # key: (label, unit, change from the baseline worth a look, in percent)
+    "blink_rate": ("blinks a minute", "/min", 50.0),
+    "aperture": ("how open your eyes are", "", 15.0),
+    "pursuit": ("how smoothly your eyes follow", "", 20.0),
 }
-ASYMMETRY = 0.15           # left/right aperture differ by more than 15%
-BASELINE_N = 3             # the first three checks make the baseline
-KEEP = 60                  # checks kept per person
-NASA = "On the station, eye health is followed with visual acuity, the Amsler grid, fundoscopy and OCT scans (MEDB 1.10, MR014S)."
+BASELINE_N = 3
+KEEP = 60
+NASA = "NASA's eye exams in flight include near vision and the Amsler grid (MEDB 1.10, MR014S); the back of the eye needs an eye exam."
 
 
 def _num(x):
@@ -61,17 +57,17 @@ class EyeChecks:
     def _save(self) -> None:
         if self.persist:
             from brain.vault import write_json
-            write_json(DATA / "eyes.json", self.data)   # eye photos and measurements: encrypted at rest
+            write_json(DATA / "eyes.json", self.data)   # encrypted at rest
 
     def add(self, cid: str, body: dict) -> dict:
         m = body.get("metrics") or {}
+        snap = str(body.get("snapshot") or "")
         rec = {
             "t": self.clock(),
-            "metrics": {k: _num(m.get(k)) for k in (*METRICS, "aperture_l", "aperture_r")},
+            "metrics": {k: _num(m.get(k)) for k in ("blink_rate", "incomplete", "aperture", "asymmetry", "pursuit", "lag_ms")},
             "near_blur": body.get("near_blur") if isinstance(body.get("near_blur"), bool) else None,
             "amsler_change": body.get("amsler_change") if isinstance(body.get("amsler_change"), bool) else None,
-            "images": {s: str(v)[:200000] for s, v in (body.get("images") or {}).items()
-                       if s in ("right", "left") and str(v).startswith("data:image/jpeg;base64,")},
+            "snapshot": snap[:300000] if snap.startswith("data:image/jpeg;base64,") else "",
         }
         with self.lock:
             lst = self.data.setdefault(cid, [])
@@ -91,27 +87,37 @@ class EyeChecks:
             lst = [dict(r) for r in self.data.get(cid, [])]
         if not lst:
             return {"checks": 0, "verdict": "none", "message": "No eye check yet. The first three make your baseline.", "nasa": NASA}
-        latest, base_recs = lst[-1], lst[:BASELINE_N]
-        baseline = {}
-        for k in METRICS:
-            vals = [r["metrics"].get(k) for r in base_recs if r["metrics"].get(k) is not None]
-            baseline[k] = statistics.median(vals) if vals else None
-        changes, notes = {}, []
+        latest, base = lst[-1], lst[:BASELINE_N]
         building = len(lst) <= BASELINE_N
-        for k, (label, limit) in METRICS.items():
-            b, v = baseline.get(k), latest["metrics"].get(k)
+        lm = latest["metrics"]
+
+        def baseline(k):
+            vals = [r["metrics"].get(k) for r in base if r["metrics"].get(k) is not None]
+            return statistics.median(vals) if vals else None
+
+        changes, notes, level = {}, [], "ok"
+        for k, (label, unit, limit) in METRICS.items():
+            b, v = baseline(k), lm.get(k)
             if b and v is not None:
                 pct = round((v - b) / b * 100, 1)
-                changes[k] = {"label": label, "pct": pct, "limit": limit, "flag": not building and abs(pct) > limit}
-                if changes[k]["flag"]:
-                    notes.append(f"{label} has changed by {abs(pct):.0f}% from your usual")
-        al, ar = latest["metrics"].get("aperture_l"), latest["metrics"].get("aperture_r")
-        asym = abs(al - ar) / ((al + ar) / 2) if al and ar else None
-        if asym is not None and asym > ASYMMETRY:
-            notes.append("your eyes look less even than usual")
-        level = "watch" if notes else "ok"
+                flag = not building and abs(pct) > limit
+                changes[k] = {"label": label, "value": round(v, 2), "unit": unit, "pct": pct, "flag": flag}
+                if flag:
+                    notes.append({
+                        "blink_rate": "you're blinking much more than usual, a common sign of dry or tired eyes" if pct > 0 else "you're blinking much less than usual, which can dry the eyes",
+                        "aperture": "your eyelids are lower than usual, as they are with tiredness" if pct < 0 else "your eyes are open wider than usual",
+                        "pursuit": "your eyes followed the dot less smoothly than usual" if pct < 0 else "",
+                    }[k])
+        notes = [n for n in notes if n]
+        if lm.get("incomplete") is not None and lm["incomplete"] > 0.4:
+            notes.append("many of your blinks are incomplete, which dries the eye")
+        b_asym, asym = baseline("asymmetry"), lm.get("asymmetry")
+        if not building and asym is not None and asym > 0.15 and asym > (b_asym or 0) + 0.08:
+            notes.append("one eyelid is lower than the other")
+        if notes:
+            level = "watch"
         if latest.get("near_blur"):
-            notes.insert(0, "close-up vision feels blurry")
+            notes.insert(0, "close-up reading looks blurry, the change crews notice first with eye changes in space")
             level = "watch"
         if latest.get("amsler_change"):
             notes.insert(0, "lines on the grid looked wavy or missing")
@@ -119,17 +125,17 @@ class EyeChecks:
         if level == "act":
             message = f"Tell the flight surgeon today: {notes[0]}. An eye exam can check the back of the eye."
         elif level == "watch":
-            message = f"Worth showing the flight surgeon: {'; '.join(notes[:2])}. This check can't see the back of the eye; an eye exam can."
+            message = f"Worth showing the flight surgeon: {notes[0]}." + (" Lubricating drops and a break from screens often help dry eyes." if "dry" in notes[0] else "")
         elif building:
             message = f"Saved. {len(lst)} of {BASELINE_N} checks for your baseline; after that, each check is compared with it."
         else:
-            message = "No change from your baseline today."
-        first_imgs = next((r["images"] for r in lst if r.get("images")), {})
+            message = "Your eyes look and work as usual today."
+        first_snap = next((r["snapshot"] for r in lst if r.get("snapshot")), "")
         return {
-            "checks": len(lst), "building_baseline": building, "verdict": level, "message": message, "nasa": NASA,
-            "changes": changes, "asymmetry": round(asym, 3) if asym is not None else None,
+            "checks": len(lst), "building_baseline": building, "verdict": level, "message": message, "notes": notes, "nasa": NASA,
+            "changes": changes, "incomplete": lm.get("incomplete"), "asymmetry": asym, "lag_ms": lm.get("lag_ms"),
             "near_blur": latest.get("near_blur"), "amsler_change": latest.get("amsler_change"),
-            "latest": {"t": latest["t"], "images": latest.get("images", {})},
-            "baseline": {"t": lst[0]["t"], "images": first_imgs},
-            "history": [{"t": r["t"], "aperture": r["metrics"].get("aperture"), "cheek_width": r["metrics"].get("cheek_width")} for r in lst[-14:]],
+            "latest": {"t": latest["t"], "snapshot": latest.get("snapshot", "")},
+            "baseline": {"t": lst[0]["t"], "snapshot": first_snap},
+            "history": [{"t": r["t"], **{k: r["metrics"].get(k) for k in METRICS}} for r in lst[-14:]],
         }
