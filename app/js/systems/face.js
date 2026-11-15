@@ -20,7 +20,7 @@ export function smoothLandmarks(lm, prev) {
   // speed-adaptive: big movements follow at once, small tremor is averaged away
   let move = 0;
   for (let i = 0; i < lm.length; i += 23) move += Math.abs(lm[i].x - prev[i].x) + Math.abs(lm[i].y - prev[i].y);
-  const a = Math.min(1, 0.35 + move * 18);
+  const a = Math.min(1, 0.5 + move * 18);
   for (let i = 0; i < lm.length; i++) {
     prev[i].x += (lm[i].x - prev[i].x) * a; prev[i].y += (lm[i].y - prev[i].y) * a; prev[i].z += ((lm[i].z || 0) - prev[i].z) * a;
   }

@@ -11,7 +11,7 @@ const ZONE_LABEL = { eyes: "eyes", head: "head", heart: "chest", lungs: "chest",
 export function createVision({ video, overlay, msg, badge, pulseValue, pulseQuality, canPatch, patchHr, onFallback, emotionList, emotionTop, camButton, moodOptIn }) {
   const ctx2d = overlay.getContext("2d");
   const sample = document.createElement("canvas");
-  sample.width = 160; sample.height = 120;
+  sample.width = 320; sample.height = 240;   // twice the old resolution: many more skin pixels per sample
   const sctx = sample.getContext("2d", { willReadFrequently: true });
   const tracker = new PulseTracker(11);
   const faceSys = new FaceSystem();
@@ -192,6 +192,7 @@ export function createVision({ video, overlay, msg, badge, pulseValue, pulseQual
 
   function stop() {
     running = false;
+    overlay.parentElement?.classList.remove("is-synced");
     stream?.getTracks().forEach((t) => t.stop());
     stream = null;
     state.on = false;
@@ -232,8 +233,9 @@ export function createVision({ video, overlay, msg, badge, pulseValue, pulseQual
         faceSys.pushPose(pr.landmarks[0], now / 1000);
       }
       else if (pr) lastPoseLm = null;
-      draw();
-      if (lastFaceLm) { samplePulse(now); sampleEmotion(now); }
+      draw(true);
+      if (lastFaceLm && fr?.faceLandmarks?.length) samplePulse(now);   // only fresh landmarks: a stale mesh would sample the wrong pixels
+      if (lastFaceLm) sampleEmotion(now);
       else {
         clearEmotions(EMOTION_NOTES.noFace);
         if (now - lastFace > 3000) { tracker.reset(); faceSys.reset(); }
@@ -243,27 +245,53 @@ export function createVision({ video, overlay, msg, badge, pulseValue, pulseQual
     requestAnimationFrame(loop);
   }
 
+  // skin areas for the pulse (face-mesh indices): the forehead between hairline and brows, and both cheeks
+  const ROIS = [
+    [67, 109, 10, 338, 297, 334, 296, 336, 9, 107, 66, 105],
+    [116, 117, 118, 119, 100, 142, 203, 206, 207, 187, 123],
+    [345, 346, 347, 348, 329, 371, 423, 426, 427, 411, 352],
+  ];
+  let prevNose = null;
   function samplePulse(now) {
-    const w = sample.width, h = sample.height;
-    sctx.drawImage(video, 0, 0, w, h);
-    const img = sctx.getImageData(0, 0, w, h).data;
-    const lm = lastFaceLm;
-    const faceW = Math.hypot(lm[234].x - lm[454].x, lm[234].y - lm[454].y);
-    const box = Math.max(2, Math.round(faceW * w * 0.09));
-    let r = 0, g = 0, b = 0, n = 0;
-    for (const idx of [151, 50, 280]) { // forehead, left cheek, right cheek
-      const cx = Math.round(lm[idx].x * w), cy = Math.round(lm[idx].y * h);
-      for (let y = cy - box; y <= cy + box; y++) {
-        if (y < 0 || y >= h) continue;
-        for (let x = cx - box; x <= cx + box; x++) {
-          if (x < 0 || x >= w) continue;
-          const i = (y * w + x) * 4;
-          r += img[i]; g += img[i + 1]; b += img[i + 2]; n++;
-        }
-      }
+    const w = sample.width, h = sample.height, lm = lastFaceLm;
+    // a moving head swamps the tiny colour change of the pulse: those frames are skipped (the gap is interpolated)
+    const fw = Math.hypot(lm[234].x - lm[454].x, lm[234].y - lm[454].y) || 0.2;
+    const nose = lm[1];
+    const moved = prevNose ? Math.hypot(nose.x - prevNose.x, nose.y - prevNose.y) / fw : 0;
+    prevNose = { x: nose.x, y: nose.y };
+    if (moved > 0.03) { pulseHint.moving = now; return; }
+    // only the skin inside the forehead and cheek outlines, which follow the face as it turns
+    let x0 = w, y0 = h, x1 = 0, y1 = 0;
+    sctx.clearRect(0, 0, w, h);
+    sctx.save();
+    sctx.beginPath();
+    for (const poly of ROIS) {
+      poly.forEach((i, k) => {
+        const x = lm[i].x * w, y = lm[i].y * h;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        if (k) sctx.lineTo(x, y); else sctx.moveTo(x, y);
+      });
+      sctx.closePath();
     }
-    if (n) tracker.push({ t: now / 1000, r: r / n, g: g / n, b: b / n });
+    sctx.clip();
+    sctx.drawImage(video, 0, 0, w, h);
+    sctx.restore();
+    x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
+    const bw = Math.min(w, Math.ceil(x1)) - x0, bh = Math.min(h, Math.ceil(y1)) - y0;
+    if (bw < 4 || bh < 4) return;
+    const img = sctx.getImageData(x0, y0, bw, bh).data;
+    let r = 0, g = 0, b = 0, n = 0, lum = 0;
+    for (let i = 0; i < img.length; i += 4) {
+      if (img[i + 3] < 250) continue;                        // outside the skin outlines
+      const R = img[i], G = img[i + 1], B = img[i + 2], Y = 0.299 * R + 0.587 * G + 0.114 * B;
+      if (Y < 25 || Y > 240) continue;                       // shadow or shine: no pulse in it
+      r += R; g += G; b += B; lum += Y; n++;
+    }
+    if (n < 40) return;
+    pulseHint.light = lum / n;
+    tracker.push({ t: now / 1000, r: r / n, g: g / n, b: b / n });
   }
+  const pulseHint = { moving: 0, light: 128 };
 
   function estimate(now) {
     lastEstimate = now;
@@ -298,7 +326,8 @@ export function createVision({ video, overlay, msg, badge, pulseValue, pulseQual
     } else {
       pulseValue.textContent = "reading…";
       // the tracker needs 6 s of samples before it can score anything: that is not "quality 0%"
-      pulseQuality.textContent = e.method === "none" ? "gathering signal: hold still for a few seconds" : `quality ${Math.round(e.quality * 100)}%: hold still, face the light`;
+      const coach = now - pulseHint.moving < 1500 ? "hold your head still" : pulseHint.light < 60 ? "more light on your face will help" : "";
+      pulseQuality.textContent = e.method === "none" ? `gathering signal: ${coach || "hold still for a few seconds"}` : `quality ${Math.round(e.quality * 100)}%: ${coach || "hold still, face the light"}`;
       if (state.live && now - lastGood > 5000) { state.live = false; onFallback?.(); }
       refreshBadge();
     }
@@ -306,9 +335,17 @@ export function createVision({ video, overlay, msg, badge, pulseValue, pulseQual
 
   function line(a, b, W, H) { ctx2d.moveTo(a.x * W, a.y * H); ctx2d.lineTo(b.x * W, b.y * H); }
 
-  function draw() {
+  function draw(withFrame = false) {
     const W = overlay.width, H = overlay.height;
     ctx2d.clearRect(0, 0, W, H);
+    // the camera frame the landmarks came from, drawn underneath them on the same canvas: the <video> keeps
+    // playing newer frames while the model works, which made the mesh lag behind a moving face
+    if (withFrame) {
+      ctx2d.filter = "saturate(0.5) brightness(0.7) contrast(1.05)";
+      ctx2d.drawImage(video, 0, 0, W, H);
+      ctx2d.filter = "none";
+      overlay.parentElement?.classList.add("is-synced");
+    }
     const css = getComputedStyle(document.documentElement);
     const lineC = css.getPropertyValue("--line").trim();
     const alertC = css.getPropertyValue("--alert").trim();

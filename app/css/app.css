@@ -858,3 +858,6 @@ body.has-bubble[data-stage="body"] .insights { opacity: 0; pointer-events: none;
 @media (min-width: 1001px) {
   body:has(#sheet:not([hidden]):not(.is-full)) .notice { right: calc(var(--gutter) + min(560px, 46vw) + 12px); }
 }
+
+/* face scan: once tracking runs, the canvas shows the exact frame the face was found on (mesh never lags) */
+.cam-stage.is-synced .cam-video { opacity: 0; }
