@@ -185,9 +185,9 @@ def stt_groq(wav: bytes, timeout: float = 8.0, post=None, prompt: str | None = N
         base = "https://api.groq.com/openai/v1"
     files = {"file": ("speech.wav", wav, "audio/wav")}
     data = {
-        "model": "whisper-large-v3-turbo",
+        "model": "whisper-large-v3",            # the full model: as fast here as turbo, and it scores whether there was speech
         "language": "en",
-        "response_format": "json",
+        "response_format": "verbose_json",
         "temperature": "0",
         "prompt": VOCABULARY_HINT if prompt is None else prompt
     }
@@ -197,7 +197,29 @@ def stt_groq(wav: bytes, timeout: float = 8.0, post=None, prompt: str | None = N
         r = _client().post(f"{base}/audio/transcriptions", files=files, data=data, headers={"Authorization": f"Bearer {key}"}, timeout=timeout)
     if r.status_code != 200:
         raise RuntimeError(f"http {r.status_code}")
-    return (r.json().get("text") or "").strip()
+    j = r.json()
+    segs = j.get("segments")
+    if segs is None:
+        return clean_transcript(j.get("text") or "")
+    return clean_transcript(" ".join(s.get("text", "") for s in segs if not phantom(s)))
+
+
+# Whisper's well-known phantom phrases: it writes them for noise, music or speech too faint to make out
+PHANTOMS = re.compile(r"\b(thanks? (you )?for watching|see you (next time|in the next|later)|subscribe|like and subscribe|"
+                      r"next episode|thank you\.?$|bye\.?$|you\.?$)", re.I)
+
+
+def phantom(seg: dict) -> bool:
+    """A segment Whisper was not sure contained speech (faint background talk, noise): dropped, not acted on."""
+    nsp, lp = seg.get("no_speech_prob", 0) or 0, seg.get("avg_logprob", 0) or 0
+    return nsp > 0.6 or (nsp > 0.3 and lp < -0.7) or lp < -1.0
+
+
+def clean_transcript(text: str) -> str:
+    t = (text or "").strip()
+    if PHANTOMS.search(t) and len(t.split()) <= 6:
+        return ""
+    return t
 
 
 def stt(wav: bytes, prefer: str = "auto", hint: str = "") -> dict:
@@ -346,7 +368,12 @@ def tts(text: str, voice: str = DEFAULT_VOICE, engine: str = "auto") -> dict:
     for eng in order:
         try:
             if eng == "elevenlabs":
-                audio, mime, v = tts_eleven(text, eleven_voice), "audio/mpeg", eleven_voice
+                try:
+                    audio = tts_eleven(text, eleven_voice, timeout=7.0)
+                except Exception as first:   # one retry: a slow network (seen on campus Wi-Fi) times out now and then
+                    print(f"[sentinel voice] elevenlabs retry after: {first}", flush=True)
+                    audio = tts_eleven(text, eleven_voice, timeout=7.0)
+                mime, v = "audio/mpeg", eleven_voice
             else:
                 audio, mime, v = tts_kokoro(text, kokoro_voice), "audio/wav", kokoro_voice
         except Exception as e:

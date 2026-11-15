@@ -51,7 +51,7 @@ def test_health_answer_with_invented_number_falls_back_to_rules(monkeypatch):
 def test_offline_general_question_says_it_needs_a_connection(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "")
     r = llm.chat(_state(), "what is the capital of Ghana")
-    assert r["source"] == "rules" and "connection" in r["reply"].lower()
+    assert r["source"] == "rules" and "can't reach" in r["reply"].lower()
     assert "accra" not in r["reply"].lower()
 
 

@@ -108,7 +108,7 @@ async function ttsOnce(text, engine) {
   const ctx = outChain();
   if (!ctx) throw new Error("no Web Audio");
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 9000);
+  const t = setTimeout(() => ctrl.abort(), 16000);
   try {
     const r = await fetch("../api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, voice: voiceId, engine }), signal: ctrl.signal });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);

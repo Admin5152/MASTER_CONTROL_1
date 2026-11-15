@@ -152,6 +152,21 @@ Allowed commands (at most 3):
 A plain answer needs no commands. But if your reply says you are showing, opening, starting, checking or pointing
 at something, you MUST add the matching COMMANDS line, or nothing will happen on screen."""
 
+# General questions (nothing about this person or the crew) get this short sheet: the full one is about 2,500
+# tokens and the free Groq tier allows 8,000 tokens a minute per model, so the full sheet fit only two questions a minute.
+GENERAL_PROMPT = """You are Sentinel, the onboard companion on a long space mission: calm, warm, quick and a little dry,
+like a well-read crewmate. You are talking out loud; your reply is spoken, so it must sound like speech.
+Give a real, informative answer: the key fact first, then one concrete number, example or comparison, then a little
+of why. Three to five short sentences; more only if asked to go deeper. Use contractions; no preamble, no lists, no
+markdown, no emoji. Remember the conversation so far. Keep it going when they want to chat; ask a short question
+back now and then. If you are not sure, say so plainly rather than guess.
+Space is your speciality: spaceflight history, rockets and orbits, Mars and the Moon, the body in space, astronomy.
+You have no live data, clock or calendar: for anything that changes with time (planet distances, today's date,
+news) give the average and range and say you don't have live data.
+Spell the crew member's name exactly as STATE.display_name has it.
+If they ask to see, open or start something in the app, add ONE final line: COMMANDS: [{"cmd":"open_screen","name":N}]
+with N one of home, mission, body, vitals, radiation, wellbeing, orb_calm, race, greenhouse, evidence, eyes, settings."""
+
 # words that make a question about this crew member's health or the mission (the numeric guard applies)
 HEALTH_WORDS = re.compile(
     r"\b(how am i|how do i|am i|my |i feel|i'm|im |i am|feel|feeling|tired|sleep|slept|heart|pulse|hr\b|breath|oxygen|spo2|"
@@ -339,7 +354,7 @@ def _hr(state: dict) -> tuple[int | None, int | None]:
             round(base) if isinstance(base, (int, float)) else None)
 
 
-OFFLINE_GENERAL = ("I need a connection to answer general questions, and I won't guess. "
+OFFLINE_GENERAL = ("I can't reach my knowledge right now, so I won't guess. Ask me again in a moment; "
                    "I can still tell you about your readings, the cabin and radiation.")
 
 
@@ -545,7 +560,7 @@ def _state_light(state: dict) -> dict:
 
 
 def build_messages(state: dict, transcript: str, history: list[dict] | None = None) -> list[dict]:
-    msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
+    msgs = [{"role": "system", "content": GENERAL_PROMPT if is_general(transcript) else SYSTEM_PROMPT}]
     msgs += history or []
     ev = evidence_for(transcript)
     evidence = f"\n\nNASA MRID EVIDENCE (the team's dataset, NASA JSC 28913):\n{ev}" if ev else ""
@@ -558,9 +573,9 @@ def _body(cfg: dict, messages: list[dict], stream: bool, model: str | None = Non
     """think: a knowledge question gets more reasoning (a better answer, about a second slower); health and
     commands stay quick."""
     model = model or cfg["model"]
-    body = {"model": model, "temperature": 0.5, "max_tokens": 1800 if think else 1100, "messages": messages, "stream": stream}
+    body = {"model": model, "temperature": 0.5, "max_tokens": 1100, "messages": messages, "stream": stream}
     if "gpt-oss" in model:
-        body["reasoning_effort"] = "medium" if think else "low"
+        body["reasoning_effort"] = "low"   # medium thought better but used up the free per-minute allowance in two questions
     elif "qwen" in model:
         body["reasoning_effort"] = "none"
     return body
@@ -621,7 +636,12 @@ def stream_llm(state: dict, transcript: str, history: list[dict] | None = None, 
     headers = {"Authorization": f"Bearer {cfg['key']}"}
     last = "no model"
     think = is_general(transcript)
-    for model in model_chain(cfg):
+    chain = model_chain(cfg)
+    soonest = min((_cooldown.get(m, 0) for m in chain), default=0) - time.monotonic()
+    if 0 < soonest <= 8:   # every model is cooling down after a rate limit: wait for the first, rather than give up
+        time.sleep(soonest + 0.2)
+        chain = model_chain(cfg)
+    for model in chain:
         with _client().stream("POST", f"{cfg['base_url']}/chat/completions", json=_body(cfg, messages, True, model, think), headers=headers,
                               timeout=httpx.Timeout(timeout, read=timeout)) as r:
             if r.status_code != 200:
