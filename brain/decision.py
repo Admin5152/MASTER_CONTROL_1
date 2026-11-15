@@ -95,12 +95,20 @@ def decide(state: dict, absolute: list[dict], drift: dict, kit: dict, flag_storm
     # 4. symptom with a kit match
     for s in (get_path(state, "manual.symptoms") or []):
         m = suggest(s, kit)
+        from brain.profile import kit_filter, profiles   # section 14.4: allergies block, regular medicines add a note
+        prof = profiles.get(state.get("crew_id", ""))
+        early_signs = [x.lower() for x in (prof.get("wellbeingPlan", {}).get("earlySigns") or [])]
+        is_early = s.lower() in early_signs or any(x in s.lower() for x in early_signs if len(x) >= 3)
+        early_tag = " (recognized from your personal early signs)" if is_early else ""
         if m["matched"]:
-            from brain.profile import kit_filter, profiles   # section 14.4: allergies block, regular medicines add a note
-            f = kit_filter(m["item"], profiles.get(state.get("crew_id", "")))
+            f = kit_filter(m["item"], prof)
             if f["blocked"]:
-                return _act("suggest_medicine", f"{s.capitalize()}: {f['reason']}", m["zone"] or "whole_body", "watch")
-            return _act("suggest_medicine", f"{m['text']} {f['note']}".strip(), m["zone"] or "whole_body", "info")
+                return _act("suggest_medicine", f"{s.capitalize()}{early_tag}: {f['reason']}", m["zone"] or "whole_body", "watch")
+            return _act("suggest_medicine", f"{m['text']}{early_tag} {f['note']}".strip(), m["zone"] or "whole_body", "info")
+        elif is_early:
+            helps = prof.get("wellbeingPlan", {}).get("whatHelps") or []
+            tool = helps[0].replace("_", " ") if helps else "short reset"
+            return _act("offer_intervention", f"{s.capitalize()} recognized from your personal early signs. A {tool} may help before it builds up.", "head", "info", helps[0] if helps else "orb_calm")
 
     items = drift.get("items", [])
     zone, sev = _worst_zone(items + [r for r in absolute if r["severity"] in ("watch", "alert")])
@@ -114,6 +122,14 @@ def decide(state: dict, absolute: list[dict], drift: dict, kit: dict, flag_storm
         why = f"Heart rate {round(hr)} against a usual {round(base)}" if hr_up else "Stress index raised"
         return _act("offer_orb_calm", f"{why}. Offer a guided breathing session.", zone or "heart",
                     sev if sev != "none" else "watch", "breathing")
+
+    # 5b. pattern across signals (Layer 4 in Section 19.2):
+    # Two or more independent signal groups moving the wrong way inside one window raise a pattern flag.
+    # Group rule: two indicators in the same group count as one signal.
+    from .indicators import evaluate_pattern_layer
+    pattern = evaluate_pattern_layer(items, absolute)
+    if pattern["flag"]:
+        return _act("flag_pattern", pattern["summary"], zone or "whole_body", "watch", intervention="pattern_protocol")
 
     # 6. fatigue / low mood / poor sleep / boredom: each picks a different intervention
     mood = get_path(state, "manual.mood")

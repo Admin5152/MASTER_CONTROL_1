@@ -67,9 +67,43 @@ class Ops:
     def status(self, cid: str, state: dict) -> dict:
         profile = (state.get("radiation") or {}).get("mission_profile", "iss")
         mode = self.get_mode(cid)
-        return {"env": ENV_OF.get(profile, "station"), "profile": profile, "mode": mode,
-                "reminders_paused": mode in ("eva", "rest"), "urgent_only": mode == "rest",
-                "comms": self.comms(profile)}
+        env = ENV_OF.get(profile, "station")
+        from brain.environment import ENVS, MODES_SPEC, wait_tolerance_min
+        env_meta = ENVS.get(env, ENVS["station"])
+        mode_meta = MODES_SPEC.get(mode, MODES_SPEC["routine"])
+        wt = wait_tolerance_min(profile)
+
+        # Section 14.4: Duty and sleep schedule respect rest
+        quiet_hours = False
+        try:
+            from brain.profile import profiles, is_in_sleep_block
+            prof = profiles.get(cid)
+            sb = prof.get("mission", {}).get("sleepBlock") or "22:00-06:00"
+            from brain.store import store
+            clock = store.mission_clock()
+            cur_h = clock.get("hour", 8) + clock.get("minute", 0) / 60.0
+            if is_in_sleep_block(sb, cur_h):
+                quiet_hours = True
+        except Exception:
+            pass
+
+        reminders_paused = mode_meta["reminders_paused"] or quiet_hours
+        urgent_only = mode_meta["urgent_only"] or quiet_hours
+        return {
+            "env": env,
+            "profile": profile,
+            "mode": mode,
+            "reminders_paused": reminders_paused,
+            "urgent_only": urgent_only,
+            "quiet_hours": quiet_hours,
+            "contingency": mode == "contingency",
+            "comms": self.comms(profile),
+            "wait_tolerance_min": wt,
+            "escalation_policy": env_meta.get("escalation"),
+            "watches_harder": env_meta.get("watch"),
+            "help_and_how_fast": env_meta.get("help_and_how_fast"),
+            "mode_changes": mode_meta.get("changes"),
+        }
 
     # ---- EVA readiness (section 12.2: readiness check before an EVA) ----
     @staticmethod
@@ -133,4 +167,15 @@ class Ops:
             f"Question for flight surgeon: {note or ('advice on the pattern above' if level >= 1 else 'routine review, no question')}.",
             "Trend: 7-day numbers attached (no video, no images)",
         ]
+        # Section 14.4: health background never placed in digest unless explicit consent (includeInDigest=True)
+        try:
+            from brain.profile import profiles
+            prof = profiles.get(cid)
+            h = prof.get("health") or {}
+            if h.get("includeInDigest"):
+                meds = ", ".join(m for m in h.get("regularMedicines", []) if m.lower() != "none") or "none"
+                allergies = ", ".join(a for a in h.get("allergies", []) if a.lower() != "none") or "none"
+                lines.insert(3, f"Health background (consented): allergies: {allergies} | medicines: {meds}")
+        except Exception:
+            pass
         return {"priority": PRIORITY[level], "level": level, "text": "\n".join(lines), "label": "SIM"}

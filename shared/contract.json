@@ -60,6 +60,10 @@
       "hydration_ml": null,
       "meals": [],
       "mood": null,
+      "stress_self": null,
+      "energy_self": null,
+      "connection_self": null,
+      "mood_tags": [],
       "symptoms": [],
       "symptom_log": [
         {
@@ -158,7 +162,9 @@
       "suggest_medicine",
       "flag_cabin",
       "flag_radiation",
-      "flag_ground"
+      "flag_ground",
+      "flag_redflag",
+      "flag_pattern"
     ],
     "action.zone": [
       "",
@@ -183,7 +189,12 @@
       "aurora_run",
       "earth_window",
       "music",
-      "connection"
+      "connection",
+      "pattern_protocol",
+      "orb_calm",
+      "grounding",
+      "greenhouse",
+      "race"
     ],
     "drift.items.severity": [
       "info",

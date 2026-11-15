@@ -71,7 +71,7 @@ def _check_value(path: str, tmpl: Any, value: Any) -> None:
                 if not isinstance(item, dict):
                     raise ContractError(f"{path}[{i}]", "expected an object")
                 _check_obj("drift.items", DRIFT_ITEM, item, display=f"{path}[{i}]")
-        elif path in ("manual.symptoms", "manual.meals"):
+        elif path in ("manual.symptoms", "manual.meals", "manual.mood_tags"):
             if not all(isinstance(s, str) for s in value):
                 raise ContractError(path, "entries must be strings")
         elif path == "manual.symptom_log":

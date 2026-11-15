@@ -140,15 +140,33 @@ function renderExam(el, ctx) {
 function renderGround(el, ctx) {
   const draw = async () => {
     let d;
+    let sim = null;
     try { d = await api.groundList(ctx.view.crewId); } catch { el.innerHTML = `<p class="note">The brain is offline.</p>`; return; }
+    try { sim = await api.delaySim(ctx.view.crewId); } catch { /* optional */ }
+    if (el.contains(document.activeElement) && document.activeElement !== document.body && el.dataset.drawn) return;   // do not redraw under a finger
+    el.dataset.drawn = "1";
+    const gv = sim?.ground_view, ov = sim?.onboard_view;
     el.innerHTML = `<p class="note">On a Mars transit, help is minutes away each way, so findings are packaged on board and reviewed later: store and forward. One-way delay now <strong>${d.one_way_min} min</strong> ${badgeHTML("SIM")}. ${cite("eimo")}</p>
       <ul class="ground-list">${d.packets.length ? d.packets.map((p) => `<li class="card">
         <span class="g-status is-${p.status.replace(/ /g, "-")}">${esc(p.status)}</span>
         <strong>${esc(p.title)}</strong>${p.priority && p.priority !== "ROUTINE" ? `<span class="g-prio is-${esc(p.priority)}">${esc(p.priority)}</span>` : ""}
         ${p.kind === "digest" && p.body?.text ? `<details><summary class="fine">Read the digest</summary><pre class="g-digest">${esc(p.body.text)}</pre></details>` : ""}
         <small>${esc(new Date(p.sent * 1000).toLocaleString())} · ${p.status === "queued (no link)" ? "waiting for the link" : p.status === "in transit" ? `arrives in ${Math.ceil(p.eta_s / 60)} min` : p.reply_earliest_s > 0 ? `reply at the earliest in ${Math.ceil(p.reply_earliest_s / 60)} min` : "reply window open"}</small>
+        ${p.reply ? `<div class="g-reply"><span class="label">Reply from ${esc(p.reply.author)}</span>
+          <span class="fine">Asked ${esc(new Date(p.reply.sent_at * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))} · reply is ${Math.max(0, Math.round((Date.now() / 1000 - p.reply.received_at) / 60))} min old${Date.now() / 1000 - p.reply.received_at > 3600 ? " · check it still applies" : ""}</span>
+          <ol>${p.reply.instructions.map((s) => `<li>${esc(s.text)} ${s.confirmed ? `<span class="fine">confirmed</span>` : `<button class="pill pill-ghost" type="button" data-confirm="${esc(p.id)}" data-n="${s.step_num}">Confirm</button>`}</li>`).join("")}</ol>
+          ${p.reply.all_confirmed ? `<span class="fine">Every step confirmed and logged.</span>` : ""}</div>`
+          : (p.status !== "queued (no link)" && p.status !== "queued" && p.status !== "in transit" ? `<button class="link-btn" type="button" data-simreply="${esc(p.id)}">Demo: simulate the surgeon's reply (SIM)</button>` : "")}
         ${badgeHTML("SIM")}</li>`).join("") : `<li class="note">Nothing sent yet. The guided exam builds a packet; a flag from the rules engine can too.</li>`}</ul>
-      <div class="exam-nav"><button class="pill pill-light" type="button" data-digest>Send a digest to the flight surgeon</button><button class="pill pill-ghost" type="button" data-exam>Start a guided exam</button></div>`;
+      <div class="exam-nav"><button class="pill pill-light" type="button" data-digest>Send a digest to the flight surgeon</button><button class="pill pill-ghost" type="button" data-exam>Start a guided exam</button></div>
+      ${sim ? `<h3>Delay simulator ${badgeHTML("SIM")}</h3><div class="cabin-big two">
+        <div class="card rcard"><span class="label">What ground sees</span><strong>${esc(gv.last_received || "")}</strong><p class="fine">${gv.link_status === "blackout" ? "No link" : `${esc(gv.stale_by_min)} min behind`} · next update in ${Math.floor((gv.countdown_s || 0) / 60)}:${String(Math.round(gv.countdown_s || 0) % 60).padStart(2, "0")}</p></div>
+        <div class="card rcard"><span class="label">What Sentinel did just now</span>${(ov.recent_actions || []).slice(0, 4).map((a) => `<p class="fine"><span class="g-prio is-${a.tag === "escalated" ? "URGENT" : "ROUTINE"}">${esc(a.tag)}</span> ${esc(a.time || "")} ${esc(a.detail)}</p>`).join("")}</div></div>` : ""}`;
+    el.querySelectorAll("[data-confirm]").forEach((b) => b.addEventListener("click", async () => { try { await api.groundConfirm(b.dataset.confirm, Number(b.dataset.n)); } catch { /* shown on redraw */ } el.dataset.drawn = ""; b.blur(); draw(); }));
+    el.querySelectorAll("[data-simreply]").forEach((b) => b.addEventListener("click", async () => {
+      try { await api.groundReply(b.dataset.simreply, ["Rest for 30 minutes and drink 500 mL of water.", "Re-measure and log the reading in the health log.", "Send a follow-up digest if there is no change."]); } catch { /* shown on redraw */ }
+      el.dataset.drawn = ""; b.blur(); draw();
+    }));
     el.querySelector("[data-exam]").addEventListener("click", () => ctx.screens.open("exam"));
     el.querySelector("[data-digest]").addEventListener("click", async () => { await ctx.sendDigest?.(); draw(); });
   };

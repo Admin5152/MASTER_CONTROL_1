@@ -381,3 +381,76 @@ body.is-pointing .zone .zstat, .zone.is-hidden .zstat { opacity: 0; }
 .audit-list .au-src.is-brain { color: var(--accent); }
 .audit-list b { font-weight: 600; color: var(--ink); }
 .audit-list small { grid-column: 3; color: var(--ink-3); overflow-wrap: anywhere; }
+
+/* ---- clinic, care and mind screens (Product Document parts 4 and 5): built from the existing cards, pills and lists ---- */
+.cl-card { display: grid; gap: var(--s-2); padding: 16px 18px; margin: var(--s-3) 0; }
+.cl-card h3 { margin: 0; font-size: var(--fs-lg); font-weight: var(--fw-medium); line-height: var(--lh-tight); }
+.cl-card.cl-urgent { border-color: var(--alert); box-shadow: 0 0 0 1px var(--alert), var(--glow-alert); }
+.cl-rec { display: grid; grid-template-columns: minmax(96px, max-content) 1fr; gap: 8px 14px; margin: var(--s-2) 0 0; font-size: var(--fs-sm); }
+.cl-rec dt { color: var(--ink-3); font-size: var(--fs-xs); padding-top: 2px; }
+.cl-rec dd { margin: 0; color: var(--ink); line-height: 1.5; }
+.cl-rec ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.cl-acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center; }
+.cl-acts .pill, .cl-alert .pill { min-height: 36px; padding: 6px 12px; font-size: var(--fs-xs); }
+.cl-wrap { flex-wrap: wrap; }
+.cl-wrap button { flex: 1 0 56px; }
+.cl-tick { cursor: pointer; background: transparent; color: var(--ok-ink); padding: 0; }
+.cl-tick:disabled { cursor: default; opacity: 0.6; }
+.cl-dims { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); margin: var(--s-3) 0; }
+.cl-dim { display: grid; gap: 4px; padding: 12px 14px; }
+.cl-dim strong { font-size: var(--fs-md); font-weight: var(--fw-medium); }
+.cl-dim.is-drift { border-color: var(--watch); }
+.cl-dim.is-drift strong { color: var(--watch); }
+.cl-alert { grid-template-columns: auto 1fr; }
+.cl-alert .cl-acts, .cl-alert pre { grid-column: 1 / -1; justify-content: flex-start; }
+.cl-select { min-height: 36px; padding: 6px 10px; border-radius: var(--radius-pill); border: 1px solid var(--rule-2); background: var(--surface-sunk); color: var(--ink-2); font: inherit; font-size: var(--fs-xs); }
+.cl-text { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--rule-2); background: var(--surface-sunk); color: var(--ink); font: inherit; font-size: var(--fs-sm); line-height: 1.5; resize: vertical; }
+.cl-pre { white-space: pre-wrap; font-weight: var(--fw-regular); }
+.cl-rowlink { cursor: pointer; }
+.cl-rowlink:hover td { background: var(--surface-sunk); }
+.ground-list .card > .cl-acts { grid-column: 1 / -1; justify-content: flex-start; }
+.g-reply { grid-column: 1 / -1; display: grid; gap: 6px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-sunk); }
+.g-reply ol { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: var(--fs-sm); }
+.g-reply .pill { min-height: 32px; padding: 4px 12px; font-size: var(--fs-xs); margin-left: 6px; }
+.home-acts { display: flex; flex-wrap: wrap; gap: var(--s-2); justify-content: center; }
+.home-acts .pill { min-height: 40px; }
+.sb-env { cursor: pointer; background: transparent; border: 1px solid var(--rule-2); color: var(--ink-2); font: inherit; font-size: inherit; }
+.sb-env:hover { color: var(--ink); border-color: var(--ink-3); }
+html[data-glove="on"] .cl-acts .pill, html[data-glove="on"] .cl-select, html[data-glove="on"] .cl-tick { min-height: 56px; min-width: 56px; }
+
+/* ---- guided care steps, the tickable action plan, the plan schedule without overlaps ---- */
+.cl-step h3 { font-size: var(--fs-xl); font-weight: var(--fw-regular); line-height: 1.3; }
+.cl-ans { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
+.cl-ans .pill { flex: 1 1 120px; min-height: 52px; }
+.cl-all { margin: var(--s-2) 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: var(--fs-sm); color: var(--ink-2); }
+.cl-all li.is-done { color: var(--ink-3); text-decoration: line-through; }
+.cl-all li.is-now { color: var(--ink); font-weight: var(--fw-medium); }
+.care-list li.has-tick { grid-template-columns: auto auto 1fr; align-items: center; }
+.care-list li.has-tick.is-done span, .care-list li.has-tick.is-done strong { color: var(--ink-3); text-decoration: line-through; }
+.care-list li.has-tick .m-check[aria-pressed="true"] { background: var(--ok-soft); border-color: var(--nominal); }
+.care-list li.has-ask { grid-template-columns: 1fr auto; align-items: center; color: var(--ink); }
+.care-ask { display: flex; gap: 6px; }
+.care-ask .pill { min-height: 36px; padding: 4px 14px; font-size: var(--fs-xs); }
+.env-ask { display: flex; gap: var(--s-2); margin-top: 8px; }
+.env-banner.is-ask p { margin: 6px 0 0; }
+/* the plan schedule: equal slots in time order, so two close times can never print over each other */
+.plan-line { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(104px, 1fr); gap: 0 10px; height: auto; min-height: 96px; padding: 30px 0 8px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.plan-line::before { right: auto; width: 100%; min-width: 100%; }
+.plan-line::after { display: none; }
+.plan-line li { position: relative; left: auto; top: auto; transform: none; min-width: 0; }
+.plan-line li::before { left: 0; top: -18px; }
+.plan-line li > button, .plan-line li > div { margin-top: 4px; max-width: none; width: 100%; overflow-wrap: anywhere; }
+.plan-line li.is-now > button strong, .plan-line li.is-now > div strong { color: var(--assist); }
+/* the body screen never grows past its stage: a tall side panel scrolls inside itself, so the body tools stay above the ask bar */
+@media (orientation: landscape), (min-width: 1001px) {
+  .stage-body { grid-template-rows: minmax(0, 1fr); }
+  .stage-body > .sys-panel, .stage-body > .sys-rail { min-height: 0; max-height: 100%; overflow-y: auto; scrollbar-width: thin; }
+  .stage-body > .body-host { min-height: 0; max-height: 100%; }
+}
+@media (max-height: 620px) and (orientation: landscape) {
+  .body-tools .pill { min-height: 34px; }
+  .home-acts .pill { min-height: 34px; }
+}
+
+.scan-result { padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-sunk); line-height: 1.5; }
+.scan-result .badge { vertical-align: middle; }

@@ -30,6 +30,17 @@ export const METRIC_WORDS = {
 };
 
 export const SCREEN_WORDS = {
+  care: ["i don't feel well", "i dont feel well", "i do not feel well", "i feel sick", "i feel unwell", "i feel ill", "not feeling well", "triage", "care log", "protocols"],
+  checkin: ["daily check in", "daily check-in", "daily checkin", "start my check in", "start my check-in", "morning check in", "check in now"],
+  today: ["my reminders", "reminders", "my day", "today's plan", "todays plan", "my schedule"],
+  journal: ["private journal", "my journal", "journal", "diary"],
+  alerts: ["why this", "my alerts", "open alerts", "alerts"],
+  record: ["my saved record", "saved record", "my record", "my baseline", "my normal"],
+  weekly: ["weekly review", "week in review"],
+  mind: ["how am i doing mentally", "wellbeing dimensions", "my wellbeing levels", "i'm stressed", "im stressed", "i am stressed"],
+  kit: ["medical kit", "med kit", "the kit"],
+  datasets: ["nasa datasets", "research datasets", "life sciences data", "datasets"],
+  onboarding: ["first run", "onboarding", "set me up"],
   symptom: ["symptom log", "symptoms", "symptom"],
   radiation: ["radiation", "space weather", "solar storm", "dose passport", "dose"],
   health_log: ["health log", "manual log", "log my health", "log health", "health form"],

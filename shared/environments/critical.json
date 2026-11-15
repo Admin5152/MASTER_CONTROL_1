@@ -1,0 +1,47 @@
+{
+  "id": "critical",
+  "label": "Launch, landing, docking",
+  "in_plain_words": "Short critical phases",
+  "profile": "critical",
+  "comms": {
+    "mode": "live",
+    "one_way_delay_s": 0.0,
+    "label": "SIM"
+  },
+  "return_option": "abort_mode",
+  "resupply": "none",
+  "kit_id": "kit_critical_v1",
+  "indicator_weights": {
+    "motion_sickness": 2.0,
+    "acute_stress": 1.8,
+    "heart_rate": 1.5
+  },
+  "threshold_overrides": {},
+  "escalation_policy": {
+    "act": "mission_procedures_lead",
+    "urgent": "emergency_abort_procedure",
+    "wait_tolerance_min": 0.0,
+    "default_escalation": "Mission procedures lead (DESIGNED only)"
+  },
+  "watches_harder": "Motion, stress, rapid checks",
+  "schedule_template": "critical_flight_v1",
+  "hazard_focus": [
+    "hypergravity",
+    "vibration",
+    "motion_sickness"
+  ],
+  "dataset_evidence": [
+    {
+      "mrid": "MR089S",
+      "file": "dataset/cl5yvqkq12spk01o603tkalsp.pdf",
+      "title": "Annual and Launch Medical Examinations",
+      "supports": "Pre-launch physiological readiness and vestibulo-ocular reflex stabilization."
+    },
+    {
+      "mrid": "MR004S",
+      "file": "dataset/cl5yvqhsw2snt01o64o71fv4l.pdf",
+      "title": "Passive Dosimetry for Ascent and Entry",
+      "supports": "Short critical phase radiation dosimeter monitoring."
+    }
+  ]
+}

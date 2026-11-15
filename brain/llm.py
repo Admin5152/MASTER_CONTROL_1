@@ -27,7 +27,8 @@ import httpx
 
 SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
            "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "symptom",
-           "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence", "profile", "audit", "pulse"]
+           "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence", "profile", "audit", "pulse",
+           "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "indicator", "environment", "onboarding", "kit", "datasets"]
 ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
 METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
            "reaction", "talk_time", "pitch", "o2", "co2"]
@@ -107,6 +108,10 @@ Allowed commands (at most 3):
        health_log, trends, readings, cabin, cognitive (3-minute reaction test), exam (guided health exam),
        measures (weekly standard measures), symptom (log a symptom by pointing at the body: "where does it hurt"),
        ground (messages to ground), crew, hardware, settings, about (sources and credits),
+       today (the day with Sentinel and today's reminders), checkin (the guided daily check-in), care ("I don't feel well":
+       triage, the recommendation card, the protocol steps, the care log), mind (the four wellbeing dimensions),
+       journal (private journal), alerts (open alerts and "why this?"), record (everything saved for this person and
+       their personal baseline), weekly (weekly review), environment (where we are and the mode), onboarding, kit,
        evidence (all 68 NASA JSC 28913 medical requirement documents in the team's dataset),
        profile (my health profile: allergies, medicines, wellbeing plan, buddy), audit (the audit log), pulse (the weekly crew pulse survey)
   {"cmd":"point_to","zone":Z}            Z in head, eyes, heart, lungs, gut, bones, whole_body
@@ -236,6 +241,9 @@ SCREEN_WORDS = [
     (r"ground(ing)? exercise|grounding|5.?4.?3.?2.?1", "grounding"), (r"breath\w*|stillpoint|calm", "orb_calm"),
     (r"slipstream|race|racing", "race"), (r"red harvest|greenhouse|farm|garden", "greenhouse"),
     (r"earth window", "earth_window"), (r"music|ambient sound", "music"), (r"wellbeing|well-being|well being", "wellbeing"),
+    (r"daily check.?in|check.?in", "checkin"), (r"don'?t feel well|feel (sick|ill|unwell)|triage|care log|protocols?", "care"),
+    (r"reminders?|my day|today'?s plan|schedule", "today"), (r"journal|diary", "journal"), (r"why this|alerts?", "alerts"),
+    (r"saved record|my record|my baseline|my normal", "record"), (r"weekly review", "weekly"), (r"medical kit|med kit", "kit"),
     (r"health log", "health_log"), (r"trends?", "trends"), (r"reaction test|cognitive", "cognitive"),
     (r"symptom|where (does )?it hurts?", "symptom"), (r"exam", "exam"), (r"weekly measures|measures", "measures"),
     (r"message (to )?ground|ground (team|control)", "ground"), (r"hardware|sensors?", "hardware"), (r"crew", "crew"),
@@ -355,6 +363,24 @@ def rules_reply(state: dict, transcript: str) -> tuple[str, list[dict]]:
         reply = (f"Modelled dose so far is {round(rad.get('cumulative_msv', 0))} of {rad.get('career_limit_msv', 600)} millisieverts, "
                  f"and the storm level is S{rad.get('storm_level', 0)}.")
         return reply, [{"cmd": "open_screen", "name": "radiation"}]
+
+    # Section 12 & 13: Clinical triage and environment/mode spoken commands
+    if "headache" in t or "head hurt" in t or "head ache" in t:
+        return "I've noted your headache. Starting symptom triage to assess severity and check medical protocol.", [{"cmd": "open_screen", "name": "symptom"}, {"cmd": "point_to", "zone": "head"}]
+    if "symptom" in t or "where does it hurt" in t or "not feeling well" in t:
+        return "Opening symptom triage so you can record what you are feeling.", [{"cmd": "open_screen", "name": "symptom"}]
+
+    from brain import environment as envmod
+    env_m = envmod.match(t)
+    if env_m:
+        if env_m.get("type") == "mode":
+            mode = env_m["mode"]
+            cmd = [{"cmd": "suit", "action": "eva"}] if mode == "eva" else []
+            return env_m.get("confirmation", "Mode confirmed."), cmd
+        elif env_m.get("type") == "env":
+            return env_m.get("confirmation", "Environment confirmed."), []
+        elif env_m.get("ask"):
+            return env_m.get("question", "Which environment or mode applies?"), []
 
     if atype == "none":
         reply = f"{hr_line} Everything else is within your usual range, {name}.".strip()

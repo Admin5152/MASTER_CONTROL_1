@@ -40,6 +40,8 @@ import { registerPulse } from "./experience/pulse.js";
 import * as reminders from "./core/reminders.js";
 import { auditBuf } from "./core/bus.js";
 import { registerSymptom } from "./systems/symptom.js";
+import { registerClinic } from "./experience/clinic.js";
+import { careReply, registerCare, symptomFromSpeech } from "./experience/care.js";
 import { REGION_NAMES, REGION_ZONE, regionOf, zoneStatuses } from "./interface/body.js";
 
 const $ = (id) => document.getElementById(id);
@@ -166,6 +168,7 @@ async function start() {
 
 // ---------- "Who's here?": pick your name by tap or by saying it ----------
 let choosing = false;
+let identified = false;   // until someone picks their name, no alert, banner, alarm or suggestion is shown or spoken
 function openWho() {
   let last = null; try { last = localStorage.getItem("sentinel.crew"); } catch { /* private mode */ }
   const el = document.createElement("section");
@@ -191,6 +194,17 @@ function chooseCrew(id) {
   const el = document.getElementById("who");
   if (el) { el.classList.add("is-out"); setTimeout(() => el.remove(), 400); }
   say(was ? `Hello ${c.display_name}. I'm Sentinel. Ask me anything, or say hey Sentinel.` : `Hello ${c.display_name}.`, { source: "local" });
+  // now that we know who is here: their own status, then anything that needs them (the banner and card follow the next poll)
+  lastActionKey = ""; lastZone = null;
+  setTimeout(async () => {
+    await pollOnce();
+    identified = true;
+    const s = view.state, a = s?.action || {};
+    if (!s || s.crew_id !== id) return;
+    onState(view);
+    if (!a.type || a.type === "none") say("Your readings are within your usual range.", { source: "local", append: true });
+    syncPlanDone();
+  }, 600);
 }
 
 async function requestWakeLock() {
@@ -261,6 +275,8 @@ async function mountApp() {
   registerAudit(registerScreen);
   registerPulse(registerScreen);
   registerSymptom(registerScreen);
+  registerClinic(registerScreen);
+  registerCare(registerScreen);
   registerScreen("orb_calm", { title: "Stillpoint", full: true, render: renderOrbCalm });
   registerScreen("race", { title: "Slipstream", full: true, render: renderRace });
   registerScreen("greenhouse", { title: "Red Harvest", full: true, render: renderGreenhouse });
@@ -327,6 +343,57 @@ async function mountApp() {
   on("vision:emotion", (e) => logCamera(camLog.fromEmotion(e, performance.now())));
   on("vision:hr", showCamLog);
   on("crew:changed", () => { camLog.reset(); showCamLog(); });
+  // ---- the 15-second scan (FR-1): collect what the camera measures, then save one result to the record with its
+  //      confidence and the label LIVE estimate. It goes through the same pipeline as every other reading.
+  const SCAN_S = 15, med = (a) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor((s.length - 1) / 2)] : null; };
+  let scan = null, camWasOn = false;
+  const scanMsg = (html) => { const e = $("scan-result"); if (e) e.innerHTML = html; };
+  function startScan() {
+    if (scan) clearInterval(scan.t);
+    scan = { t0: performance.now(), hr: [], q: [], br: [], emo: {}, cid: view.crewId };
+    $("btn-scan15").disabled = true;
+    scan.t = setInterval(() => {
+      if (!scan) return;
+      const left = Math.max(0, Math.ceil(SCAN_S - (performance.now() - scan.t0) / 1000));
+      scanMsg(`<strong>Scanning: ${left} s</strong> · hold still and face the light. ${scan.hr.length} pulse sample${scan.hr.length === 1 ? "" : "s"} so far.`);
+      if (left <= 0) finishScan();
+    }, 500);
+  }
+  async function finishScan() {
+    const s = scan; scan = null;
+    if (!s) return;
+    clearInterval(s.t);
+    $("btn-scan15").disabled = !vision.state.on;
+    if (s.cid !== view.crewId || view.aux?.scenario?.running) { scanMsg("Scan stopped: nothing saved."); return; }
+    const hr = med(s.hr), br = med(s.br), q = med(s.q) || 0;
+    const top = Object.entries(s.emo).sort((a, b) => b[1].length - a[1].length)[0];
+    if (hr == null && br == null) { scanMsg("No clear reading in 15 seconds, so nothing was saved. More light on your face and holding still help. You can type a reading in the Health log instead."); return; }
+    try {
+      const r = (await api.scanSave(s.cid, { kind: "face", seconds: SCAN_S, samples: s.hr.length, heart_rate: hr, confidence: q, breathing_rate: br,
+        emotion: top?.[0], emotion_confidence: top ? med(top[1]) : null })).scan;
+      const parts = [r.heart_rate != null ? `pulse ${r.heart_rate} bpm (quality ${Math.round((r.confidence || 0) * 100)}%)` : "", r.breathing_rate != null ? `breathing ${r.breathing_rate}/min` : "", r.emotion ? `expression ${esc(r.emotion)}` : ""].filter(Boolean);
+      scanMsg(`<strong>Scan saved to ${esc(view.state?.display_name || "your")}'s record</strong> ${badgeHTML("LIVE")} ${parts.join(" · ")}. An estimate for trends${(r.confidence || 0) < 0.35 ? "; the signal was weak, so it will not raise an alert on its own" : ""}.`);
+      emit("scan.recorded", { kind: "face", saved: r.saved, crewId: s.cid });
+      say(`Scan saved. ${r.heart_rate != null ? `Pulse about ${r.heart_rate}.` : ""}${r.breathing_rate != null ? ` Breathing ${r.breathing_rate} a minute.` : ""}`, { source: "local" });
+      lastActionKey = ""; pollOnce();
+    } catch (e) { scanMsg(`The scan was not saved: ${esc(e.message)}.`); }
+  }
+  on("reading.added", (r) => {
+    if (!scan || r?.source !== "camera") return;
+    if (r.indicator === "heart_rate" && Number.isFinite(r.value)) { scan.hr.push(r.value); scan.q.push(Number(r.confidence) || 0); }
+    if (r.indicator === "breathing_rate" && Number.isFinite(r.value)) scan.br.push(r.value);
+  });
+  on("vision:emotion", (e) => { if (scan && e?.emotion) (scan.emo[String(e.emotion).toLowerCase()] ||= []).push(Number(e.confidence) || 0); });
+  setInterval(() => {   // the scan starts when the camera does, and stops with it
+    const isOn = !!vision.state.on;
+    if (isOn && !camWasOn) startScan();
+    if (!isOn && camWasOn) { if (scan) { clearInterval(scan.t); scan = null; } $("btn-scan15").disabled = true; }
+    camWasOn = isOn;
+  }, 400);
+  $("btn-scan15").addEventListener("click", startScan);
+  on("crew:changed", () => { if (scan) { clearInterval(scan.t); scan = null; scanMsg("Scan stopped: the crew member changed."); } });
+  // the full body scan is kept too: which areas it flagged
+  on("body.scan.complete", (d) => { if (identified && view.crewId) api.scanSave(view.crewId, { kind: "body", zones_flagged: d?.zones_flagged || [] }).catch(() => {}); });
   renderRadiation($("radiation-host"), ctx);
   registerScreen("readings", { title: "All readings", render: renderAllReadings });
 
@@ -357,6 +424,10 @@ async function mountApp() {
   setInterval(() => view.crewId && refreshSparks($("vitals"), view.crewId), 5000);
   setTimeout(() => view.crewId && refreshSparks($("vitals"), view.crewId), 1200);
   setInterval(routineTick, 15000);
+  setInterval(alertTick, 20000);
+  on("crew:changed", () => setTimeout(syncPlanDone, 1500));
+  // the top navigation shows the stage you are on again once a sheet (Wellbeing, Care…) closes
+  on("screen:close", () => document.querySelectorAll("#topnav [data-nav]").forEach((b) => b.setAttribute("aria-current", String(b.dataset.nav === stages.current))));
   setInterval(refreshSpaceweather, 30000);
   refreshSpaceweather();
   setInterval(() => api.health().then((h) => { ctx.health = h; }).catch(() => {}), 20000);
@@ -407,11 +478,108 @@ function zonePopover(zone, at, region) {
   setTimeout(() => document.addEventListener("pointerdown", function off(e) { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener("pointerdown", off); } }), 0);
 }
 
+let lastAskKey = "", pendingAsk = null;
+function askCheckin(a) {
+  say(`${a.detail} Want to check in now?`, { source: "local", append: true });
+  ctx.expectReply?.(12000);
+  pendingAsk = { until: Date.now() + 45000,
+    yes: () => screens.open("checkin"),
+    no: () => {
+      const c = view.aux?.clock, h = c ? (c.hour + (c.minute + 30) / 60) % 24 : 12;
+      api.planAdd(view.crewId, { title: "Recheck: how are you feeling?", time: `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.round((h % 1) * 60) % 60).padStart(2, "0")}`, type: "recheck" }).catch(() => {});
+      say("Okay. I'll check back in half an hour.", { source: "local" });
+    } };
+}
+let tickBusy = false;
+async function alertTick() {
+  if (!identified || !view.crewId || safetyOn || tickBusy || sleeping) return;
+  tickBusy = true;
+  try {
+    const r = await api.alertsTick(view.crewId);
+    for (const a of r.represent || []) {
+      const second = (a.represent_count || 1) >= 2;
+      cue.nudge(); if (second || a.level >= 3) setTimeout(() => cue.nudge(), 350);
+      lastActionKey = "";
+      showNotice(`${second ? "Still waiting: " : "Reminder: "}${a.title}`);
+      say(`${second ? "This still needs an answer" : "A reminder"}: ${a.title} Say why this to hear the reason, or open Alerts.`, { source: "local", append: true, priority: a.level >= 3 });
+    }
+    for (const a of r.expired || []) {
+      if (a.level >= 3) { cue.nudge(); showNotice(`No answer to an urgent alert: ${a.buddy || "your crew buddy"} has been alerted (SIM).`); say(`There was no answer to an urgent alert, so I've alerted ${a.buddy || "your crew buddy"}.`, { source: "local", priority: true }); }
+    }
+    syncPlanDone(); suggestMode();
+  } catch { /* offline: try again next time */ }
+  tickBusy = false;
+}
+
+// ---------- gentle auto-suggest (13.1): from the schedule, never switching on its own ----------
+const suggested = new Set();
+function askBanner(title, text, yesLabel, onYes) {
+  document.querySelector(".env-banner.is-ask")?.remove();
+  const el = document.createElement("section"); el.className = "env-banner is-ask"; el.setAttribute("role", "status");
+  el.innerHTML = `<b>${esc(title)}</b><p class="fine">${esc(text)}</p><span class="env-ask"><button type="button" class="pill pill-light" data-y>${esc(yesLabel)}</button><button type="button" class="pill pill-ghost" data-n>No</button></span>`;
+  el.querySelector("[data-y]").addEventListener("click", () => { el.remove(); onYes(); });
+  el.querySelector("[data-n]").addEventListener("click", () => el.remove());
+  document.body.appendChild(el); setTimeout(() => el.remove(), 30000);   // no answer means no change
+}
+function suggestMode() {
+  const c = view.aux?.clock, o = view.aux?.ops;
+  if (!c || !o || document.querySelector("#sheet.is-full:not([hidden])")) return;
+  if (view.state?.cabin?.alert && o.mode !== "contingency" && !suggested.has(`cabin:${c.mission_day}`)) {   // from the cabin feed
+    suggested.add(`cabin:${c.mission_day}`);
+    askBanner("Contingency mode?", "Cabin air is out of range. Contingency mode shows only short steps and alerts the crew. Mission emergency procedures come first.", "Switch to contingency", () => setMode("contingency"));
+    return;
+  }
+  const sb = sleepBlock(), asleep = reminders.inQuietHours(c, sb);
+  const k = `${view.crewId}:${c.mission_day}:${asleep ? "rest" : "routine"}`;
+  if (suggested.has(k)) return;
+  if (asleep && o.mode === "routine") { suggested.add(k); askBanner("Rest mode?", "It's inside your sleep block. In rest mode only urgent and cabin alerts reach you.", "Switch to rest", () => setMode("rest")); }
+  else if (!asleep && o.mode === "rest" && c.hour >= sb.to && c.hour < sb.to + 3) { suggested.add(k); askBanner("Back to routine?", "Your sleep block has ended. Routine mode brings the reminders back.", "Switch to routine", () => setMode("routine")); }
+}
+
+// ---------- one set of "done" marks: the home routine and the brain's plan agree ----------
+const PLAN_OF = { vitals: ["rem_checkin"], exercise: ["rem_exercise", "rem_exercise_am"], hydration: ["rem_lunch"], log: ["rem_wellbeing"], winddown: ["rem_winddown"] };
+const ROUTINE_OF = Object.fromEntries(Object.entries(PLAN_OF).flatMap(([k, ids]) => ids.map((i) => [i, k])));
+let syncBusy = false;
+async function syncPlanDone() {
+  const c = view.aux?.clock;
+  if (!c || !view.crewId || syncBusy) return;
+  syncBusy = true;
+  try {
+    const p = await api.plan(view.crewId);
+    let changed = false;
+    const done = routineDone(c.mission_day);
+    for (const r of p.today_reminders || []) if (r.state === "done" && ROUTINE_OF[r.id] && !done[ROUTINE_OF[r.id]]) { setRoutineDone(c.mission_day, ROUTINE_OF[r.id], false); changed = true; }
+    if (changed) lastActionKey = "";
+    // a check-in whose time has gone by with no answer (section 20 steps 4 and 5): one soft re-prompt, then it is counted
+    if (identified && !view.aux?.ops?.reminders_paused) {
+      const mk = `sentinel:missed:${view.crewId}:${c.mission_day}`;
+      let seen = {}; try { seen = JSON.parse(localStorage.getItem(mk) || "{}"); } catch { /* storage blocked */ }
+      const late = (p.today_reminders || []).find((r) => r.state === "past" && r.type === "checkin" && (seen[r.id] || 0) < 2 && Date.now() - (seen[`${r.id}:t`] || 0) > 10 * 60000);
+      if (late) {
+        seen[late.id] = (seen[late.id] || 0) + 1; seen[`${late.id}:t`] = Date.now();
+        try { localStorage.setItem(mk, JSON.stringify(seen)); } catch { /* storage blocked */ }
+        const res = await api.planMiss(view.crewId, late.id);
+        if (res.soft_prompt && res.state === "re_presented") { note(`Whenever you have a moment: ${late.title}.`); cue.nudge(); }
+        if (res.consecutive_alert) showNotice("Three check-ins were missed. A line about it goes in the next digest; no judgment, just so the surgeon knows.");
+      }
+    }
+  } catch { /* offline */ }
+  syncBusy = false;
+}
+ctx.routineDone = (planId) => { const c = view.aux?.clock; if (c && ROUTINE_OF[planId]) { setRoutineDone(c.mission_day, ROUTINE_OF[planId], false); lastActionKey = ""; } };
+
+const SHEET_ONLY = ["datasets", "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "environment", "onboarding", "kit", "profile"];
 function wireControls() {
+  $("btn-unwell").addEventListener("click", () => screens.open("care", "triage"));
+  $("banner-ack").addEventListener("click", () => { if (view.crewId) api.alertsAckOpen(view.crewId, 3).catch(() => {}); });
+  $("btn-checkin").addEventListener("click", () => screens.open("checkin"));
+  $("btn-today").addEventListener("click", () => screens.open("today"));
+  $("sb-env").addEventListener("click", () => screens.open("environment"));
   document.querySelectorAll("#tabbar [data-go]").forEach((b) => b.addEventListener("click", () => {
     const go = b.dataset.go;
     closeMenus();
     if (go === "settings" || go === "about") { screens.open(go); return; }
+    if (SHEET_ONLY.includes(go)) { screens.open(go); return; }
     closeScreen();
     director.run([{ cmd: "open_screen", name: go }]);
   }));
@@ -496,14 +664,17 @@ function closeMenus() {
 ctx.closeMenus = closeMenus;
 
 function renderAllReadings(el) {
-  el.innerHTML = `<p class="note">Every reading Sentinel tracks, with where it came from. Tap one for its trend.</p>
+  el.innerHTML = `<p class="note">Every reading Sentinel tracks, with where it came from. Tap one for how to measure it, why it matters, what to do and its trend.</p>
     <div class="all-tiles" style="margin-top:var(--s-4)">${TILES.map((t) => `<button class="card vcard tile" type="button" data-tile="${t.id}"><span class="tile-label">${esc(t.label)}</span>
       <span class="tile-meta"><span class="tile-badge"></span><span class="tile-status">—</span></span><span><span class="tile-value num">—</span><span class="tile-unit">${esc(t.unit)}</span></span></button>`).join("")}</div>`;
   const draw = () => renderTiles(el, view, view.spaceweather);
   draw();
   el.querySelectorAll("[data-tile]").forEach((b) => b.addEventListener("click", () => {
     const id = b.dataset.tile;
-    director.run([id === "dose" || id === "storm" ? { cmd: "open_screen", name: "radiation" } : { cmd: "show_chart", metric: id }]);
+    const field = TILES.find((t) => t.id === id)?.field;
+    if (id === "dose" || id === "storm") director.run([{ cmd: "open_screen", name: "radiation" }]);
+    else if (field) screens.open("indicator", field);
+    else director.run([{ cmd: "show_chart", metric: id }]);
   }));
   const t = setInterval(draw, 1500);
   return () => clearInterval(t);
@@ -637,6 +808,8 @@ function showNotice(text) {
   noticeT = setTimeout(() => { n.hidden = true; }, 6000);
 }
 ctx.showNotice = showNotice;
+ctx.expectReply = (ms = 9000) => { if (settings.get("listen") !== "ptt") voiceMod.expectReply(ms); };
+ctx.showEnvBanner = showEnvBanner;
 
 // ---------- commands ----------
 // ---------- W14 urgent wellbeing concern: fixed lines, people brought in, grounding open ----------
@@ -715,7 +888,27 @@ async function handleCommand(text, meta = {}) {
   }
   // conversation: after Sentinel answers a spoken request, the next thing said needs no wake phrase
   const followUp = () => { if (meta.via === "voice" && settings.get("listen") !== "ptt") voiceMod.expectReply(9000); };
+  // Care is asking something ("how strong?", "done?", "did that help?"): the answer goes there first
+  if (screens.current?.() === "care" && careReply(text)) return;
+  if (pendingAsk) {   // the answer to "Want to check in now?"
+    const p = pendingAsk, t = ` ${text.toLowerCase().replace(/[^a-z ]/g, " ")} `;
+    if (Date.now() > p.until) pendingAsk = null;
+    else if (/ (yes|yeah|yep|sure|okay|ok|please|lets do it|go ahead) /.test(t) && t.trim().split(/\s+/).length <= 5) { pendingAsk = null; p.yes(); return; }
+    else if (/ (no|nope|not now|later|nah) /.test(t) && t.trim().split(/\s+/).length <= 5) { pendingAsk = null; p.no(); return; }
+  }
   let m = matchIntent(text, { wearOpen: stages.current === "vitals" });
+  // "I have a headache", "my stomach is not well": straight into triage, then the steps one at a time
+  {
+    const t = ` ${text.toLowerCase().replace(/[\u2019']/g, "")} `;
+    const asks = /^ (what|why|how|should|is it|is that|do i|does|can i|could|would|when) /.test(t);
+    const unwell = / (dont|do not|not) feel(ing)? (so |very |too )?(well|good|great|right) | feel(ing)? (sick|ill|unwell|bad|terrible|awful|off) | (is|are|feels?) not (well|right|good) /.test(t);
+    const hurts = / (hurts?|aches?|aching|sore|pain|painful|headache|dizzy|nauseous|nausea|queasy|blurry|cant breathe|cant see|racing|fever|rash|cramp|numb|tingling|swollen|itchy|coughing|cough|bleeding|sprained) /.test(t);
+    if (!asks && (unwell || hurts || (m?.intent === "check" && m.action === "report_symptom"))) {
+      const sy = symptomFromSpeech(text, m?.intent === "check" ? m.target : "");
+      if (sy) { closeMenus(); screens.open("care", { ...sy, voice: true }); return; }
+      if (unwell) { closeMenus(); screens.open("care", { view: "triage", voice: true }); return; }
+    }
+  }
   if (m && (m.local === "yes" || m.local === "no") && !pendingEnv) m = null;
   if (m) {
     if (m.local === "stop") { voiceMod.stopSpeaking(); director.cancel(); closeScreen(); return; }
@@ -780,7 +973,8 @@ async function handleCommand(text, meta = {}) {
         orb_calm: "Stillpoint", race: "Slipstream", greenhouse: "Red Harvest", grounding: "grounding", settings: "settings", about: "the credits",
         trends: "your trends", health_log: "the health log", cognitive: "the reaction test", symptom: "the symptom map", crew: "the crew",
         hardware: "the hardware", vision: "the camera", cabin: "the cabin", interventions: "what helps you", exam: "the health exam",
-        measures: "weekly measures", ground: "messages to ground", evidence: "the NASA evidence", profile: "your health profile", audit: "the audit log", pulse: "the crew pulse" };
+        measures: "weekly measures", today: "your day", checkin: "the daily check-in", care: "care", alerts: "your alerts", mind: "how you're doing",
+        journal: "your journal", record: "your saved record", weekly: "the weekly review", kit: "the medical kit", environment: "environment and mode", ground: "messages to ground", evidence: "the NASA evidence", profile: "your health profile", audit: "the audit log", pulse: "the crew pulse" };
       const n = m.commands[0].name;
       if (NAMES[n]) say(`${["race", "greenhouse", "orb_calm", "grounding", "cognitive", "exam"].includes(n) ? "Starting" : "Opening"} ${NAMES[n]}.`, { source: "local" });
     }
@@ -839,6 +1033,7 @@ async function onUtterance(audio) {
 function switchCrew(id, source) {
   if (!id) return;
   setCrew(id, source);
+  if (source === "voice") identified = true;   // recognised by voice: that is the choice
   api.profile(id).then((p) => { view.profile = p; }).catch(() => {});
   if (source === "manual") patch({ identity: { source: "manual", confidence: 0 } }).catch(() => {});
 }
@@ -863,7 +1058,7 @@ async function enrol(id, statusEl) {
 }
 
 function openIntervention(name) {
-  const map = { breathing: "orb_calm", aurora_run: "race", grounding: "grounding", greenhouse: "greenhouse", earth_window: "earth_window", music: "music", connection: "connection" };
+  const map = { breathing: "orb_calm", orb_calm: "orb_calm", race: "race", pattern_protocol: "alerts", aurora_run: "race", grounding: "grounding", greenhouse: "greenhouse", earth_window: "earth_window", music: "music", connection: "connection" };
   screens.open(map[name] || "interventions");
 }
 
@@ -957,6 +1152,9 @@ function renderOps(o) {
   el.title = c.note || "Link to ground (SIM)";
   if (lastComms && lastComms !== c.status) showNotice(c.status === "blackout" ? "Link to ground lost (SIM). Sentinel carries on; messages wait in the queue." : c.status === "live" || c.status === "delayed" ? "Link to ground restored (SIM). Queued messages are on their way." : "");
   lastComms = c.status;
+  const env = $("sb-env");
+  env.hidden = false;
+  env.textContent = `${{ station: "Station", transit: "Transit", base: "Base", critical: "Critical phase" }[o.env] || o.env || "Environment"}${view.aux?.extras?.settling_in ? " · settling in" : ""}`;
   const md = $("sb-mode");
   md.hidden = o.mode === "routine" || o.mode === "eva";
   md.textContent = o.mode === "rest" ? "Rest · urgent only" : o.mode === "contingency" ? "Contingency" : o.mode;
@@ -1011,6 +1209,10 @@ function onState(v) {
   if (!ctx.skinChips) ctx.body3d?.setChips(ctx.organZone ? Object.fromEntries([[ctx.organZone, chipText(ctx.organZone, v)]].filter(([, c]) => c)) : Object.fromEntries(["heart", "lungs", "head"].map((z) => [z, chipText(z, v)]).filter(([, c]) => c)));
   space.setProfile(s.radiation.mission_profile);
   const sev = s.action?.severity || "none";
+  if (!identified) {   // "Who's here?" comes first: nothing about one person is announced to whoever is at the screen
+    orb.setSeverity("none"); banner.hide(); $("action-card").hidden = true; lastActionKey = "";
+    return;
+  }
   orb.setSeverity(["flag_cabin", "flag_radiation", "flag_ground", "flag_redflag"].includes(s.action?.type) ? "alert" : sev === "watch" ? "watch" : "none");
   banner.update(s, aux);
   renderActionCard(s, aux);
@@ -1066,8 +1268,14 @@ function renderActionCard(s, aux) {
   }
   card.hidden = false;
   card.className = `suggest is-${sev}`;
-  card.innerHTML = `<span class="ac-text">${esc(text)}</span>${badgeHTML(badge)}${btn ? `<button class="pill pill-light" type="button" data-act>${esc(btn[0])}</button>` : ""}${snoozeBtn ? `<button class="pill pill-ghost" type="button" data-snooze>Snooze 30 min</button>` : ""}`;
+  const isAlert = !!a.type && a.type !== "none";
+  if (isAlert && !a.type.startsWith("flag_") && identified && key !== lastAskKey) {   // a new change: ask, do not announce
+    lastAskKey = key;
+    setTimeout(() => { if (lastAskKey === key && !safetyOn && !screens.current?.()) askCheckin(a); }, 1400);
+  }
+  card.innerHTML = `<span class="ac-text">${esc(text)}</span>${badgeHTML(badge)}${btn ? `<button class="pill pill-light" type="button" data-act>${esc(btn[0])}</button>` : ""}${snoozeBtn ? `<button class="pill pill-ghost" type="button" data-snooze>Snooze 30 min</button>` : ""}${isAlert && !a.type.startsWith("flag_") ? `<button class="pill pill-ghost" type="button" data-why>Why this?</button>` : ""}`;
   card.querySelector("[data-act]")?.addEventListener("click", btn[1]);
+  card.querySelector("[data-why]")?.addEventListener("click", () => screens.open("alerts"));
   card.querySelector("[data-snooze]")?.addEventListener("click", snoozeDue);
 }
 
@@ -1092,10 +1300,11 @@ function sleepBlock() {
   const h = (x, d) => { const m = /^(\d{1,2}):(\d{2})/.exec(x || ""); return m ? Number(m[1]) + Number(m[2]) / 60 : d; };
   return { from: Math.max(20, Math.ceil(h(t.winddown, 21.5) + 0.5)), to: Math.floor(h(t.checkin, 8)) - 2 };
 }
-function setRoutineDone(day, id) {
+function setRoutineDone(day, id, push = true) {
   const d = routineDone(day);
   d[id] = true;
   try { localStorage.setItem(routineKey(day), JSON.stringify(d)); } catch { /* storage blocked */ }
+  if (push && view.crewId && day === view.aux?.clock?.mission_day) for (const rid of (PLAN_OF[id] || []).slice(0, 1)) api.planDone(view.crewId, rid).catch(() => {});
 }
 function dueRoutine() {
   const c = view.aux?.clock;

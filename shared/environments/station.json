@@ -1,0 +1,65 @@
+{
+  "id": "station",
+  "label": "Space station",
+  "in_plain_words": "Orbiting station with regular contact",
+  "profile": "iss",
+  "comms": {
+    "mode": "live",
+    "one_way_delay_s": 0.3,
+    "label": "SIM"
+  },
+  "return_option": "docked_vehicle",
+  "resupply": "frequent",
+  "kit_id": "kit_station_v1",
+  "indicator_weights": {
+    "sleep_hours": 1.0,
+    "mood": 1.0,
+    "heart_rate": 1.1,
+    "exercise_minutes": 1.2
+  },
+  "threshold_overrides": {
+    "cabin": {
+      "oxygen_pct": { "min": 19.5, "max": 23.0 },
+      "co2_ppm": { "max": 3947 }
+    }
+  },
+  "escalation_policy": {
+    "act": "escalate_to_ground",
+    "urgent": "alert_crew_and_contact_ground_now",
+    "wait_tolerance_min": 15.0,
+    "default_escalation": "Escalate early; ground can advise"
+  },
+  "watches_harder": "Cardiovascular, exercise, eyes, sleep",
+  "schedule_template": "station_day_v1",
+  "hazard_focus": [
+    "microgravity",
+    "radiation",
+    "hostile_closed_environment"
+  ],
+  "dataset_evidence": [
+    {
+      "mrid": "MR043S",
+      "file": "dataset/cl5yvqkj12sol01o6e9xshx2t.pdf",
+      "title": "Shuttle and Station Air Quality Monitoring",
+      "supports": "Cabin trace contaminants, oxygen replenishment, and scrubbers."
+    },
+    {
+      "mrid": "MR054L",
+      "file": "dataset/cl5yvqkj12sos01o6b24dglol.pdf",
+      "title": "ISS Potable Water Quality Monitoring",
+      "supports": "Microbial limits, biocides, and closed-loop water recovery."
+    },
+    {
+      "mrid": "MR087L",
+      "file": "dataset/cl5yvqkq12spf01o69ijggvi1.pdf",
+      "title": "EVA Exercise Prebreathe Protocol for ISS Crewmembers",
+      "supports": "Denitrogenation exercise washout before station airlock depressurization."
+    },
+    {
+      "mrid": "MR091L",
+      "file": "dataset/cl5yvqkq12spm01o608vcf2vf.pdf",
+      "title": "Air Quality Monitor (AQM)",
+      "supports": "Volatile organic gas chromatography mass spectrometry limits."
+    }
+  ]
+}

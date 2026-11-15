@@ -42,6 +42,58 @@ LOG_FIELDS = {"session.calm_start_hr", "session.calm_end_hr", "session.calm_reco
               "session.grounding_mood_before", "session.grounding_mood_after", "session.grounding_mood_change"}
 
 
+VALID_LABELS = {"LIVE", "LIVE estimate", "MANUAL", "SIM", "DESIGNED"}
+INDICATOR_PATH_MAP = {
+    "heart_rate": "vitals.heart_rate",
+    "breathing_rate": "vitals.breathing_rate",
+    "spo2": "vitals.spo2",
+    "bp_sys": "manual.bp_systolic",
+    "bp_systolic": "manual.bp_systolic",
+    "bp_dia": "manual.bp_diastolic",
+    "bp_diastolic": "manual.bp_diastolic",
+    "glucose": "manual.glucose_mgdl",
+    "blood_glucose": "manual.glucose_mgdl",
+    "glucose_mgdl": "manual.glucose_mgdl",
+    "temperature": "manual.temp_c",
+    "temp": "manual.temp_c",
+    "temp_c": "manual.temp_c",
+    "sleep_hours": "manual.sleep_hours",
+    "sleep": "manual.sleep_hours",
+    "sleep_quality": "manual.sleep_quality",
+    "mood": "manual.mood",
+    "mood_self": "manual.mood",
+    "stress": "manual.stress_self",
+    "stress_self": "manual.stress_self",
+    "energy": "manual.energy_self",
+    "energy_self": "manual.energy_self",
+    "connection": "manual.connection_self",
+    "connection_self": "manual.connection_self",
+    "exercise_minutes": "manual.exercise_minutes",
+    "exercise": "manual.exercise_minutes",
+    "hydration_ml": "manual.hydration_ml",
+    "hydration": "manual.hydration_ml",
+    "hydration_log": "manual.hydration_ml",
+    "reaction_ms": "cognitive.reaction_ms",
+    "reaction_time": "cognitive.reaction_ms",
+    "reaction_lapses": "cognitive.reaction_lapses",
+    "valence": "state.valence",
+    "arousal": "state.arousal",
+    "talk_share": "voice.talk_share",
+    "time_alone_pct": "state.time_alone_pct",
+    "voice_pitch": "voice.pitch",
+    "cabin_o2": "cabin.oxygen_pct",
+    "oxygen_pct": "cabin.oxygen_pct",
+    "cabin_co2": "cabin.co2_ppm",
+    "co2_ppm": "cabin.co2_ppm",
+    "storm_level": "radiation.storm_level",
+    "rad_dose_rate": "radiation.dose_rate_usv_h",
+    "rad_cumulative": "radiation.cumulative_msv",
+    "rad_event_level": "radiation.storm_level",
+    "shelter_status": "radiation.sheltered",
+    "missed_checkins": "manual.missed_checkins",
+}
+
+
 def now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -49,9 +101,26 @@ def now_iso() -> str:
 def _fill_defaults(state: dict) -> None:
     """Fields added after a crew record was written (wearable logging, symptom log): filled with empty values."""
     manual = state.setdefault("manual", {})
-    for key, default in (("sleep_quality", None), ("exercise_minutes", None), ("hydration_ml", None), ("meals", []), ("symptom_log", [])):
+    for key, default in (("sleep_quality", None), ("exercise_minutes", None), ("hydration_ml", None), ("meals", []), ("symptom_log", []),
+                         ("stress_self", None), ("energy_self", None), ("connection_self", None), ("mood_tags", [])):
         manual.setdefault(key, copy.deepcopy(default))
     state.setdefault("engagement", {}).setdefault("missed_checkins", 0)
+
+
+def _repair_symptom_log(state: dict) -> None:
+    """Keep only symptom entries in the contract's shape (zone, region, type, severity 1-3, onset, at)."""
+    from .contract import ENUMS, SYMPTOM_ITEM, SYMPTOM_LOG_MAX
+    good = []
+    for e in state.get("manual", {}).get("symptom_log", []) or []:
+        if not isinstance(e, dict) or not str(e.get("type", "")).strip():
+            continue
+        sev = e.get("severity")
+        sev = sev if sev in (1, 2, 3) else (3 if isinstance(sev, (int, float)) and sev >= 7 else 2 if isinstance(sev, (int, float)) and sev >= 4 else 1)
+        zone = e.get("zone") if e.get("zone") in ENUMS.get("manual.symptom_log.zone", []) else "whole_body"
+        onset = e.get("onset") if e.get("onset") in ENUMS.get("manual.symptom_log.onset", []) else "now"
+        good.append({**{k: "" for k in SYMPTOM_ITEM}, "zone": zone, "region": str(e.get("region", "")), "type": str(e["type"])[:40],
+                     "severity": sev, "onset": onset, "at": str(e.get("at") or e.get("timestamp") or "")})
+    state.setdefault("manual", {})["symptom_log"] = good[:SYMPTOM_LOG_MAX]
 
 
 class Store:
@@ -65,10 +134,19 @@ class Store:
         self.states: dict[str, dict] = {}
         self.history: dict[str, dict[str, list]] = {}
         self.internal: dict[str, dict] = {}
+        self.non_reading_records: dict[str, dict[str, list[dict]]] = {}
+        # "useful / not useful" feedback per rule (19.5): moves the personal-deviation cut-off only, never a safe limit
+        self.sensitivity: dict[str, float] = {}
         self.clock = {"base_day": 120, "start_hour": 8.0, "skip_hours": 0.0, "started": time.time()}
         loaded = False
         if persist and not fresh and (DATA / "state.json").exists():
             loaded = self._load_saved()
+            if not loaded:
+                # never throw a crew's record away silently: keep the unreadable file beside the new one
+                try:
+                    (DATA / "state.json").replace(DATA / f"state.unreadable-{int(time.time())}.json")
+                except OSError:
+                    pass
         if not loaded:
             self.reset()
 
@@ -83,6 +161,7 @@ class Store:
             self.states = {}
             self.history = {}
             self.internal = {}
+            self.non_reading_records = {}
             self.clock = {"base_day": 120, "start_hour": 8.0, "skip_hours": 0.0, "started": time.time()}
             for c in self._mock():
                 _fill_defaults(c)
@@ -138,6 +217,7 @@ class Store:
             raw = read_json(DATA / "state.json")   # encrypted at rest (plaintext from older installs is read once)
             self.states = raw["states"]
             self.history = raw["history"]
+            self.non_reading_records = raw.get("records", {})
             self.internal = raw.get("internal", {cid: {"storm_received": 0.0, "storm_avoided": 0.0, "reaction_runs": 0} for cid in self.states})
             self.clock = raw.get("clock", self.clock)
             models = {c["crew_id"]: c.get("body_model", "male") for c in self._mock()}
@@ -148,6 +228,7 @@ class Store:
                     self.states[cid]["body_model"] = models[cid]
                 self.states[cid].setdefault("body_model", models.get(cid, "male"))  # saved before body_model existed
                 _fill_defaults(self.states[cid])   # saved before these fields existed
+                _repair_symptom_log(self.states[cid])   # one malformed entry must not cost the whole record
                 for key, value in {"label": "SIM", "confidence": 1, "event_level": "quiet", "shelter_status": False, "dose_rate_usv_h": 0.0, "shielding_factor": 1.0}.items():
                     self.states[cid]["radiation"].setdefault(key, value)
                 self.states[cid]["radiation"].setdefault("location", {"latitude": None, "longitude": None, "source": "unknown", "updated": ""})
@@ -162,7 +243,8 @@ class Store:
             return
         try:
             from brain.vault import write_json
-            write_json(DATA / "state.json", {"states": self.states, "history": self.history, "internal": self.internal, "clock": self.clock})
+            write_json(DATA / "state.json", {"states": self.states, "history": self.history, "internal": self.internal, "clock": self.clock,
+                                               "records": self.non_reading_records})
         except OSError:
             pass
 
@@ -202,6 +284,109 @@ class Store:
             self._save()
             return copy.deepcopy(self.states[cid])
 
+    def ingest_reading(self, cid: str, reading: dict) -> dict:
+        """Ingest a validated reading with label and confidence (INT-1, SI1).
+        Rejects if missing valid label or confidence.
+        """
+        with self.lock:
+            if not self.has(cid):
+                raise KeyError(f"unknown crew member {cid}")
+            label = reading.get("label")
+            if not label or label not in VALID_LABELS:
+                raise ValueError(f"reading missing or invalid label; must be one of {sorted(VALID_LABELS)}")
+            conf = reading.get("confidence")
+            if conf is None or not isinstance(conf, (int, float)) or isinstance(conf, bool) or not (0.0 <= float(conf) <= 1.0):
+                raise ValueError("reading missing or invalid confidence; must be number between 0.0 and 1.0")
+            metric = reading.get("metric") or reading.get("indicator") or reading.get("field")
+            if not metric:
+                raise ValueError("reading missing metric or indicator")
+            val = reading.get("value")
+            if val is None or not isinstance(val, (int, float)) or isinstance(val, bool):
+                raise ValueError("reading missing numeric value")
+
+            path = INDICATOR_PATH_MAP.get(str(metric), str(metric))
+            parts = path.split(".")
+            if len(parts) == 2:
+                patch = {parts[0]: {parts[1]: val}}
+            elif len(parts) == 1:
+                patch = {parts[0]: val}
+            else:
+                patch = {}
+
+            source = reading.get("source") or ("manual" if label == "MANUAL" else "camera" if label == "LIVE" else "sim")
+
+            # Append to history with complete honesty metadata
+            h = self.history[cid].setdefault(path, [])
+            point = {"t": time.time(), "v": float(val), "source": source, "label": label, "confidence": float(conf)}
+            h.append(point)
+            if len(h) > HISTORY_CAP:
+                del h[: len(h) - HISTORY_CAP]
+
+            # Patch state and run sequential pipeline: radiation -> thresholds -> drift -> decision
+            return self.patch(cid, patch, record=False)
+
+    def record_non_reading(self, cid: str, record_type: str, data: dict) -> dict:
+        """Record a non-reading record (Section 17): symptoms, protocol runs, kit usage,
+        alert feedback, schedule context, data-quality scores, mood tags, journal entries,
+        crew pulse, audit log.
+        """
+        with self.lock:
+            if not self.has(cid) and record_type != "crew_pulse":
+                raise KeyError(f"unknown crew member {cid}")
+            from .indicators import validate_non_reading_record
+            sanitized = validate_non_reading_record(record_type, data)
+            if cid not in self.non_reading_records:
+                self.non_reading_records[cid] = {}
+            self.non_reading_records[cid].setdefault(record_type, []).append(sanitized)
+
+            # Mirror specific types into existing state schemas if applicable
+            if record_type == "symptom" and self.has(cid):
+                # the state's symptom log has a frozen shape (contract): zone, region, type, severity 1-3, onset, time.
+                # A record on the 0-10 scale is mapped (0-3 mild, 4-6 moderate, 7-10 severe); anything else would
+                # make the saved state fail validation at the next start.
+                from .contract import ENUMS, SYMPTOM_LOG_MAX
+                s = self.states[cid]
+                sev = sanitized.get("severity", 0)
+                sev = 3 if sev >= 7 else 2 if sev >= 4 else 1
+                zone = {"chest": "heart", "skin": "whole_body"}.get(str(sanitized.get("zone", "")), str(sanitized.get("zone", "")))
+                if zone not in ENUMS.get("manual.symptom_log.zone", [zone]):
+                    zone = "whole_body"
+                onset = sanitized.get("onset", "now")
+                if onset not in ENUMS.get("manual.symptom_log.onset", [onset]):
+                    onset = "now"
+                entry = {"zone": zone, "region": "", "type": str(sanitized.get("type", "symptom"))[:40] or "symptom",
+                         "severity": sev, "onset": onset, "at": sanitized["timestamp"]}
+                manual = s.setdefault("manual", {})
+                manual["symptom_log"] = [entry, *[e for e in manual.get("symptom_log", []) if isinstance(e, dict) and e.get("type")]][:SYMPTOM_LOG_MAX]
+                self._recompute(cid)
+            elif record_type == "mood_tags" and self.has(cid):
+                s = self.states[cid]
+                s.setdefault("manual", {})["mood_tags"] = list(sanitized.get("tags", []))[:8]   # today's tags, context only
+
+            self._save()
+            return sanitized
+
+    def record_scan(self, cid: str, scan: dict) -> dict:
+        """A finished scan (the 15-second face scan, or the full body scan): what it measured, how sure, and when.
+        The readings themselves go through ingest_reading; this is the record that a scan happened and what it found."""
+        with self.lock:
+            if not self.has(cid):
+                raise KeyError(f"unknown crew member {cid}")
+            entry = {**scan, "timestamp": now_iso(), "t": time.time()}
+            lst = self.non_reading_records.setdefault(cid, {}).setdefault("scan", [])
+            lst.append(entry)
+            del lst[:-200]
+            self._save()
+            return copy.deepcopy(entry)
+
+    def get_non_reading(self, cid: str, record_type: str | None = None) -> list[dict] | dict[str, list[dict]]:
+        """Retrieve non-reading records for a crew member."""
+        with self.lock:
+            crew_records = self.non_reading_records.get(cid, {})
+            if record_type:
+                return copy.deepcopy(crew_records.get(record_type, []))
+            return copy.deepcopy(crew_records)
+
     def _field_source(self, s: dict, field: str, default: str) -> str:
         if field.startswith("vitals."):
             key = field.split(".", 1)[1]
@@ -219,6 +404,10 @@ class Store:
         point = {"t": time.time(), "v": value, "source": source}
         if field.startswith("radiation."):
             point.update(label="SIM", confidence=1)
+        elif source in ("user", "manual"):
+            point.update(label="MANUAL", confidence=1.0)   # typed or tapped by the crew member
+        elif source in ("camera", "sensor", "voice"):
+            point.update(label="LIVE")   # measured now; the camera pulse is an estimate and its quality is kept with each scan
         h.append(point)
         if len(h) > HISTORY_CAP:
             del h[: len(h) - HISTORY_CAP]
@@ -310,7 +499,8 @@ class Store:
         rad["career_limit_msv"] = th["radiation"]["career_limit_msv"]["value"]
         absolute = evaluate_absolute(s, th)
         s["cabin"]["alert"] = any(r["zone"] == "cabin" and r["severity"] == "alert" for r in absolute)
-        d = compute_drift(s, th, self._history_baselines(cid))
+        adj = [self.sensitivity.get(r, 0.0) for r in ("gentle_checkin", "offer_orb_calm", "offer_intervention", "flag_pattern")]
+        d = compute_drift(s, th, self._history_baselines(cid), scale=1.0 + max(adj, key=abs))
         # context (S4, S5): pulse and breathing right after exercise, or a low-confidence camera pulse, are
         # estimates: shown, never alarming
         quiet = self._quiet(cid)
@@ -328,12 +518,13 @@ class Store:
         # settling in (S16): after an environment switch, a personal-baseline change reads as adjusting;
         # ranges, cabin air, radiation and red flags still alert
         day = int(self.mission_clock()["mission_day"]) if self.clock else 0
-        if it.get("settling_until_day", -1) > day and act.get("severity") != "alert" and act.get("type") in ("offer_orb_calm", "offer_intervention", "gentle_checkin"):
+        if it.get("settling_until_day", -1) > day and act.get("severity") != "alert" and act.get("type") in ("offer_orb_calm", "offer_intervention", "gentle_checkin", "flag_pattern"):
             act = {**act, "severity": "info", "detail": "Adjusting to the new environment: " + (act.get("detail") or "")}
-        # same problem, different plan (S17): urgent cards carry what this environment means for help
+        # same problem, different plan (S17, 13.3): urgent cards carry what this environment and mode mean for help
         if act.get("severity") == "alert" and act.get("type") in HARD:
             from brain.environment import card_note
-            note = card_note(rad["mission_profile"], "air" if act.get("type") == "flag_cabin" else "severe")
+            mode = it.get("mode", "routine")
+            note = card_note(rad["mission_profile"], "air" if act.get("type") == "flag_cabin" else "severe", mode=mode)
             if note and note not in (act.get("detail") or ""):
                 act = {**act, "detail": f"{act.get('detail', '')} {note}".strip()}
         s["action"] = act
@@ -367,31 +558,46 @@ class Store:
 
     def set_environment(self, cid: str, profile: str) -> dict:
         """Confirmed switch (S9, S11): new profile, settling-in starts, statuses recompute; returns what changed."""
-        from brain.environment import SETTLING_DAYS, changes
+        from brain.environment import SETTLING_DAYS, changes, profile_config
         with self.lock:
             old = self.states[cid]["radiation"]["mission_profile"]
         self.patch(cid, {"radiation": {"mission_profile": profile}}, record=False)
         with self.lock:
             it = self.internal.setdefault(cid, {})
             it["settling_until_day"] = int(self.mission_clock()["mission_day"]) + SETTLING_DAYS
+            cfg = profile_config(profile)
+            it["environment_profile"] = cfg
             self._recompute(cid)
-            return {"from": old, "to": profile, "changes": changes(old, profile), **self.extras(cid)}
+            return {"from": old, "to": profile, "changes": changes(old, profile), "profile_config": cfg, **self.extras(cid)}
 
     def _wellbeing(self, cid: str, s: dict, d: dict) -> dict:
         """Four dimensions against the person's usual (section 15.2); level 0-2 here (3 only from the safety flow);
         the top three tools in the order that suits this person (profile "what helps me" first)."""
-        mood, fatigue, stress = get_path(s, "manual.mood"), get_path(s, "state.fatigue") or 0, get_path(s, "state.stress") or 0
-        talk = next((i for i in d.get("items", []) if i.get("metric") == "voice.talk_time"), None)
-        dims = {"mood": 1 if isinstance(mood, (int, float)) and mood <= 2 else 0, "energy": 1 if fatigue >= 0.6 else 0,
-                "stress": 1 if stress >= 0.6 else 0, "connection": 1 if talk and talk.get("delta_pct", 0) <= -40 else 0}
-        low = sum(dims.values())
         try:
             from brain.profile import profiles
-            helps = list(profiles.get(cid)["wellbeingPlan"].get("whatHelps") or [])
+            from brain.wellbeing import wellbeing
+            prof = profiles.get(cid)
+            res = wellbeing.evaluate(cid, s, d, profile=prof)
+            return {
+                "level": res["level"],
+                "dims": res["dims"],
+                "tools": res["tools"],
+                "wording": res.get("wording", "You're steady."),
+                "details": res.get("details", {}),
+            }
         except Exception:
-            helps = []
-        order = list(dict.fromkeys(helps + ["orb_calm", "grounding", "greenhouse", "race"]))
-        return {"level": 0 if low == 0 else 1 if low == 1 else 2, "dims": dims, "tools": order[:3] if low else []}
+            mood, fatigue, stress = get_path(s, "manual.mood"), get_path(s, "state.fatigue") or 0, get_path(s, "state.stress") or 0
+            talk = next((i for i in d.get("items", []) if i.get("metric") == "voice.talk_time"), None)
+            dims = {"mood": 1 if isinstance(mood, (int, float)) and mood <= 2 else 0, "energy": 1 if fatigue >= 0.6 else 0,
+                    "stress": 1 if stress >= 0.6 else 0, "connection": 1 if talk and talk.get("delta_pct", 0) <= -40 else 0}
+            low = sum(dims.values())
+            try:
+                from brain.profile import profiles
+                helps = list(profiles.get(cid)["wellbeingPlan"].get("whatHelps") or [])
+            except Exception:
+                helps = []
+            order = list(dict.fromkeys(helps + ["orb_calm", "grounding", "greenhouse", "race"]))
+            return {"level": 0 if low == 0 else 1 if low == 1 else 2, "dims": dims, "tools": order[:3] if low else []}
 
     def extras(self, cid: str) -> dict:
         it = self.internal.get(cid, {})
@@ -432,6 +638,136 @@ class Store:
                     "rate_source": self.thresholds["radiation"]["dose_rates_msv_day"][rad["mission_profile"]],
                 },
             }
+
+    def indicator_detail(self, cid: str, metric: str) -> dict:
+        """Indicator detail screen support (Section 16.1): value, status, trend band, facts, source label, estimate flag."""
+        with self.lock:
+            s = self.states[cid]
+            asmt = self.assessment(cid)
+            abs_match = next((a for a in asmt.get("absolute", []) if a.get("metric") == metric or metric in a.get("metric", "")), None)
+            drift_match = next((d for d in s.get("drift", {}).get("items", []) if d.get("metric") == metric or metric in d.get("metric", "")), None)
+
+            val = get_path(s, metric) if "." in metric else (get_path(s, f"vitals.{metric}") or get_path(s, f"manual.{metric}") or get_path(s, f"cognitive.{metric}"))
+            base = get_path(s, f"baseline.{metric.split('.')[-1]}")
+
+            spec = self.thresholds.get("metrics", {}).get(metric, {})
+            unit = spec.get("unit") or (abs_match.get("unit") if abs_match else "")
+
+            status = "ok"
+            if abs_match:
+                status = abs_match.get("severity", "ok")
+            elif drift_match:
+                status = drift_match.get("severity", "ok")
+
+            from .indicators import resolve_indicator_id, TRACKED_INDICATORS
+            ind_id = resolve_indicator_id(metric)
+            ind_meta = TRACKED_INDICATORS.get(ind_id) if ind_id else None
+
+            facts = {
+                "how_to_measure": f"Standard onboard measurement protocol for {metric}.",
+                "why_it_matters": f"Key indicator of astronaut physiological adaptation in microgravity.",
+                "what_to_do": "Maintain nominal routine if steady; follow clinical protocol steps if drifting.",
+                "source_mrid": spec.get("source_mrid") or spec.get("source") or "NASA JSC 28913",
+            }
+            if ind_meta:
+                facts["how_to_measure"] = ind_meta["how_captured"]
+                facts["why_it_matters"] = f"HRP Risk: {ind_meta['hrp_risk']}."
+                facts["source_mrid"] = f"NASA MRID {', '.join(ind_meta['nasa_mrids'])} (JSC 28913)"
+                facts["group"] = ind_meta["group"]
+                facts["worse_when"] = ind_meta["worse_when"]
+                facts["label"] = ind_meta["label"]
+                facts["hrp_risk"] = ind_meta["hrp_risk"]
+                if not unit and ind_meta.get("unit"):
+                    unit = ind_meta["unit"]
+
+            if metric in ("vitals.heart_rate", "heart_rate"):
+                facts["how_to_measure"] = "Continuous pulse oximetry, ECG patch, or camera photoplethysmography."
+                facts["why_it_matters"] = "HRP Risk: Cardiovascular Adaptations. Reflects cardiovascular autonomic tone and microgravity fluid redistribution."
+                facts["what_to_do"] = "If elevated without exertion, offer guided breathing or check for dehydration."
+                facts["source_mrid"] = "NASA MRID MEDB 2.1 (JSC 28913)"
+            elif metric in ("cognitive.reaction_ms", "reaction_ms"):
+                facts["how_to_measure"] = "Standardized 30-second psychomotor vigilance reaction test."
+                facts["why_it_matters"] = "Measures acute cognitive fatigue, sleep debt, and spatial adaptation."
+                facts["what_to_do"] = "If reaction times lag > 20%, recommend a short rest break before EVA or critical tasks."
+                facts["source_mrid"] = "NASA MRID MR042S (JSC 28913)"
+            elif metric in ("vitals.spo2", "spo2"):
+                facts["how_to_measure"] = "Optical pulse oximeter on fingertip or earlobe."
+                facts["why_it_matters"] = "Ensures sufficient arterial oxygen saturation under cabin atmospheric pressures."
+                facts["what_to_do"] = "If below 94%, verify cabin O2 partial pressure and check for ventilation pocketing."
+                facts["source_mrid"] = "NASA MRID MEDB 2.2 (JSC 28913)"
+
+            quiet = self._quiet(cid)
+            is_estimate = metric in quiet or f"vitals.{metric}" in quiet
+
+            hist_pts = self.history.get(cid, {}).get(metric if "." in metric else f"vitals.{metric}", [])[-14:]
+
+            return {
+                "crew_id": cid,
+                "metric": metric,
+                "indicator_id": ind_id or metric,
+                "value": val,
+                "unit": unit,
+                "status": status,
+                "baseline": base,
+                "spread": spec.get("spread", 3.0),
+                "is_estimate": is_estimate,
+                "label": "LIVE" if not is_estimate else "SIM",
+                "confidence": 0.95 if not is_estimate else 0.30,
+                "facts": facts,
+                "history": hist_pts,
+            }
+
+    # ---------- the saved record and the personal baseline model ----------
+    RECORD_SKIP = ("session.", "radiation.", "cabin.", "engagement.", "identity.", "state.")
+
+    def saved_record(self, cid: str) -> dict:
+        """What is stored for one person: every field with its count, how many were entered or measured
+        (not SIM), and the newest entry. This is what the Health log shows after a save."""
+        with self.lock:
+            fields = {}
+            for f, pts in self.history.get(cid, {}).items():
+                if not pts or f.startswith(("radiation.", "cabin.", "engagement.", "identity.")):
+                    continue
+                real = [p for p in pts if p.get("source") not in ("sim", "scenario", "unknown", None)]
+                last = pts[-1]
+                fields[f] = {"count": len(pts), "entered": len(real), "last": last["v"], "last_t": last["t"],
+                             "last_source": last.get("source"),
+                             "last_label": last.get("label") or ("SIM" if last.get("source") == "sim" else "LIVE"),
+                             "recent": [{"t": p["t"], "v": p["v"], "source": p.get("source")} for p in real[-5:]]}
+            recs = {k: len(v) for k, v in self.non_reading_records.get(cid, {}).items()}
+            return {"crew_id": cid, "fields": fields, "records": recs,
+                    "symptoms": copy.deepcopy(self.states[cid]["manual"].get("symptom_log", [])),
+                    "persisted": bool(self.persist), "file": "data/state.json (encrypted at rest)"}
+
+    def learn_baselines(self, cid: str, apply: bool = False, skip: set | None = None) -> dict:
+        """Fit this person's "normal" from their own stored readings (section 19.2): a robust median and spread
+        (MAD) per indicator, leaving out low-confidence and post-exercise points. Statistical, explainable, and
+        bounded: it moves the personal baseline only; range limits, cabin air and red flags never change."""
+        from .pipeline import pipeline
+        with self.lock:
+            out = {}
+            for f, pts in self.history.get(cid, {}).items():
+                if f.startswith(self.RECORD_SKIP):
+                    continue
+                d = pipeline.derive(cid, pts)
+                entered = sum(1 for p in pts if p.get("source") not in ("sim", "scenario", "unknown", None))
+                out[f] = {"median": d["median"], "spread": d["spread"], "count": d["count"], "entered": entered,
+                          "calibrated": d["calibrated"], "stage": d["stage"], "trend_slope": d.get("trend_slope", 0.0)}
+            applied = {}
+            if apply:
+                s = self.states[cid]
+                for field, key in (("vitals.heart_rate", "heart_rate"), ("voice.talk_time", "talk_time"), ("voice.pitch", "pitch")):
+                    m = out.get(field)
+                    if m and m["calibrated"] and key not in (skip or set()) and m["median"]:
+                        applied[key] = {"from": s["baseline"].get(key), "to": round(m["median"], 1)}
+                        s["baseline"][key] = round(m["median"], 1)
+                self.internal.setdefault(cid, {})["baseline_learned_at"] = time.time()
+                self._recompute(cid)
+                self._save()
+            return {"crew_id": cid, "indicators": out, "applied": applied,
+                    "learned_at": self.internal.get(cid, {}).get("baseline_learned_at"),
+                    "method": "rolling median and median absolute deviation over each person's own stored readings",
+                    "note": "No labelled astronaut dataset exists, so this is a statistical model fitted per person, not a trained classifier."}
 
     def apply_radiation_feed(self, data: dict) -> None:
         """Record one feed cycle and transition events, including quiet recovery."""

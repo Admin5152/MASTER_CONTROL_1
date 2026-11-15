@@ -73,7 +73,7 @@
 </svg><span class="cc-word">COSMO<b>care</b></span><span class="brand-sub">Sentinel</span></span>
       <span class="sl-item"><button id="sb-crew-name" class="sl-crew" type="button" aria-label="Choose crew member">—</button><span id="sb-identity" class="badge badge-sim">manual</span></span>
       <span class="sl-item"><span id="sb-clock" class="num">Day —</span></span>
-      <span class="sl-item"><span id="sb-suit" class="badge badge-sim" hidden>EVA</span><span id="sb-mode" class="badge sb-mode" hidden></span></span>
+      <span class="sl-item"><span id="sb-suit" class="badge badge-sim" hidden>EVA</span><span id="sb-mode" class="badge sb-mode" hidden></span><button id="sb-env" class="badge sb-env" type="button" hidden aria-label="Environment and mode: tap to change"></button></span>
       <span class="sl-item"><span id="sb-comms" class="badge sb-comms" hidden>Ground</span></span>
       <nav class="topnav" id="topnav" aria-label="Main">
         <button type="button" data-nav="assistant">Overview</button><button type="button" data-nav="body">Body</button><button type="button" data-nav="vitals">Vitals</button><button type="button" data-nav="mission">Mission</button><button type="button" data-nav="radiation">Radiation</button><button type="button" data-nav="wellbeing">Wellbeing</button>
@@ -110,6 +110,7 @@
           <p id="orb-caption" class="prompt" aria-live="polite">How can I help you today?</p>
           <p id="orb-source" class="caption-src"></p>
           <div id="action-card" class="suggest" hidden></div>
+          <div class="home-acts"><button id="btn-unwell" class="pill pill-ghost" type="button">I don't feel well</button><button id="btn-checkin" class="pill pill-ghost" type="button">Daily check-in</button><button id="btn-today" class="pill pill-ghost" type="button">Today</button></div>
         </div>
       </section>
 
@@ -196,9 +197,11 @@
             <div class="emotion-head"><span class="label">Expression</span><span id="emotion-top" class="emotion-top">camera off</span></div>
             <ul id="emotion-list" class="emotion-list"></ul>
           </div>
+          <p id="scan-result" class="note scan-result" aria-live="polite">Start the camera: Sentinel scans for 15 seconds, then saves the result to your record.</p>
           <p id="cam-log" class="fine" aria-live="polite">Nothing saved to the record yet.</p>
           <div class="cam-controls">
             <button id="btn-cam" class="pill pill-light" type="button">Start camera</button>
+            <button id="btn-scan15" class="pill pill-ghost" type="button" disabled>Scan again (15 s)</button>
             <button id="btn-cam-devices" class="pill pill-ghost" type="button">Choose camera</button>
           </div>
           <p class="fine">An estimate for trends, not a medical measurement. Forehead and cheeks are sampled (highlighted on the mesh). Expression is read from the face by a local model (HSEmotion); it suggests, it does not diagnose, and no image is stored.</p>
@@ -247,6 +250,12 @@
         <button type="button" data-go="mission"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><ellipse cx="12" cy="12" rx="10" ry="3.6" transform="rotate(-20 12 12)"/></svg></span>Mission</button>
         <button type="button" data-go="radiation"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 3.5a8.5 8.5 0 0 1 7.4 4.3M19.6 16a8.5 8.5 0 0 1-7.6 4.5M4.5 16A8.5 8.5 0 0 1 6 6.2"/></svg></span>Radiation</button>
         <button type="button" data-go="vitals"><span class="mi"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></span>Vitals</button>
+        <button type="button" data-go="today"><span class="mi"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4M8 14h3"/></svg></span>Today</button>
+        <button type="button" data-go="checkin"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg></span>Daily check-in</button>
+        <button type="button" data-go="care"><span class="mi"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg></span>Care</button>
+        <button type="button" data-go="alerts"><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2v.3"/></svg></span>Alerts</button>
+        <button type="button" data-go="mind"><span class="mi"><svg viewBox="0 0 24 24"><path d="M4 18V8M9 18V5M14 18v-7M19 18v-4"/></svg></span>How I'm doing</button>
+        <button type="button" data-go="record"><span class="mi"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="2.5"/><path d="M5 6v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6M5 12v6c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-6"/></svg></span>My record</button>
         <button type="button" data-go="exam"><span class="mi"><svg viewBox="0 0 24 24"><path d="M9 4h6v3H9zM6 6h3M15 6h3v14H6V6M9 12h6M12 9v6"/></svg></span>Guided exam</button>
         <button type="button" data-go="ground"><span class="mi"><svg viewBox="0 0 24 24"><path d="M4 12l16-7-7 16-2-7z"/></svg></span>To ground</button>
         <button type="button" data-go="measures"><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></span>Weekly measures</button>
@@ -260,6 +269,8 @@
         <button type="button" data-go="hardware"><span class="mi"><svg viewBox="0 0 24 24"><rect x="7.5" y="5" width="9" height="14" rx="3"/><path d="M10.5 10h3M10.5 13h3"/></svg></span>Sentinel Skin</button>
         <button type="button" data-go="crew"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.4"/><path d="M3.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/></svg></span>Crew</button>
         <button type="button" data-go="cabin"><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 18V9l7-4 7 4v9z"/><path d="M9 18v-5h6v5"/></svg></span>Cabin</button>
+        <button type="button" data-go="environment"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3 3 14 0 17M12 3.5c-3 3-3 14 0 17"/></svg></span>Environment</button>
+        <button type="button" data-go="profile"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-4 3.6-6 7-6s6.200 2 7 6"/></svg></span>My profile</button>
         <button type="button" data-go="settings"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg></span>Settings</button>
         <button type="button" data-go="about"><span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v6M12 7.5v.5"/></svg></span>About</button>
       </div>

@@ -144,6 +144,12 @@ function renderZone(el, ctx, zone) {
 
 // ---------- manual health log ----------
 const FIELDS = [
+  { key: "heart_rate", group: "vitals", label: "Heart rate", unit: "bpm", min: 30, max: 220, step: 1,
+    hint: "Count the pulse at the wrist or neck for 30 seconds and double it, or read it from a device.", why: "Resting pulse shows how the heart is adapting; Sentinel compares it with your own usual." },
+  { key: "breathing_rate", group: "vitals", label: "Breathing rate", unit: "breaths/min", min: 4, max: 60, step: 1,
+    hint: "Count breaths for 30 seconds at rest and double it.", why: "A change at rest can be an early sign of illness or poor cabin air." },
+  { key: "spo2", group: "vitals", label: "Oxygen saturation (SpO2)", unit: "%", min: 70, max: 100, step: 1,
+    hint: "Finger clip oximeter; keep the hand still and warm.", why: "Shows whether the blood is carrying enough oxygen." },
   { key: "bp_systolic", label: "Blood pressure, systolic", unit: "mmHg", min: 60, max: 250, step: 1,
     hint: "Cuff on the upper arm at heart level; sit strapped in so the arm is not floating.", why: "Fluid shifts toward the head in weightlessness change how the heart and vessels work." },
   { key: "bp_diastolic", label: "Blood pressure, diastolic", unit: "mmHg", min: 30, max: 150, step: 1,
@@ -163,8 +169,12 @@ const FIELDS = [
 ];
 
 function renderHealthLog(el, ctx) {
-  const m = ctx.view.state?.manual || {};
+  const m = { ...(ctx.view.state?.manual || {}) };
+  const vit = ctx.view.state?.vitals || {};
   let mood = null;
+  const self = {};
+  const lastOf = (f) => (f.group === "vitals" ? vit[f.key] : m[f.key]);
+  const pathOf = (f) => `${f.group || "manual"}.${f.key}`;
   const crewId = ctx.view.crewId;
   emit("checkin.started", { crewId });
   el.innerHTML = `
@@ -172,7 +182,7 @@ function renderHealthLog(el, ctx) {
     <form class="form-grid" novalidate>
       ${FIELDS.map((f) => `<div class="field" data-key="${f.key}">
         <label for="f-${f.key}">${esc(f.label)} <span class="note">(${esc(f.unit)})</span></label>
-        <input id="f-${f.key}" name="${f.key}" type="number" inputmode="decimal" min="${f.min}" max="${f.max}" step="${f.step}" placeholder="last: ${esc(fmt(m[f.key], "manual." + f.key))}${badgeFor("manual." + f.key, ctx.view.state, ctx.view.aux) === "LIVE" ? " (LIVE)" : " (SIM)"}">
+        <input id="f-${f.key}" name="${f.key}" type="number" inputmode="decimal" min="${f.min}" max="${f.max}" step="${f.step}" placeholder="last: ${esc(fmt(lastOf(f), pathOf(f)))}${badgeFor(pathOf(f), ctx.view.state, ctx.view.aux) === "LIVE" ? " (LIVE)" : " (SIM)"}">
         <span class="hint">How in microgravity: ${esc(f.hint)}</span>
         <span class="why">Why it matters: ${esc(f.why)}</span>
         <span class="err" aria-live="polite"></span></div>`).join("")}
@@ -182,6 +192,9 @@ function renderHealthLog(el, ctx) {
         <span class="hint">Tap the number that fits right now; there is no right answer.</span>
         <span class="why">Why it matters: isolation and confinement is one of NASA's five hazards.</span>
       </div>
+      ${[["energy_self", "Energy today", "1 drained to 5 full"], ["stress_self", "Stress today", "1 calm to 5 very stressed"], ["connection_self", "Connection with the crew", "1 distant to 5 close"]].map(([k, label, hint]) => `<div class="field" data-key="${k}">
+        <label>${label} <span class="note">(${hint})</span></label>
+        <div class="mood-row">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-self="${k}" data-n="${n}" aria-pressed="false">${n}</button>`).join("")}</div></div>`).join("")}
       <div class="field" data-key="symptoms">
         <label for="f-symptoms">Symptoms</label>
         <input id="f-symptoms" type="text" placeholder="e.g. headache, nausea, dry eyes">
@@ -192,7 +205,12 @@ function renderHealthLog(el, ctx) {
         <input id="f-meals" type="text" placeholder="e.g. breakfast, lunch, dinner"><span class="hint">Separate meal notes with commas.</span></div>
     </form>
     <p><button class="pill pill-dark pill-block" type="button" data-save>Save health log</button></p>
-    <p class="note" data-result aria-live="polite"></p>`;
+    <p class="note" data-result aria-live="polite"></p>
+    <p class="note" data-stored aria-live="polite"></p>`;
+  el.querySelectorAll("[data-self]").forEach((b) => b.addEventListener("click", () => {
+    self[b.dataset.self] = Number(b.dataset.n);
+    el.querySelectorAll(`[data-self="${b.dataset.self}"]`).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
   el.querySelectorAll("[data-mood]").forEach((b) => b.addEventListener("click", () => {
     mood = Number(b.dataset.mood);
     el.querySelectorAll("[data-mood]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
@@ -223,24 +241,42 @@ function renderHealthLog(el, ctx) {
     }
     if (!ok) return;
     if (mood != null) out.mood = mood;
+    Object.assign(out, self);
+    // readings typed from a device go to the vitals record, marked as entered by hand
+    const vitals = {};
+    for (const f of FIELDS) if (f.group === "vitals" && out[f.key] != null) { vitals[f.key] = out[f.key]; delete out[f.key]; }
     const sym = el.querySelector("#f-symptoms").value.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
     out.symptoms = sym;
     out.meals = el.querySelector("#f-meals").value.split(",").map((x) => x.trim()).filter(Boolean);
     out.updated = new Date().toISOString();
     const result = el.querySelector("[data-result]");
     try {
-      const s = await ctx.patch({ manual: out });
+      const body = { manual: out };
+      if (Object.keys(vitals).length) body.vitals = { ...vitals, sources: Object.fromEntries(Object.keys(vitals).map((k) => [k, "manual"])) };
+      const s = await ctx.patch(body);
+      const entered = { ...vitals, ...out };
       for (const f of FIELDS) {
-        if (out[f.key] == null) continue;
-        emit("reading.added", { indicator: f.key, value: out[f.key], source: "manual", label: "MANUAL", confidence: 1 });
+        if (entered[f.key] == null) continue;
+        emit("reading.added", { indicator: f.key, value: entered[f.key], source: "manual", label: "MANUAL", confidence: 1 });
       }
+      for (const [k, v] of Object.entries(self)) emit("reading.added", { indicator: k, value: v, source: "manual", label: "MANUAL", confidence: 1 });
+      // show that it is really stored: what was saved now and how many entries the record holds
+      api.record(crewId).then((rec) => {
+        const saved = [...FIELDS.filter((f) => entered[f.key] != null).map((f) => [f.label, pathOf(f)]), ...(mood != null ? [["Mood", "manual.mood"]] : []),
+          ...Object.keys(self).map((k) => [k.replace("_self", ""), `manual.${k}`])];
+        const box = el.querySelector("[data-stored]");
+        if (!box || !saved.length) return;
+        box.innerHTML = `<strong>Stored in your record</strong> (on this device, kept after a restart): ${saved.map(([label, path]) => `${esc(label)} · ${rec.fields[path]?.entered ?? 1} entr${(rec.fields[path]?.entered ?? 1) === 1 ? "y" : "ies"}`).join("; ")}. <button class="link-btn" type="button" data-rec>Open my saved record</button>`;
+        box.querySelector("[data-rec]").addEventListener("click", () => api_.open("record"));
+      }).catch(() => {});
       if (mood != null) emit("reading.added", { indicator: "mood", value: mood, source: "manual", label: "MANUAL", confidence: 1 });
       ctx.onCheckin?.("log", out);
       const a = s.action;
       const outsideFields = Object.entries(ctx.thresholds?.absolute || {}).filter(([field, def]) => {
-        const v = field.startsWith("manual.") ? out[field.slice(7)] : null;
+        const v = field.startsWith("manual.") ? out[field.slice(7)] : field.startsWith("vitals.") ? vitals[field.slice(7)] : null;
         return v != null && (def.levels || []).some((l) => l.below != null ? v < l.below : v > l.above);
       }).map(([field]) => field.slice(7));
+      const flaggedNow = a.type && a.type !== "none";
       const outside = outsideFields.length > 0;
       result.textContent = `${a.type === "none" ? "Saved. Everything is within your usual range." : `Saved. ${a.detail}`}${outside ? " Please remeasure this reading when ready; the entered value is saved for review." : ""}`;
       if (outside) {
@@ -250,6 +286,12 @@ function renderHealthLog(el, ctx) {
         remeasure.textContent = "Re-measure reading";
         remeasure.addEventListener("click", () => el.querySelector(`#f-${outsideFields[0]}`)?.focus());
         result.append(" ", remeasure);
+      }
+      if (flaggedNow) {
+        const whyBtn = document.createElement("button");
+        whyBtn.type = "button"; whyBtn.className = "pill pill-ghost"; whyBtn.textContent = "Why this?";
+        whyBtn.addEventListener("click", () => api_.open("alerts"));
+        result.append(" ", whyBtn);
       }
       ctx.say(a.type === "none" ? "Saved. Thank you." : `Saved. ${a.detail}`);
     } catch (e) {
@@ -263,7 +305,9 @@ function renderTrends(el, ctx, metric) {
   const m = metric && METRIC_DEFS[metric] ? metric : "heart_rate";
   el.innerHTML = `<div class="quick" style="display:flex;flex-wrap:wrap;position:static" role="tablist">${Object.entries(METRIC_DEFS).map(([k, d]) =>
     `<button class="chip" type="button" role="tab" data-m="${k}" aria-selected="${k === m}">${esc(d.label)}</button>`).join("")}</div>
-    <div data-chart style="margin-top: var(--s-4)"></div>`;
+    <div data-chart style="margin-top: var(--s-4)"></div>
+    <div class="exam-nav"><button class="pill pill-ghost" type="button" data-more="weekly">Weekly review: sleep and reaction together</button><button class="pill pill-ghost" type="button" data-more="mind">Wellbeing dimensions</button><button class="pill pill-ghost" type="button" data-more="record">My saved record</button></div>`;
+  el.querySelectorAll("[data-more]").forEach((b) => b.addEventListener("click", () => api_.open(b.dataset.more)));
   let cleanup = () => {};
   const load = async (k) => {
     cleanup();
@@ -286,9 +330,11 @@ function renderCrew(el, ctx) {
 // ---------- the More hub: everything else, grouped ----------
 function renderHub(el, ctx) {
   const groups = [
-    ["Check-ins", [["health_log", "Health log", "Blood pressure, glucose, temperature, sleep, mood"], ["cognitive", "Cognitive check", "25-second reaction test"], ["trends", "Trends", "Every reading over time"]]],
-    ["Wellbeing", [["orb_calm", "Stillpoint", "A breathing game, tracked by heart rate"], ["race", "Slipstream", "Race past the planets; boost and draft"], ["greenhouse", "Red Harvest", "Farm on Mars: grow crops, fill crew orders"], ["wellbeing", "Wellbeing hub", "Stillpoint, Slipstream, Red Harvest and the science"], ["interventions", "Suggestions", "What Sentinel recommends now"]]],
-    ["Crew and ship", [["crew", "Crew", "Who is using Sentinel"], ["cabin", "Cabin air", "Oxygen and carbon dioxide (SIM)"], ["hardware", "Sentinel Skin", "The wearable design (DESIGNED)"], ["settings", "Settings", "Theme, camera, microphone, voice"], ["about", "About and credits", "Sources and licences"]]],
+    ["Today", [["today", "Today with Sentinel", "The day's blocks, quick logs and reminders"], ["checkin", "Daily check-in", "Scan, entries, mood, reaction, summary"], ["care", "Care", "I don't feel well: triage and protocols"],
+      ["alerts", "Alerts", "What was flagged and why"], ["record", "My saved record", "Everything stored, and my normal"], ["weekly", "Weekly review", "Trends, what worked, what to share"]]],
+    ["Check-ins", [["health_log", "Health log", "Pulse, blood pressure, glucose, temperature, sleep, mood"], ["cognitive", "Cognitive check", "25-second reaction test"], ["trends", "Trends", "Every reading over time"]]],
+    ["Wellbeing", [["orb_calm", "Stillpoint", "A breathing game, tracked by heart rate"], ["race", "Slipstream", "Race past the planets; boost and draft"], ["greenhouse", "Red Harvest", "Farm on Mars: grow crops, fill crew orders"], ["wellbeing", "Wellbeing hub", "Stillpoint, Slipstream, Red Harvest and the science"], ["mind", "How I'm doing", "Mood, energy, stress, connection"], ["journal", "Private journal", "Kept on this device only"], ["interventions", "Suggestions", "What Sentinel recommends now"]]],
+    ["Crew and ship", [["environment", "Environment and mode", "Where you are; what changes"], ["profile", "My health profile", "Allergies, plan, buddy, consent"], ["onboarding", "First run", "Consent, kit, voice, calibration"], ["kit", "Medical kit", "On board, filtered for you (SIM)"], ["crew", "Crew", "Who is using Sentinel"], ["cabin", "Cabin air", "Oxygen and carbon dioxide (SIM)"], ["hardware", "Sentinel Skin", "The wearable design (DESIGNED)"], ["settings", "Settings", "Theme, camera, microphone, voice"], ["datasets", "NASA research datasets", "Published human datasets behind what is tracked"], ["about", "About and credits", "Sources and licences"]]],
   ];
   el.innerHTML = groups.map(([g, items]) => `<section class="hub-group"><h3>${esc(g)}</h3><div class="hub">${items.map(([k, t, d]) =>
     `<button type="button" data-open="${k}"><strong>${esc(t)}</strong><span>${esc(d)}</span></button>`).join("")}</div></section>`).join("");
@@ -322,6 +368,8 @@ function renderCabin(el, ctx) {
 function renderSettings(el, ctx) {
   const st = ctx.settings;
   el.innerHTML = `
+    <h3>You and the mission</h3>
+    <div class="hub">${[["profile", "My health profile", "Allergies, wellbeing plan, buddy, consent"], ["environment", "Environment and mode", "Station, transit, base; routine, EVA, rest"], ["onboarding", "First run", "Consent, kit, voice, calibration"], ["kit", "Medical kit", "On board, filtered for you"]].map(([k, t, d]) => `<button type="button" data-set-open="${k}"><strong>${t}</strong><span>${d}</span></button>`).join("")}</div>
     <h3>Theme</h3>
     <div class="mood-row"><button type="button" data-theme-set="dark" aria-pressed="${document.documentElement.dataset.theme !== "light"}">Space (dark)</button><button type="button" data-theme-set="light" aria-pressed="${document.documentElement.dataset.theme === "light"}">Clinical light</button></div>
     <h3>Glove mode</h3>
@@ -337,6 +385,7 @@ function renderSettings(el, ctx) {
     <h3>Listening</h3>
     <div class="mood-row"><button type="button" data-listen="wake" aria-pressed="${st.get("listen") !== "ptt"}">Wake phrase</button><button type="button" data-listen="ptt" aria-pressed="${st.get("listen") === "ptt"}">Push to talk only</button></div>
     <p class="hint fine">Wake phrase: say "Hey Sentinel" any time. Push to talk: tap the microphone or the orb, then speak.</p>`;
+  el.querySelectorAll("[data-set-open]").forEach((b) => b.addEventListener("click", () => api_.open(b.dataset.setOpen)));
   el.querySelectorAll("[data-theme-set]").forEach((b) => b.addEventListener("click", () => {
     ctx.setTheme?.(b.dataset.themeSet);
     el.querySelectorAll("[data-theme-set]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
@@ -396,7 +445,9 @@ async function renderEvidence(el, ctx, arg) {
   el.innerHTML = `<p class="note">The team's dataset: NASA JSC 28913 Medical Requirements Integration Documents. Each entry is the document's own wording, parsed from the PDF. Sentinel is designed around these requirements; it does not claim to implement them.</p>
     <div class="ev-tools"><input type="search" data-q placeholder="Search: ECG, radiation, noise, bone, water…" aria-label="Search the NASA documents" value="${esc(arg?.q || "")}">
     <div class="ev-chips" role="tablist"><button type="button" data-f="" aria-pressed="true">All</button>${Object.entries(FEATURES).map(([k, v]) => `<button type="button" data-f="${k}" aria-pressed="false">${v}</button>`).join("")}</div></div>
-    <p class="fine" data-count></p><div class="ev-list" data-list><p class="note">Loading the documents…</p></div>`;
+    <p class="fine" data-count></p><div class="ev-list" data-list><p class="note">Loading the documents…</p></div>
+    <p><button class="pill pill-ghost" type="button" data-nlsp>NASA research datasets (Life Sciences Portal)</button></p>`;
+  el.querySelector("[data-nlsp]").addEventListener("click", () => api_.open("datasets"));
   let data = ctx.mrid;
   if (!data) { try { data = ctx.mrid = await (await fetch("../shared/nasa_mrid.json")).json(); } catch { el.querySelector("[data-list]").innerHTML = `<p class="note">Could not load shared/nasa_mrid.json.</p>`; return; } }
   let feat = arg?.feature || "";

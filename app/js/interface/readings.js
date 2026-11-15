@@ -28,7 +28,7 @@ export function badgeFor(field, state, aux) {
   if (field.startsWith("vitals.")) {
     const key = field.split(".")[1];
     const src = state.vitals?.sources?.[key];
-    return src === "camera" || src === "sensor" ? "LIVE" : "SIM";
+    return src === "camera" || src === "sensor" || src === "manual" ? "LIVE" : "SIM";
   }
   if (field.startsWith("manual.") || field.startsWith("cognitive.") || field.startsWith("wellbeing.")) {
     return prov[field] === "user" ? "LIVE" : "SIM";

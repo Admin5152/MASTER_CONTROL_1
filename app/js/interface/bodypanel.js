@@ -47,6 +47,23 @@ export function mountBodyPanels({ rail, panel, insights, director, screens, getV
   panel.addEventListener("click", (e) => {
     const tab = e.target.closest("[data-tab]");
     if (tab) { state.tab = tab.dataset.tab; render(); return; }
+    const zone = zoneOf(state.system), pk = `${deps.getView().crewId}:${zone}`;
+    const tick = e.target.closest("[data-plan]");
+    if (tick) {
+      const t = ((state.planDone ||= {})[pk] ||= {});
+      t[tick.dataset.plan] = !t[tick.dataset.plan]; delete t._answer;
+      emit("action_plan.step", { zone, step: tick.dataset.plan, done: t[tick.dataset.plan], crewId: deps.getView().crewId });
+      render(); return;
+    }
+    const ans = e.target.closest("[data-plan-ans]");
+    if (ans) {
+      const t = ((state.planDone ||= {})[pk] ||= {});
+      t._answer = ans.dataset.planAns;
+      emit("action_plan.finished", { zone, helped: t._answer === "yes", crewId: deps.getView().crewId });
+      render();
+      if (t._answer === "no") { state.planDone[pk] = {}; screens.open("care", { zone: zone === "heart" ? "chest" : zone === "whole_body" ? undefined : zone, view: "triage" }); }
+      return;
+    }
     if (e.target.closest("[data-check]")) {
       const z = zoneOf(state.system);
       director.run([z === "whole_body" ? { cmd: "start_scan" } : { cmd: "check_zone", zones: [z] }]);
@@ -131,11 +148,18 @@ function renderPanel(v, zones) {
       <span class="mcard-change">${esc(r.change || "No baseline comparison yet")}</span></button>`).join("")
     : `<p class="note mcard-none">No sensor on this system yet. The Sentinel Skin wearable (DESIGNED) would add one. Use "Where does it hurt?" to log a symptom.</p>`;
   const a = v.state.action || {};
-  const plan = [
-    a.zone === zone && a.detail ? `<li class="is-now"><strong>Now</strong><span>${esc(a.detail)}</span>${badgeHTML("SIM")}</li>` : "",
-    z.next ? `<li><strong>Next</strong><span>${esc(z.next)}</span></li>` : "",
-    `<li><strong>Check</strong><span>Run a focused ${esc(sys.label.toLowerCase())} check with Sentinel.</span></li>`,
-  ].join("");
+  // each line can be ticked off; when all are, Sentinel asks whether it helped (no: on to triage and the protocol steps)
+  const pk = `${v.crewId}:${zone}`;
+  const ticked = (state.planDone ||= {})[pk] ||= {};
+  const rows = [
+    a.zone === zone && a.detail ? ["Now", a.detail, "is-now"] : null,
+    z.next ? ["Next", z.next, ""] : null,
+    ["Check", `Run a focused ${sys.label.toLowerCase()} check with Sentinel.`, ""],
+  ].filter(Boolean);
+  const allDone = rows.every(([k]) => ticked[k]);
+  const plan = rows.map(([k, text, cls]) => `<li class="has-tick ${cls} ${ticked[k] ? "is-done" : ""}"><button type="button" class="m-check cl-tick" data-plan="${k}" aria-pressed="${!!ticked[k]}" aria-label="${k}: ${ticked[k] ? "done" : "mark done"}">${ticked[k] ? "✓" : ""}</button><strong>${k}</strong><span>${esc(text)}</span></li>`).join("") +
+    (ticked._answer ? `<li class="caveat"><span>${ticked._answer === "yes" ? "Logged: this helped." : "Opening Care to work out the next step."}</span></li>`
+      : allDone ? `<li class="has-ask"><span>All done. Did that help?</span><span class="care-ask"><button type="button" class="pill pill-light" data-plan-ans="yes">Yes</button><button type="button" class="pill pill-ghost" data-plan-ans="no">No</button></span></li>` : "");
   const kitItems = kitFor(zone);
   const kit = kitItems.length ? kitItems.map((k) => `<li><strong>${esc(k.name)}</strong><span>${esc(k.pack)} · for ${esc(k.symptoms.join(", "))}</span></li>`).join("") +
     `<li class="caveat"><span>${esc(deps.kit?.caveat || "Consult mission medical protocol before use.")}</span>${badgeHTML("SIM")}</li>` : `<li><span>No stocked item mapped to this system. Consult the flight surgeon.</span></li>`;

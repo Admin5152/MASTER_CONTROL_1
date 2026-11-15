@@ -59,12 +59,14 @@ function renderSymptom(el, ctx, region) {
         </article>
         <div class="exam-nav">
           <button class="pill ${severe ? "pill-light" : "pill-ghost"}" type="button" data-ground>Send to ground (store and forward)</button>
+          <button class="pill pill-ghost" type="button" data-triage>How urgent is it? A few questions</button>
           <button class="pill pill-ghost" type="button" data-more>Log another</button>
           <button class="pill ${severe ? "pill-ghost" : "pill-light"}" type="button" data-done>Done</button>
         </div>
         <p class="note" data-sent aria-live="polite"></p>`;
       el.querySelector("[data-done]").addEventListener("click", () => ctx.screens.close());
       el.querySelector("[data-more]").addEventListener("click", () => ctx.screens.open("symptom"));
+      el.querySelector("[data-triage]").addEventListener("click", () => ctx.screens.open("care", { zone: { neck: "head", abdomen: "gut", back: "bones", arms: "bones", hands: "bones", legs: "bones", feet: "bones" }[entry.region] || (entry.zone === "heart" ? "chest" : entry.zone), symptom: entry.type, onset: entry.onset }));
       el.querySelector("[data-ground]").addEventListener("click", async (e) => {
         e.currentTarget.disabled = true;
         try {

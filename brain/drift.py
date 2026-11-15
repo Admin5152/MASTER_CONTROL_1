@@ -36,7 +36,7 @@ def _baseline_for(state: dict, metric: str, spec: dict, history_baselines: dict)
     return None
 
 
-def compute_drift(state: dict, thresholds: dict, history_baselines: dict | None = None) -> dict:
+def compute_drift(state: dict, thresholds: dict, history_baselines: dict | None = None, scale: float = 1.0) -> dict:
     """Return {flag, note, items}. items carry metric, delta_pct, zone, severity."""
     history_baselines = history_baselines or {}
     items = []
@@ -54,9 +54,10 @@ def compute_drift(state: dict, thresholds: dict, history_baselines: dict | None 
         d = spec["direction"]
         moved = (d == "up" and delta > 0) or (d == "down" and delta < 0) or d == "both"
         mag = abs(delta)
-        if not moved or mag < spec["pct"]:
+        pct = spec["pct"] * max(0.9, min(1.2, scale))   # bounded: never more than 20% looser or 10% tighter
+        if not moved or mag < pct:
             continue
-        severity = "alert" if mag >= 2 * spec["pct"] else "watch"
+        severity = "alert" if mag >= 2 * pct else "watch"
         items.append({"metric": metric, "delta_pct": round(delta, 1), "zone": spec["zone"], "severity": severity})
         up, down = PHRASES.get(metric, ("{p}% higher", "{p}% lower"))
         phrases.append((up if delta > 0 else down).format(p=round(mag)))
