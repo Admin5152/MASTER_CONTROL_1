@@ -53,6 +53,42 @@ The new screens were also looked at in the light theme at 1270 x 548, 1024 x 768
 | 9 | Suggestion from the cabin feed | A cabin alert offers contingency mode. It asks; it never switches itself |
 | 10 | Planner preload | A profile preloaded by the surgeon or planner shows on First run with a Confirm button. There is still no planner-side screen to create one |
 
+## 1d. Fourth pass: less friction, visible state, detail pages, crew and notifications
+
+Checked by: `pytest` 276 passed, 6 skipped; `node --test tests/js` 75 passed; `tests/clinic_ui_check.py` 100 of 100.
+
+| Asked for | Done |
+| --- | --- |
+| Health log like a modern health app | A seven-step wizard: one small group per step, large number fields with minus and plus, the last value shown, a review page with a pen on every row that goes straight to that field. Guidance sits behind an info button |
+| Told at once when a value is wrong | The field turns red as you type, with the allowed range; the wizard will not move on. Same in the daily check-in |
+| Ranges too narrow (a low body temperature could not be saved) | Entry limits are now what a body can show (temperature 25 to 45 C, pulse 20 to 250, SpO2 from 50). Unusual values are flagged by the engine, never refused by the form |
+| Say or type a reading | "My heart rate is 68 and my blood pressure is 118 over 76" is saved as MANUAL and read back. An impossible number is refused and said why |
+| Exercise is vague | Device, minutes and how for each session (ARED 60, T2 30, CEVIS 30, mobility 10). Sessions add up toward 120 minutes a day. Devices and total from NASA; the split and moves are a demo default |
+| Today is a long scroll | Three cards first (Tasks and logs, Rest mode, I don't feel well); the lists open from the first card |
+| Detail pages | Body system, trends, a single reading, cabin air and the saved record open as full pages with the chart, the numbers and every stored entry. Entries can be searched and filtered by source and period |
+| The home card says only "a reading has moved" | It now names the reading and the change, with a "See what changed" button |
+| Profiles | The six crew have preloaded demo profiles (invented values, marked as such) that each person edits and saves. Allergies, conditions, medicines and early signs are chip pickers with search. Deleting a profile leaves it empty |
+| Add a crew member | Crew screen: name and body model. They start with a clean record and every function works for them |
+| Buddy is told | An urgent triage, an unanswered urgent alert, a protocol that did not help and the safety flow put a notice in the buddy's inbox (and the commander's if allowed). It is shown and spoken when that person is at the screen. Bell with a count; clear one or all. The notice says help is needed, never the readings |
+| Emergency step lists | The suit-breach steps can be ticked; when all are done Sentinel asks if the pressure is holding, and "no" escalates to ground. The storm shelter list can be ticked too |
+| Radiation map | Tapping a crew member shows their dose, rate, storm level, shelter state and whether they need help. No health readings |
+| Microphone state | A slash on both microphone buttons and the words in the ask bar when muted. Tap the microphone to mute or unmute; hold it (or the space bar) to talk |
+| Menu | Closes when you tap outside it, and scrolls instead of running off the top, so Face scan is reachable again |
+| Status line | Shorter: "Transit", "Link 12.7m"; detail moved to the tooltip. Tooltips on icon buttons, navigation and badges |
+| Wellbeing in light mode | The hub follows the light theme |
+| Top navigation stuck on Wellbeing | Fixed |
+| Conversation | Without a language-model key Sentinel now answers greetings, thanks, "how are you", a hard day, missing home and similar with fixed friendly lines, and still refuses to guess facts. Free conversation needs `LLM_API_KEY` in `.env` |
+| Something sent to ground | A visible notice with what was sent, its state and when it arrives, as well as the spoken line |
+
+Not done in this pass: a redesign of the reaction test and a second reaction game (I could not tell which game was meant);
+a visual redesign of the profile page beyond the pickers and full-page layout; calendar date pickers (nothing in the app
+asks for a date yet; times use the system time picker).
+
+The 6 skipped tests need things this machine does not have: an LLM key (1), `onnxruntime`, which has no build for
+Python 3.15 (2), Resemblyzer and torch (1), the Whisper and Kokoro model files (2).
+
+**If saving says "manual.energy_self: unknown field":** the server was started before these changes. Stop it and start it again.
+
 ## 2. Where each new thing is in the app
 
 Every screen opens in the existing side sheet and uses the existing cards, pills, chips and lists.

@@ -1,0 +1,243 @@
+{
+ "_note": "Invented demo values (SIM) so each crew member's profile is not empty. Preloaded, to be confirmed by the astronaut. Not real people's health data.",
+ "james": {
+  "callsign": "Eliah",
+  "mission": {
+   "dutySchedule": "work 08-18, sleep 22-06",
+   "sleepBlock": "22:00-06:00"
+  },
+  "health": {
+   "allergies": [
+    "none"
+   ],
+   "conditions": [
+    "none"
+   ],
+   "regularMedicines": [
+    "none"
+   ],
+   "pastKitReactions": [
+    "none"
+   ]
+  },
+  "wellbeingPlan": {
+   "earlySigns": [
+    "short temper",
+    "skipping meals"
+   ],
+   "whatHelps": [
+    "orb_calm",
+    "greenhouse"
+   ],
+   "whoToTalkTo": "Annie"
+  },
+  "sharing": {
+   "buddy": "Annie"
+  },
+  "onboarding": {
+   "preloaded": true,
+   "preloadedBy": "mission_planner_demo",
+   "confirmed": false
+  }
+ },
+ "amara": {
+  "callsign": "Annie",
+  "mission": {
+   "dutySchedule": "work 07-17, sleep 21:30-05:30",
+   "sleepBlock": "21:30-05:30"
+  },
+  "health": {
+   "allergies": [
+    "ibuprofen"
+   ],
+   "conditions": [
+    "none"
+   ],
+   "regularMedicines": [
+    "none"
+   ],
+   "pastKitReactions": [
+    "none"
+   ]
+  },
+  "wellbeingPlan": {
+   "earlySigns": [
+    "can't sleep",
+    "going quiet"
+   ],
+   "whatHelps": [
+    "grounding",
+    "orb_calm"
+   ],
+   "whoToTalkTo": "Eliah"
+  },
+  "sharing": {
+   "buddy": "Eliah"
+  },
+  "onboarding": {
+   "preloaded": true,
+   "preloadedBy": "mission_planner_demo",
+   "confirmed": false
+  }
+ },
+ "kenji": {
+  "callsign": "Seth",
+  "mission": {
+   "dutySchedule": "work 09-19, sleep 23-07",
+   "sleepBlock": "23:00-07:00"
+  },
+  "health": {
+   "allergies": [
+    "none"
+   ],
+   "conditions": [
+    "seasonal rhinitis"
+   ],
+   "regularMedicines": [
+    "none"
+   ],
+   "pastKitReactions": [
+    "drowsy on diphenhydramine"
+   ]
+  },
+  "wellbeingPlan": {
+   "earlySigns": [
+    "headache",
+    "tension in the shoulders"
+   ],
+   "whatHelps": [
+    "race",
+    "orb_calm"
+   ],
+   "whoToTalkTo": "Stanley"
+  },
+  "sharing": {
+   "buddy": "Stanley"
+  },
+  "onboarding": {
+   "preloaded": true,
+   "preloadedBy": "mission_planner_demo",
+   "confirmed": false
+  }
+ },
+ "sofia": {
+  "callsign": "Sad",
+  "mission": {
+   "dutySchedule": "work 08-18, sleep 22-06",
+   "sleepBlock": "22:00-06:00"
+  },
+  "health": {
+   "allergies": [
+    "penicillin"
+   ],
+   "conditions": [
+    "none"
+   ],
+   "regularMedicines": [
+    "none"
+   ],
+   "pastKitReactions": [
+    "none"
+   ]
+  },
+  "wellbeingPlan": {
+   "earlySigns": [
+    "no appetite",
+    "low energy"
+   ],
+   "whatHelps": [
+    "greenhouse",
+    "grounding"
+   ],
+   "whoToTalkTo": "Gadiel"
+  },
+  "sharing": {
+   "buddy": "Gadiel"
+  },
+  "onboarding": {
+   "preloaded": true,
+   "preloadedBy": "mission_planner_demo",
+   "confirmed": false
+  }
+ },
+ "lukas": {
+  "callsign": "Stanley",
+  "mission": {
+   "dutySchedule": "work 08-18, sleep 22:30-06:30",
+   "sleepBlock": "22:30-06:30"
+  },
+  "health": {
+   "allergies": [
+    "none"
+   ],
+   "conditions": [
+    "none"
+   ],
+   "regularMedicines": [
+    "vitamin D"
+   ],
+   "pastKitReactions": [
+    "none"
+   ]
+  },
+  "wellbeingPlan": {
+   "earlySigns": [
+    "restless",
+    "snapping at people"
+   ],
+   "whatHelps": [
+    "race",
+    "greenhouse"
+   ],
+   "whoToTalkTo": "Seth"
+  },
+  "sharing": {
+   "buddy": "Seth"
+  },
+  "onboarding": {
+   "preloaded": true,
+   "preloadedBy": "mission_planner_demo",
+   "confirmed": false
+  }
+ },
+ "priya": {
+  "callsign": "Gadiel",
+  "mission": {
+   "dutySchedule": "work 07-17, sleep 21-05",
+   "sleepBlock": "21:00-05:00"
+  },
+  "health": {
+   "allergies": [
+    "none"
+   ],
+   "conditions": [
+    "none"
+   ],
+   "regularMedicines": [
+    "none"
+   ],
+   "pastKitReactions": [
+    "none"
+   ]
+  },
+  "wellbeingPlan": {
+   "earlySigns": [
+    "homesick",
+    "tired eyes"
+   ],
+   "whatHelps": [
+    "orb_calm",
+    "grounding"
+   ],
+   "whoToTalkTo": "Sad"
+  },
+  "sharing": {
+   "buddy": "Sad"
+  },
+  "onboarding": {
+   "preloaded": true,
+   "preloadedBy": "mission_planner_demo",
+   "confirmed": false
+  }
+ }
+}

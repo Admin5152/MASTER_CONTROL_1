@@ -40,7 +40,7 @@ import { registerPulse } from "./experience/pulse.js";
 import * as reminders from "./core/reminders.js";
 import { auditBuf } from "./core/bus.js";
 import { registerSymptom } from "./systems/symptom.js";
-import { registerClinic } from "./experience/clinic.js";
+import { logFromSpeech, registerClinic } from "./experience/clinic.js";
 import { careReply, registerCare, symptomFromSpeech } from "./experience/care.js";
 import { REGION_NAMES, REGION_ZONE, regionOf, zoneStatuses } from "./interface/body.js";
 
@@ -204,6 +204,7 @@ function chooseCrew(id) {
     onState(view);
     if (!a.type || a.type === "none") say("Your readings are within your usual range.", { source: "local", append: true });
     syncPlanDone();
+    bellSeen = new Set(); checkNotifications();   // anything waiting for this person is told to them as they arrive
   }, 600);
 }
 
@@ -221,6 +222,16 @@ async function requestWakeLock() {
 function applyListening() {
   if (sleeping) return;   // another tab is the live one
   const ptt = settings.get("listen") === "ptt";
+  const muted = settings.get("mic_muted") === "on", noMic = !voiceMod.voice.micReady;
+  // the state is on screen, not only in behaviour: a slash through both microphone buttons, and the words
+  const mm = $("btn-micmute"), mic = $("btn-mic");
+  mm.setAttribute("aria-pressed", String(muted));
+  mm.title = muted ? "Microphone muted: tap to turn it on" : noMic ? "No microphone available" : "Microphone on: tap to mute";
+  mm.setAttribute("aria-label", muted ? "Unmute the microphone" : "Mute the microphone");
+  mic.classList.toggle("is-off", muted || noMic);
+  mic.title = muted ? "Microphone muted" : noMic ? "No microphone: type instead" : ptt ? "Push to talk" : "Listening for \"Hey Sentinel\"";
+  $("ask-input").placeholder = muted ? "Microphone muted · type to Sentinel…" : "Ask Sentinel anything…";
+  if (muted) { voiceMod.stopListening(); $("voice-mode").textContent = "microphone muted"; mic.classList.remove("is-wake"); return; }
   if (!voiceMod.voice.micReady && !voiceMod.voice.recognitionAvailable) { $("voice-mode").textContent = "typing"; return; }
   if (ptt) { voiceMod.stopListening(); $("voice-mode").textContent = "push to talk"; }
   else if (voiceMod.startListening()) $("voice-mode").textContent = "say hey sentinel";
@@ -490,6 +501,26 @@ function askCheckin(a) {
       say("Okay. I'll check back in half an hour.", { source: "local" });
     } };
 }
+// notices for the person at the screen: the count on the bell; a new one is shown and spoken once
+let bellSeen = new Set();
+async function checkNotifications(announce = true) {
+  if (!identified || !view.crewId) return;
+  try {
+    const n = await api.notifications(view.crewId);
+    const b = $("bell-n");
+    b.hidden = !n.count; b.textContent = String(n.count);
+    $("btn-bell").classList.toggle("has-new", n.unread > 0);
+    $("btn-bell").title = n.count ? `${n.count} notification${n.count === 1 ? "" : "s"}` : "No notifications";
+    const fresh = n.items.filter((x) => !x.seen && !bellSeen.has(x.id));
+    fresh.forEach((x) => bellSeen.add(x.id));
+    if (announce && fresh.length && !safetyOn) {
+      cue.nudge(); showNotice(fresh[0].title);
+      say(`${view.state?.display_name || ""}, ${fresh.length === 1 ? "a message for you" : `${fresh.length} messages for you`}. ${fresh[0].title}. ${fresh[0].text}`, { source: "local", priority: fresh[0].level >= 3 });
+      if (fresh[0].level >= 3 && !screens.current?.()) screens.open("notifications");
+    }
+  } catch { /* offline */ }
+}
+ctx.checkNotifications = checkNotifications;
 let tickBusy = false;
 async function alertTick() {
   if (!identified || !view.crewId || safetyOn || tickBusy || sleeping) return;
@@ -506,7 +537,7 @@ async function alertTick() {
     for (const a of r.expired || []) {
       if (a.level >= 3) { cue.nudge(); showNotice(`No answer to an urgent alert: ${a.buddy || "your crew buddy"} has been alerted (SIM).`); say(`There was no answer to an urgent alert, so I've alerted ${a.buddy || "your crew buddy"}.`, { source: "local", priority: true }); }
     }
-    syncPlanDone(); suggestMode();
+    syncPlanDone(); suggestMode(); checkNotifications();
   } catch { /* offline: try again next time */ }
   tickBusy = false;
 }
@@ -568,7 +599,22 @@ async function syncPlanDone() {
 }
 ctx.routineDone = (planId) => { const c = view.aux?.clock; if (c && ROUTINE_OF[planId]) { setRoutineDone(c.mission_day, ROUTINE_OF[planId], false); lastActionKey = ""; } };
 
-const SHEET_ONLY = ["datasets", "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "environment", "onboarding", "kit", "profile"];
+const NAV_TIPS = { assistant: "Overview: talk to Sentinel", body: "Body: the 3D body, systems and scan", vitals: "Vitals: readings, wearable and today's plan",
+  mission: "Mission: status, crew and day", radiation: "Radiation: space weather, dose and shelter", wellbeing: "Wellbeing: breaks and games that help" };
+let tipT = 0;
+function addTooltips() {
+  document.querySelectorAll("#topnav [data-nav]").forEach((b) => { if (!b.title) b.title = NAV_TIPS[b.dataset.nav] || b.textContent; });
+  document.querySelectorAll("button[aria-label]:not([title]), a[aria-label]:not([title])").forEach((b) => { b.title = b.getAttribute("aria-label"); });
+  document.querySelectorAll(".badge:not([title])").forEach((b) => {
+    const k = b.textContent.trim().toUpperCase();
+    const tip = k.startsWith("LIVE") ? "LIVE: measured or computed now" : k === "SIM" ? "SIM: simulated or prepared on purpose" : k === "MANUAL" ? "MANUAL: typed or tapped by you"
+      : k === "DESIGNED" ? "DESIGNED: a design, not running in this build" : "";
+    if (tip) b.title = tip;
+  });
+}
+new MutationObserver(() => { clearTimeout(tipT); tipT = setTimeout(addTooltips, 400); }).observe(document.documentElement, { childList: true, subtree: true });
+
+const SHEET_ONLY = ["notifications", "datasets", "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "environment", "onboarding", "kit", "profile"];
 function wireControls() {
   $("btn-unwell").addEventListener("click", () => screens.open("care", "triage"));
   $("banner-ack").addEventListener("click", () => { if (view.crewId) api.alertsAckOpen(view.crewId, 3).catch(() => {}); });
@@ -584,6 +630,27 @@ function wireControls() {
     director.run([{ cmd: "open_screen", name: go }]);
   }));
   $("btn-menu").addEventListener("click", () => toggleMenu("menu", "btn-menu"));
+  document.addEventListener("pointerdown", (e) => {   // tap outside the menu or the conversation panel: it closes
+    if (($("menu").hidden && $("convo").hidden) || e.target.closest("#menu, #convo, #btn-menu, #btn-convo")) return;
+    closeMenus();
+  });
+  $("btn-bell").addEventListener("click", () => (screens.current?.() === "notifications" ? closeScreen() : screens.open("notifications")));
+  // read-only panels close when you tap outside them. Flows in progress (check-in, care, the health log) never do: nothing typed is lost to a stray tap
+  const TAP_OUT = ["notifications", "alerts", "kit", "datasets", "about", "evidence", "crew", "weekly"];
+  document.addEventListener("pointerdown", (e) => {
+    if (!TAP_OUT.includes(screens.current?.()) || e.target.closest("#sheet, #btn-bell, #menu, #btn-menu, #dock, .env-banner, #banner, #who")) return;
+    closeScreen();
+  });
+  document.addEventListener("click", (e) => {
+    const li = e.target.closest("ol.checklist > li");
+    if (!li) return;
+    const done = li.classList.toggle("is-done");
+    li.setAttribute("aria-checked", String(done));
+    emit("checklist.step", { text: li.textContent.trim().slice(0, 80), done, crewId: view.crewId });
+    const all = [...li.parentElement.children].every((x) => x.classList.contains("is-done"));
+    if (all) { showNotice("Checklist complete. Logged."); emit("checklist.complete", { crewId: view.crewId }); }
+  });
+  $("btn-micmute").addEventListener("click", () => { settings.set("mic_muted", settings.get("mic_muted") === "on" ? "off" : "on"); applyListening(); });
   $("topnav").addEventListener("click", (e) => {
     const b = e.target.closest("[data-nav]");
     if (!b) return;
@@ -641,7 +708,32 @@ function wireControls() {
     closeMenus();
     import("./voice/wake.js").then(({ matchWake }) => handleCommand(matchWake(b.dataset.say).command, { via: "button", heard: b.textContent }));
   });
-  $("btn-mic").addEventListener("click", pushToTalk);
+  // the microphone button does both jobs: a tap mutes or unmutes (the slash shows which), a hold talks straight away
+  {
+    const mic = $("btn-mic");
+    let holdT = null, held = false;
+    const down = (e) => {
+      held = false; clearTimeout(holdT);
+      try { mic.setPointerCapture(e.pointerId); } catch { /* older browsers */ }   // a finger that drifts off the button still counts as holding
+      mic.classList.add("is-holding");
+      holdT = setTimeout(() => { held = true; mic.classList.add("is-talking"); pushToTalk(true); showNotice("Listening: speak now. I stop when you do."); }, 300);
+    };
+    const up = () => { clearTimeout(holdT); mic.classList.remove("is-holding"); setTimeout(() => mic.classList.remove("is-talking"), 8000); };
+    mic.addEventListener("pointerdown", down); mic.addEventListener("pointerup", up); mic.addEventListener("pointercancel", up);
+    window.addEventListener("keydown", (e) => {   // the space bar holds to talk too, when not typing
+      if (e.code !== "Space" || e.repeat || e.target.closest?.("input, textarea, select, button, [contenteditable]")) return;
+      e.preventDefault(); pushToTalk(true); showNotice("Listening: speak now.");
+    });
+    mic.addEventListener("click", () => {
+      if (held) { held = false; return; }
+      if (settings.get("listen") === "ptt" && settings.get("mic_muted") !== "on") { pushToTalk(); return; }   // push-to-talk mode: a tap talks
+      const mute = settings.get("mic_muted") !== "on";
+      settings.set("mic_muted", mute ? "on" : "off");
+      applyListening();
+      showNotice(mute ? "Microphone muted. Tap to turn it on; hold to talk once." : "Microphone on. Say \"Hey Sentinel\", or hold the button to talk.");
+    });
+    mic.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
   // tapping the orb: in the corner it brings everything back to Sentinel; at the centre it listens
   $("orb-hit").addEventListener("click", () => {
     if (stages.orbMode === "calm") return;
@@ -697,7 +789,8 @@ async function toggleFullscreen(want) {
 }
 ctx.toggleFullscreen = toggleFullscreen;
 
-function pushToTalk() {
+function pushToTalk(force = false) {
+  if (settings.get("mic_muted") === "on" && force !== true) { showNotice("The microphone is muted. Tap the microphone button at the top right to turn it on."); $("ask-input").focus(); return; }
   voiceMod.stopSpeaking();
   if (voiceMod.pushToTalk()) { $("btn-mic").setAttribute("aria-pressed", "true"); cue.wake(); }
   else { note("No microphone: type your question below."); $("ask-input").focus(); }
@@ -896,6 +989,24 @@ async function handleCommand(text, meta = {}) {
     else if (/ (yes|yeah|yep|sure|okay|ok|please|lets do it|go ahead) /.test(t) && t.trim().split(/\s+/).length <= 5) { pendingAsk = null; p.yes(); return; }
     else if (/ (no|nope|not now|later|nah) /.test(t) && t.trim().split(/\s+/).length <= 5) { pendingAsk = null; p.no(); return; }
   }
+  // a reading said or typed is logged at once and read back, so a slip is caught by ear
+  {
+    const lg = logFromSpeech(text);
+    if (lg?.error) { say(lg.error, { source: "local" }); followUp(); return; }
+    if (lg) {
+      try {
+        const body = {};
+        if (Object.keys(lg.manual).length) body.manual = { ...lg.manual, updated: new Date().toISOString() };
+        if (Object.keys(lg.vitals).length) body.vitals = { ...lg.vitals, sources: Object.fromEntries(Object.keys(lg.vitals).map((k) => [k, "manual"])) };
+        const s = await patch(body);
+        for (const [k, v] of Object.entries({ ...lg.vitals, ...lg.manual })) emit("reading.added", { indicator: k, value: v, source: "manual", label: "MANUAL", confidence: 1, via: meta.via });
+        onCheckin("log", lg.manual);
+        const a = s?.action || {};
+        say(`Logged ${lg.said}. Saved to your record.${a.type && a.type !== "none" && a.severity !== "none" ? ` ${a.detail}` : ""}`, { source: "local" });
+      } catch (e) { say(`I couldn't save that: ${e.message}`, { source: "local" }); }
+      followUp(); return;
+    }
+  }
   let m = matchIntent(text, { wearOpen: stages.current === "vitals" });
   // "I have a headache", "my stomach is not well": straight into triage, then the steps one at a time
   {
@@ -1034,6 +1145,7 @@ function switchCrew(id, source) {
   if (!id) return;
   setCrew(id, source);
   if (source === "voice") identified = true;   // recognised by voice: that is the choice
+  if (identified) setTimeout(() => { bellSeen = new Set(); checkNotifications(); }, 1200);
   api.profile(id).then((p) => { view.profile = p; }).catch(() => {});
   if (source === "manual") patch({ identity: { source: "manual", confidence: 0 } }).catch(() => {});
 }
@@ -1065,6 +1177,9 @@ function openIntervention(name) {
 // ---------- suit integrity (SIM): the twin goes red where the suit is leaking ----------
 let suitShown = null, suitAnnounced = 0, suitLabelLoop = false;
 const SUIT_WORD = { watch: "Suit pressure dropping", breach: "Suit breach" };
+const suitDismissed = {};
+const suitSteps = {}, suitAnswer = {};   // which emergency steps have been ticked, per incident: Sentinel knows where the crew member is
+let lastSuitKey = "";
 function updateSuit(suit) {
   const bad = suit && suit.mode === "eva" && (suit.integrity === "watch" || suit.integrity === "breach");
   const key = bad ? `${suit.region}:${suit.integrity}` : "";
@@ -1084,6 +1199,8 @@ function updateSuit(suit) {
     updateSuit.ro.observe(banner);
   }
   banner.className = `suit-alert is-${suit.integrity}`;
+  const skey = `${view.crewId}:${suit.incident ?? ""}:${suit.region}`, stepsDone = (suitSteps[skey] ||= new Set());
+  if (suitDismissed[skey]) { banner.hidden = true; document.body.classList.remove("suit-on"); return; }   // handled and closed: the EVA chip in the status line still shows the pressure
   const region = String(suit.region_label || "");
   banner.innerHTML = `<div class="sa-head"><span class="sa-dot" aria-hidden="true"></span><span class="sa-kicker">${SUIT_WORD[suit.integrity]}</span><span class="badge badge-sim">SIM</span></div>
     <h3 class="sa-title">${esc(region.charAt(0).toUpperCase() + region.slice(1))}</h3>
@@ -1093,8 +1210,35 @@ function updateSuit(suit) {
       <span><b>${suit.o2_flow_lb_hr}</b><small>O₂ lb/hr</small></span>
       <span><b>${suit.co2_mmhg}</b><small>CO₂ mmHg</small></span>
     </div>
-    <ol class="sa-steps">${(suit.steps || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ol>
+    <ol class="sa-steps is-check">${(suit.steps || []).map((x, n) => `<li class="${stepsDone.has(n) ? "is-done" : ""}"><button type="button" class="sa-tick" data-sa-step="${n}" aria-pressed="${stepsDone.has(n)}" aria-label="Step ${n + 1}: ${stepsDone.has(n) ? "done" : "mark done"}">${stepsDone.has(n) ? "✓" : n + 1}</button><span>${esc(x)}</span></li>`).join("")}</ol>
+    ${suitAnswer[skey] ? `<p class="sa-ask"><strong>${suitAnswer[skey] === "yes" ? "Logged: pressure holding. Keep watching the reading." : "Escalated: the crew and ground have been told. Head for the airlock."}</strong> <button type="button" class="pill pill-ghost" data-sa-close>${suitAnswer[skey] === "yes" ? "Close (closes itself shortly)" : "Close"}</button></p>`
+      : (suit.steps || []).length && stepsDone.size >= suit.steps.length ? `<p class="sa-ask"><strong>All steps done. Is the pressure holding?</strong> <button type="button" class="pill pill-light" data-sa-ans="yes">Yes</button> <button type="button" class="pill pill-ghost" data-sa-ans="no">No</button></p>` : `<p class="sa-fine">Tick each step as you do it, so Sentinel and the crew know where you are.</p>`}
     <p class="sa-fine">Illustrative steps; the mission's EVA procedures and your cue card come first.</p>`;
+  if (!banner.dataset.wired) {   // the card is redrawn on every poll: one listener on the card itself
+    banner.dataset.wired = "1";
+    banner.addEventListener("click", (e) => {
+      const k = banner.dataset.skey || "", done = (suitSteps[k] ||= new Set());
+      const t = e.target.closest("[data-sa-step]");
+      if (t) {
+        const n = Number(t.dataset.saStep);
+        if (done.has(n)) done.delete(n); else done.add(n);
+        emit("suit.step", { step: n + 1, done: done.has(n), incident: k, crewId: view.crewId });
+        lastSuitKey = ""; updateSuit(view.aux?.suit);
+        return;
+      }
+      if (e.target.closest("[data-sa-close]")) { suitDismissed[k] = true; updateSuit(view.aux?.suit); return; }
+      const a = e.target.closest("[data-sa-ans]");
+      if (a) {
+        if (a.dataset.saAns === "yes") setTimeout(() => { suitDismissed[k] = true; updateSuit(view.aux?.suit); }, 8000);   // done: the card gets out of the way
+        suitAnswer[k] = a.dataset.saAns;
+        emit("suit.steps_finished", { holding: a.dataset.saAns === "yes", incident: k, crewId: view.crewId });
+        if (a.dataset.saAns === "no") { say("Understood. I'm telling the crew and ground now. Head for the airlock with your partner.", { source: "local", priority: true }); sendDigest("Suit pressure not holding after all the steps were done"); }
+        else showNotice("Logged: suit steps done, pressure holding.");
+        updateSuit(view.aux?.suit);
+      }
+    });
+  }
+  banner.dataset.skey = skey;
   $("suit-tag").textContent = suit.region_label;
   if (suitShown !== key) {
     suitShown = key;
@@ -1148,13 +1292,17 @@ function renderOps(o) {
   const el = $("sb-comms"), c = o.comms || {};
   el.hidden = false;
   el.className = `badge sb-comms is-${c.status}`;
-  el.textContent = c.status === "blackout" ? `No link · ${Math.ceil(c.minutes_left)} min` : c.status === "delayed" ? `Ground · ${c.one_way_min} min delay` : "Ground · live";
-  el.title = c.note || "Link to ground (SIM)";
+  el.textContent = c.status === "blackout" ? `No link ${Math.ceil(c.minutes_left)}m` : c.status === "delayed" ? `Link ${c.one_way_min}m` : "Link live";
+  el.title = `Link to ground (SIM): ${c.status === "blackout" ? `none for about ${Math.ceil(c.minutes_left)} more minutes` : c.status === "delayed" ? `${c.one_way_min} minutes each way` : "live"}. ${c.note || ""}`;
   if (lastComms && lastComms !== c.status) showNotice(c.status === "blackout" ? "Link to ground lost (SIM). Sentinel carries on; messages wait in the queue." : c.status === "live" || c.status === "delayed" ? "Link to ground restored (SIM). Queued messages are on their way." : "");
   lastComms = c.status;
   const env = $("sb-env");
   env.hidden = false;
-  env.textContent = `${{ station: "Station", transit: "Transit", base: "Base", critical: "Critical phase" }[o.env] || o.env || "Environment"}${view.aux?.extras?.settling_in ? " · settling in" : ""}`;
+  const envName = { station: "Station", transit: "Transit", base: "Base", critical: "Critical phase" }[o.env] || o.env || "Environment";
+  const settling = !!view.aux?.extras?.settling_in;
+  env.textContent = envName;
+  env.classList.toggle("is-settling", settling);
+  env.title = `Environment: ${envName}${settling ? `, settling in (${view.aux.extras.settling_days_left} days left)` : ""}. Tap to change.`;
   const md = $("sb-mode");
   md.hidden = o.mode === "routine" || o.mode === "eva";
   md.textContent = o.mode === "rest" ? "Rest · urgent only" : o.mode === "contingency" ? "Contingency" : o.mode;
@@ -1167,6 +1315,9 @@ async function sendDigest(note = "") {
   try {
     const d = await api.digest(view.crewId, note);
     const p = d.packet || {};
+    // seen as well as heard: what was sent, its state, and when it lands; the notice closes itself
+    showNotice(p.status === "queued (no link)" ? `Digest queued (${d.priority}). No link: it leaves when the link returns.` : `Sent to ground (${d.priority}). Arrives in about ${Math.max(1, Math.round((p.eta_s || 0) / 60))} min.`);
+    emit("digest.queued", { priority: d.priority, status: p.status, crewId: view.crewId });
     say(p.status === "queued (no link)"
       ? `Digest ready, priority ${d.priority.toLowerCase()}. There's no link right now, so it's queued and goes out the moment the link returns.`
       : `Digest sent to the flight surgeon, priority ${d.priority.toLowerCase()}. It arrives in about ${Math.max(1, Math.round((p.eta_s || 0) / 60))} minutes; a reply can't come back for at least ${Math.max(1, Math.round((p.reply_earliest_s || 0) / 60))}.`, { source: "local" });
@@ -1177,7 +1328,7 @@ ctx.sendDigest = sendDigest; ctx.setMode = setMode;
 // ---------- every poll ----------
 function onState(v) {
   const s = v.state, aux = v.aux;
-  if (!s) return;
+  if (!s || !s.radiation || !s.cabin) return;   // a partial answer from the brain is never drawn
   updateSuit(aux?.suit);
   renderOps(aux?.ops);
   $("sb-crew-name").textContent = s.display_name;
@@ -1247,7 +1398,7 @@ function renderActionCard(s, aux) {
   const key = `${s.crew_id}|${a.type}|${a.zone}|${a.intervention}|${a.detail}`;
   if (key === lastActionKey) return;
   lastActionKey = key;
-  let text = "", btn = null, sev = "info", badge = "SIM", snoozeBtn = false;
+  let text = "", btn = null, sev = "info", badge = "SIM", snoozeBtn = false, seeZone = "";
   if (!a.type || a.type === "none" || a.type.startsWith("flag_")) {
     const due = dueRoutine();
     if (!due) { card.hidden = true; return; }
@@ -1259,6 +1410,10 @@ function renderActionCard(s, aux) {
     badge = readings.some((r) => r.badge !== "LIVE") || !readings.length ? "SIM" : "LIVE";
     sev = a.severity === "alert" ? "alert" : a.severity === "watch" ? "watch" : "info";
     text = a.detail || "";
+    // say which reading changed and by how much, not just that "a reading" did
+    const ch = readings.find((r) => r.severity && r.severity !== "ok" && r.severity !== "none" && r.value != null);
+    if (ch && /a reading has moved/i.test(text)) text = `${ch.label} is ${typeof ch.value === "number" ? Math.round(ch.value * 10) / 10 : ch.value}${ch.unit ? ` ${ch.unit}` : ""}${ch.change ? `: ${ch.change}` : ", outside its usual range"}.`;
+    seeZone = a.zone && a.zone !== "cabin" ? a.zone : "";
     btn = {
       offer_orb_calm: ["Start Stillpoint", () => director.run([{ cmd: "open_screen", name: "orb_calm" }])],
       offer_intervention: [INTERVENTIONS.find((i) => i.id === a.intervention)?.label || "Suggestions", () => openIntervention(a.intervention)],
@@ -1273,7 +1428,8 @@ function renderActionCard(s, aux) {
     lastAskKey = key;
     setTimeout(() => { if (lastAskKey === key && !safetyOn && !screens.current?.()) askCheckin(a); }, 1400);
   }
-  card.innerHTML = `<span class="ac-text">${esc(text)}</span>${badgeHTML(badge)}${btn ? `<button class="pill pill-light" type="button" data-act>${esc(btn[0])}</button>` : ""}${snoozeBtn ? `<button class="pill pill-ghost" type="button" data-snooze>Snooze 30 min</button>` : ""}${isAlert && !a.type.startsWith("flag_") ? `<button class="pill pill-ghost" type="button" data-why>Why this?</button>` : ""}`;
+  card.innerHTML = `<span class="ac-text">${esc(text)}</span>${badgeHTML(badge)}${btn ? `<button class="pill pill-light" type="button" data-act>${esc(btn[0])}</button>` : ""}${snoozeBtn ? `<button class="pill pill-ghost" type="button" data-snooze>Snooze 30 min</button>` : ""}${seeZone ? `<button class="pill pill-ghost" type="button" data-see title="Open the readings, the trend and the history for this">See what changed</button>` : ""}${isAlert && !a.type.startsWith("flag_") ? `<button class="pill pill-ghost" type="button" data-why>Why this?</button>` : ""}`;
+  card.querySelector("[data-see]")?.addEventListener("click", () => screens.zone(seeZone));
   card.querySelector("[data-act]")?.addEventListener("click", btn[1]);
   card.querySelector("[data-why]")?.addEventListener("click", () => screens.open("alerts"));
   card.querySelector("[data-snooze]")?.addEventListener("click", snoozeDue);

@@ -237,6 +237,7 @@ function renderCare(el, ctx, arg) {
         if (!(await call(() => api.protoAct(id, "complete", { outcome: `Resolved after step ${asked} of ${run.steps.length}` })))) return;
         setRun(null); emit("protocol.completed", { protocol: run.protocol_id, outcome: "Resolved", crewId: cid });
         ctx.say?.(`Good. I've logged that the ${what} eased after step ${asked}. I'll check back at the recheck time.`, { source: "local" });
+        ctx.showNotice?.("Saved to your care log.");
       } else if (kind === "same" && phase === "ask") {
         phase = "step"; draw(); speak(); return;
       } else {
@@ -244,6 +245,7 @@ function renderCare(el, ctx, arg) {
         if (!(await call(() => api.protoAct(id, "escalate", { note: why })))) return;
         setRun(null); emit("protocol.escalated", { protocol: run.protocol_id, reason: why, crewId: cid });
         const p = run.packet || {};
+        ctx.showNotice?.(p.status === "queued (no link)" ? "Escalated. Digest queued: it leaves when the link returns." : `Escalated and sent to ground. Arrives in about ${Math.max(1, Math.round((p.eta_s || 0) / 60))} min.`);
         ctx.say?.(`${kind === "worse" ? "Stop there." : "The steps haven't helped."} I'm escalating to the flight surgeon. ${p.status === "queued (no link)" ? "There's no link right now, so the digest goes the moment it returns." : `The digest arrives in about ${Math.max(1, Math.round((p.eta_s || 0) / 60))} minutes.`} Tell a crewmate how you feel.`, { source: "local" });
       }
       pollOnce(); draw();

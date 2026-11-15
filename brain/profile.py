@@ -347,9 +347,21 @@ class Profiles:
             from brain.vault import write_json
             write_json(DATA / "profiles.json", self.p)   # allergies and medicines: encrypted at rest
 
+    def _seed(self, cid: str) -> dict:
+        """The demo profile preloaded for a roster crew member (shared/mock_profiles.json): used until the person
+        saves or deletes their own. Off in the test suite (SENTINEL_NO_SEED_PROFILES=1)."""
+        if os.getenv("SENTINEL_NO_SEED_PROFILES") == "1" or (self.p.get(cid) or {}).get("_cleared"):
+            return {}
+        if not hasattr(self, "_seeds"):
+            try:
+                self._seeds = json.loads((Path(__file__).resolve().parent.parent / "shared" / "mock_profiles.json").read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                self._seeds = {}
+        return copy.deepcopy(self._seeds.get(cid) or {})
+
     def get(self, cid: str, mission_day: int | None = None) -> dict:
         with self.lock:
-            prof = _merge(copy.deepcopy(DEFAULT), self.p.get(cid, {}))
+            prof = _merge(_merge(copy.deepcopy(DEFAULT), self._seed(cid)), {k: v for k, v in self.p.get(cid, {}).items() if k != "_cleared"})
         prof["crewId"] = cid
         prof.update(completeness(prof, mission_day=mission_day))
         prof["calibration"] = calibration_info(prof, mission_day=mission_day)
@@ -357,7 +369,7 @@ class Profiles:
 
     def update(self, cid: str, patch: dict) -> dict:
         with self.lock:
-            cur = _merge(copy.deepcopy(DEFAULT), self.p.get(cid, {}))
+            cur = _merge(_merge(copy.deepcopy(DEFAULT), self._seed(cid)), {k: v for k, v in self.p.get(cid, {}).items() if k != "_cleared"})
             self.p[cid] = _merge(cur, patch)
             self._save()
         return self.get(cid)
@@ -440,7 +452,7 @@ class Profiles:
     def delete(self, cid: str) -> dict:
         """Section 14.4: Astronaut can delete profile at any time."""
         with self.lock:
-            self.p.pop(cid, None)
+            self.p[cid] = {"_cleared": True}   # deleted means empty, not "back to the preloaded demo values"
             self._save()
         return self.get(cid)
 

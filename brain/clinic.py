@@ -143,6 +143,27 @@ DAY_BLOCKS = [
 ]
 
 
+# The exercise countermeasure, made specific. Source for the devices and the daily total: NASA, "Exercising in Space"
+# (ISS crews exercise about two hours a day on ARED, T2 and CEVIS). The split and the moves listed are a demo
+# default: the real prescription is set per person by the exercise specialists and the flight surgeon.
+EXERCISE_PLAN = {
+    "target_min": 120,
+    "source": {"title": "NASA: Exercising in Space (ISS crews exercise about two hours a day: ARED, T2 treadmill, CEVIS cycle)",
+               "url": "https://www.nasa.gov/missions/station/iss-research/counteracting-bone-and-muscle-loss-in-microgravity/"},
+    "note": "Device list and daily total from NASA. The split and moves below are a demo default; your prescription comes from the flight surgeon.",
+    "sessions": [
+        {"id": "ared", "name": "Resistance (ARED)", "minutes": 60, "why": "Loads bone and muscle that weightlessness unloads.",
+         "how": "Squats, deadlifts and heel raises: 3 sets of 8 to 12 each, then bench or shoulder press. Rest 90 seconds between sets."},
+        {"id": "t2", "name": "Treadmill (T2)", "minutes": 30, "why": "Impact and aerobic work for heart, legs and hips.",
+         "how": "Harness on. 5 minutes easy, 20 minutes steady run or intervals, 5 minutes easy."},
+        {"id": "cevis", "name": "Cycle (CEVIS)", "minutes": 30, "why": "Aerobic fitness without impact.",
+         "how": "5 minutes warm-up, 20 minutes at a pace where talking is hard, 5 minutes cool-down."},
+        {"id": "mobility", "name": "Stretch and mobility", "minutes": 10, "why": "Eases the back and neck stiffness common in weightlessness.",
+         "how": "Slow stretches for the back, hips, shoulders and neck. Hold each 30 seconds. No bouncing."},
+    ],
+}
+
+
 class Clinic:
     """Manages the Sentinel clinical model, daily time blocks, and mode transitions."""
 
@@ -285,8 +306,18 @@ class Clinic:
         if not (0.0 <= minutes <= 240.0):
             raise ValueError("minutes must be between 0 and 240")
 
-        store.ingest_reading(cid, {"metric": "exercise_minutes", "value": float(minutes), "label": "MANUAL", "confidence": 1.0})
+        # sessions add up over the mission day: "exercise today" is the day's total, not the last session
+        day = int(store.mission_clock()["mission_day"])
+        it = store.internal.setdefault(cid, {})
+        ex = it.get("exercise") if (it.get("exercise") or {}).get("day") == day else {"day": day, "total": 0.0}
+        ex["total"] = min(600.0, ex["total"] + float(minutes))
+        it["exercise"] = ex
+        store.ingest_reading(cid, {"metric": "exercise_minutes", "value": ex["total"], "label": "MANUAL", "confidence": 1.0})
         store.set_context(cid, activity="post_exercise", minutes=30.0)
+        name = next((x["name"] for x in EXERCISE_PLAN["sessions"] if x["id"] == activity), activity)
+        if hasattr(store, "record_event"):
+            store.record_event(cid, "exercise", {"activity": activity, "name": name, "minutes": float(minutes), "day": day})
+        left = max(0.0, EXERCISE_PLAN["target_min"] - ex["total"])
 
         s = store.get(cid)
         return {
@@ -294,8 +325,11 @@ class Clinic:
             "block": "exercise",
             "minutes": minutes,
             "activity": activity,
+            "total_today": ex["total"],
+            "target_min": EXERCISE_PLAN["target_min"],
             "post_exercise_until_s": store.internal.get(cid, {}).get("post_exercise_until", 0),
-            "summary": f"Logged {minutes:g} min {activity}. Post-exercise pulse suppression active for 30 min.",
+            "summary": f"Logged {minutes:g} min {name}: {ex['total']:g} of {EXERCISE_PLAN['target_min']} min today"
+                       + (f", {left:g} to go." if left else ", target met.") + " Post-exercise pulse suppression active for 30 min.",
             "state": s,
         }
 

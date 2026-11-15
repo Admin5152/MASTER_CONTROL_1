@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 // All surface occupants and shelter sites in this explorer are fictional demo data.
-export function mountPlanetExplorer(host, profile, crewName = "Selected astronaut", others = []) {
+export function mountPlanetExplorer(host, profile, crewName = "Selected astronaut", others = [], onPerson = null) {
   const moon = profile === "lunar", surface = moon || profile.startsWith("mars");
   const name = moon ? "Moon" : profile.startsWith("mars") ? "Mars" : "Earth";
   const base = moon ? [0.6741, 23.4729] : [-4.5895, 137.4417];
@@ -118,6 +118,7 @@ export function mountPlanetExplorer(host, profile, crewName = "Selected astronau
     for (const l of labels) l.button.classList.toggle("is-on", l.site === site);
     dialog.querySelector("[data-selected]").textContent = `${site.name} · ${site.type} · ${site.lat.toFixed(2)}°, ${site.lon.toFixed(2)}° · ${site.status}. Simulated site.`;
     Object.assign(desired, { lat: site.lat, lon: site.lon, altitude: 0.22 });
+    if (site.type === "Astronaut" && onPerson) onPerson(site, dialog.querySelector("[data-selected]"));
   }
   for (const site of [...points, ...(hotspot ? [hotspot] : [])]) {
     const button = document.createElement("button"); button.type = "button"; button.className = `chip-${site.type.toLowerCase()}`; button.textContent = site.name; button.onclick = () => select(site); dialog.querySelector("[data-sites]").append(button);

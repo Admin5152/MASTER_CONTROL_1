@@ -27,6 +27,45 @@ const fieldName = (f) => FIELD_LABELS[f]?.[0] || f.split(".").pop().replace(/_/g
 const fieldUnit = (f) => FIELD_LABELS[f]?.[1] || "";
 const go = (ctx, name, arg) => ctx.screens.open(name, arg);
 
+/** Readings said out loud or typed in a sentence: "my heart rate is 72", "blood pressure 120 over 80", "I slept 6.5 hours".
+ *  Returns { vitals, manual, said } to save, { error } when a number is out of range, or null when it is not a log. Pure. */
+export function logFromSpeech(text) {
+  const t = ` ${String(text || "").toLowerCase().replace(/[\u2019']/g, "").replace(/,/g, " ")} `;
+  if (/^ (what|whats|why|how|should|is|are|do|does|can|could|would|when|show|open|tell) /.test(t)) return null;
+  const N = "(\\d{1,4}(?:\\.\\d{1,2})?)", is = "(?: is| was| of| at| reads| reading|:)?(?: about| around)? ";
+  const out = { vitals: {}, manual: {} }, said = [];
+  const take = (re, lo, hi, set, label, unit) => {
+    const m = new RegExp(re).exec(t);
+    if (!m) return null;
+    const v = Number(m[1]);
+    if (!(v >= lo && v <= hi)) return `${label} ${m[1]} is outside ${lo} to ${hi}${unit ? " " + unit : ""}. Say it again, or check the device.`;
+    set(v); said.push(`${label} ${v}${unit ? " " + unit : ""}`);
+    return null;
+  };
+  let err = null;
+  const bp = new RegExp(`(?:blood pressure|bp)${is}${N} (?:over|on|by|/) ?${N}`).exec(t);
+  if (bp) {
+    const s = Number(bp[1]), d = Number(bp[2]);
+    if (!(s >= 40 && s <= 300) || !(d >= 20 && d <= 200) || d >= s) err = `Blood pressure ${bp[1]} over ${bp[2]} doesn't look right. Say it again, top number first.`;
+    else { out.manual.bp_systolic = s; out.manual.bp_diastolic = d; said.push(`blood pressure ${s} over ${d}`); }
+  }
+  for (const [re, lo, hi, set, label, unit] of [
+    [`(?:heart rate|pulse)${is}${N}`, 20, 250, (v) => { out.vitals.heart_rate = v; }, "heart rate", "bpm"],
+    [`(?:breathing rate|respiratory rate|breathing|breaths)${is}${N}`, 2, 80, (v) => { out.vitals.breathing_rate = v; }, "breathing rate", "a minute"],
+    [`(?:oxygen saturation|oxygen|spo2|sp o2|saturation|sats)${is}${N}`, 50, 100, (v) => { out.vitals.spo2 = v; }, "oxygen saturation", "percent"],
+    [`(?:temperature|temp)${is}${N}`, 25, 45, (v) => { out.manual.temp_c = v; }, "temperature", "degrees"],
+    [`(?:blood glucose|glucose|blood sugar|sugar)${is}${N}`, 10, 900, (v) => { out.manual.glucose_mgdl = v; }, "glucose", ""],
+    [`(?:slept|sleep)(?: was| for| of)?(?: about| around)? ${N} ?(?:hours|hrs|h)`, 0, 24, (v) => { out.manual.sleep_hours = v; }, "sleep", "hours"],
+    [`(?:exercised|exercise|worked out|workout)(?: was| for| of)?(?: about)? ${N} ?(?:minutes|mins|min)`, 0, 600, (v) => { out.manual.exercise_minutes = v; }, "exercise", "minutes"],
+    [`(?:drank|drunk|fluids?|water)(?: was| of| is)?(?: about)? ${N} ?(?:ml|millilit)`, 0, 10000, (v) => { out.manual.hydration_ml = v; }, "fluids", "millilitres"],
+    [`(?:my )?mood${is}${N}`, 1, 5, (v) => { out.manual.mood = Math.round(v); }, "mood", "of 5"],
+    [`(?:my )?stress(?: level)?${is}${N}`, 1, 5, (v) => { out.manual.stress_self = Math.round(v); }, "stress", "of 5"],
+    [`(?:my )?energy(?: level)?${is}${N}`, 1, 5, (v) => { out.manual.energy_self = Math.round(v); }, "energy", "of 5"],
+  ]) err = err || take(re, lo, hi, set, label, unit);
+  if (err) return { error: err };
+  return said.length ? { ...out, said: said.join(", ") } : null;
+}
+
 export const MOOD_TAGS = ["tired", "irritable", "anxious", "lonely", "motivated"];
 
 export function registerClinic(registerScreen) {
@@ -34,11 +73,12 @@ export function registerClinic(registerScreen) {
   registerScreen("checkin", { title: "Daily check-in", badge: "LIVE", render: renderCheckin });
   registerScreen("environment", { title: "Environment and mode", render: renderEnvironment });
   registerScreen("onboarding", { title: "First run", render: renderOnboarding });
-  registerScreen("record", { title: "My saved record", render: renderRecord });
+  registerScreen("record", { title: "My saved record", wide: true, render: renderRecord });
   registerScreen("weekly", { title: "Weekly review", render: renderWeekly });
-  registerScreen("indicator", { title: "Reading", render: renderIndicator });
+  registerScreen("indicator", { title: "Reading", wide: true, render: renderIndicator });
   registerScreen("alerts", { title: "Alerts", render: renderAlerts });
   registerScreen("kit", { title: "Medical kit", badge: "SIM", render: renderKit });
+  registerScreen("notifications", { title: "Notifications", render: renderNotifications });
   registerScreen("datasets", { title: "NASA research datasets", badge: "NLSP", render: renderDatasets });
 }
 
@@ -49,36 +89,60 @@ const STATE_WORD = { scheduled: "later today", due: "due now", done: "done", sno
 function renderToday(el, ctx, arg) {
   const cid = ctx.view.crewId;
   let alive = true, openQuick = typeof arg === "string" ? arg : "", msg = "";
+  let panel = !!openQuick;   // the task and log lists stay folded until asked for: no scrolling to see where the day stands
   const pick = { sleep: null, mood: null, minutes: null, wmood: null };
   const draw = async () => {
-    let c, p;
+    let c, p, ex = null;
     try { await api.planTick(cid).catch(() => {}); [c, p] = await Promise.all([api.clinic(cid), api.plan(cid)]); } catch { if (alive) offline(el); return; }
+    try { ex = await api.exercise(cid); } catch { /* optional */ }
+    if (ex && !pick.activity) { pick.activity = ex.sessions[0].id; }
+    const exSel = ex?.sessions.find((x) => x.id === pick.activity);
     if (!alive) return;
     const o = c.ops || {}, b = c.day_block || {}, m = c.clinical_mode_info || {};
     const main = { morning_checkin: ["Start the daily check-in", "checkin"], wake: ["Log sleep and mood", "#wake"], exercise: ["Log the exercise session", "#exercise"],
       evening_winddown: ["Start the wind-down", "#winddown"], night_sleep: ["Start rest mode", "!rest"], eva_sortie: ["EVA readiness check", "!eva"],
       symptom_triage: ["Start triage", "care"] }[b.id] || ["Daily check-in", "checkin"];
     const rems = p.today_reminders || [];
+    const open_ = rems.filter((r) => r.type !== "duty" && r.type !== "sleep" && r.state !== "done");
+    const dueN = open_.filter((r) => r.state === "due" || r.state === "snoozed").length, nextUp = open_.find((r) => r.state === "due") || open_.find((r) => r.state === "scheduled");
+    const resting = o.mode === "rest";
     el.innerHTML = `
+      <div class="cl-three">
+        <button type="button" class="card cl-tile ${panel ? "is-on" : ""}" data-tile="tasks" aria-expanded="${panel}">
+          <span class="env-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 6.500l1.500 1.500L9 5.500M5 12.500l1.500 1.500L9 11.500M5 18.500l1.500 1.500L9 17.500M12.500 7H20M12.500 13H20M12.500 19H20"/></svg></span>
+          <strong>Tasks and logs</strong><span class="cl-big num">${dueN}</span><span class="fine">${dueN === 1 ? "due now" : "due now"}${nextUp ? ` · next: ${esc(nextUp.title.split(" (")[0].split(" & ")[0])} ${esc(nextUp.time || "")}` : ""}</span></button>
+        <button type="button" class="card cl-tile ${resting ? "is-on" : ""}" data-tile="rest" aria-pressed="${resting}">
+          <span class="env-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19.500 14.500A8 8 0 0 1 9.500 4.500a8 8 0 1 0 10 10z"/></svg></span>
+          <strong>Rest mode</strong><span class="cl-big">${resting ? "On" : "Off"}</span><span class="fine">${resting ? "Only urgent and cabin alerts reach you. Tap to end." : "Tap for do-not-disturb."}</span></button>
+        <button type="button" class="card cl-tile" data-tile="unwell">
+          <span class="env-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg></span>
+          <strong>I don't feel well</strong><span class="cl-big">Care</span><span class="fine">A few questions, then steps one at a time.</span></button>
+      </div>
       <article class="card cl-card">
-        <span class="label">Now · ${esc(b.label || "Routine")}${b.context ? ` · ${esc(b.context)}` : ""}</span>
-        <h3>${esc(m.title || c.clinical_mode)} mode</h3>
-        <p class="note">${esc(m.description || "")}</p>
-        ${b.description ? `<p>${esc(b.description)}</p>` : ""}
+        <span class="label">Now · ${esc(b.label || "Routine")}${b.context ? ` · ${esc(b.context)}` : ""} · ${esc(m.title || c.clinical_mode)} mode</span>
+        ${b.description ? `<p>${esc(b.description)}</p>` : `<p class="note">${esc(m.description || "")}</p>`}
         <div class="exam-nav"><button class="pill pill-light" type="button" data-main="${main[1]}">${esc(main[0])}</button><button class="pill pill-ghost" type="button" data-open="care">I don't feel well</button></div>
         <p class="note" data-eva></p>
       </article>
       <p class="fine">Environment: <strong>${esc(o.env || "")}</strong> · mode: <strong>${esc(o.mode || "routine")}</strong>${o.reminders_paused ? " · routine reminders paused" : ""}. ${esc(o.comms?.note || "")}
         Escalation: ${esc(o.escalation_policy || "")}. <button class="link-btn" type="button" data-open="environment">Change</button></p>
+      <p class="note" data-msg-top aria-live="polite">${panel ? "" : esc(msg)}</p>
+      <div data-panel ${panel ? "" : "hidden"}>
       <h3>Quick logs</h3>
       <details class="more" data-q="wake"${openQuick === "wake" ? " open" : ""}><summary>Wake: hours slept and mood (two taps)</summary>
         <p class="fine">Hours slept</p><div class="mood-row cl-wrap" data-taps="sleep">${[4, 5, 6, 6.5, 7, 7.5, 8, 9].map((v) => `<button type="button" data-v="${v}" aria-pressed="${pick.sleep === v}">${v}</button>`).join("")}</div>
         <p class="fine">Mood, 1 low to 5 good</p>${taps("mood", pick.mood)}
         <p><button class="pill pill-dark" type="button" data-save="wake">Save</button></p></details>
-      <details class="more" data-q="exercise"${openQuick === "exercise" ? " open" : ""}><summary>Exercise session</summary>
-        <p class="fine">Active minutes. For the next half hour a raised pulse and breathing rate are expected and not flagged.</p>
-        <div class="mood-row cl-wrap" data-taps="minutes">${[15, 30, 45, 60, 90, 120].map((v) => `<button type="button" data-v="${v}" aria-pressed="${pick.minutes === v}">${v}</button>`).join("")}</div>
-        <p><button class="pill pill-dark" type="button" data-save="exercise">Save</button></p></details>
+      <details class="more" data-q="exercise"${openQuick === "exercise" ? " open" : ""}><summary>Exercise session${ex ? ` · ${Math.round(ex.total_today)} of ${ex.target_min} min today` : ""}</summary>
+        ${ex ? `<div class="measures-progress"><div style="width:${Math.min(100, (ex.total_today / ex.target_min) * 100)}%"></div></div>
+        <p class="fine">Pick what you did. Each shows the planned time and how to do it.</p>
+        <div class="hub">${ex.sessions.map((x) => `<button type="button" data-ex="${x.id}" aria-pressed="${pick.activity === x.id}"><strong>${esc(x.name)} · ${x.minutes} min</strong><span>${esc(x.why)}</span></button>`).join("")}</div>
+        ${exSel ? `<article class="card cl-card"><span class="label">${esc(exSel.name)} · planned ${exSel.minutes} minutes</span><p>${esc(exSel.how)}</p></article>` : ""}
+        ${ex.today.length ? `<p class="fine">Done today: ${ex.today.map((s) => `${esc(s.name)} ${Math.round(s.minutes)} min`).join(" · ")}</p>` : ""}` : ""}
+        <p class="fine">Minutes you actually did</p>
+        <div class="mood-row cl-wrap" data-taps="minutes">${[10, 15, 20, 30, 45, 60, 75, 90].map((v) => `<button type="button" data-v="${v}" aria-pressed="${(pick.minutes ?? exSel?.minutes) === v}">${v}</button>`).join("")}</div>
+        <p><button class="pill pill-dark" type="button" data-save="exercise">Save session</button></p>
+        <p class="fine">For the next half hour a raised pulse and breathing rate are expected and not flagged.${ex ? ` ${esc(ex.note)} Source: <a class="src-link" href="${esc(ex.source.url)}" target="_blank" rel="noopener">${esc(ex.source.title)}</a>` : ""}</p></details>
       <details class="more" data-q="winddown"${openQuick === "winddown" ? " open" : ""}><summary>Evening wind-down and mood check</summary>
         <p class="fine">Mood this evening, 1 low to 5 good</p>${taps("wmood", pick.wmood)}
         <p><button class="pill pill-dark" type="button" data-save="winddown">Save</button></p></details>
@@ -96,11 +160,20 @@ function renderToday(el, ctx, arg) {
         <label class="pf-field"><span>What</span><input type="text" data-rt maxlength="80" placeholder="e.g. Blood pressure recheck"></label>
         <label class="pf-field"><span>When (mission time)</span><input type="time" data-rw value="15:00"></label>
         <p><button class="pill pill-dark" type="button" data-add>Add</button></p></details>
+      </div>
       <div class="exam-nav"><button class="pill pill-ghost" type="button" data-open="weekly">Weekly review</button><button class="pill pill-ghost" type="button" data-open="alerts">Alerts</button><button class="pill pill-ghost" type="button" data-open="record">My saved record</button></div>`;
     wireTaps(el, (k, v) => { pick[k] = v; });
+    el.querySelectorAll("[data-ex]").forEach((b) => b.addEventListener("click", () => { pick.activity = b.dataset.ex; pick.minutes = null; openQuick = "exercise"; draw(); }));
     el.querySelectorAll("[data-open]").forEach((x) => x.addEventListener("click", () => go(ctx, x.dataset.open)));
-    const quick = (k) => { openQuick = k; const d = el.querySelector(`[data-q="${k}"]`); if (d) { d.open = true; d.scrollIntoView({ block: "center", behavior: "smooth" }); } };
+    const quick = (k) => { openQuick = k; if (!panel) { panel = true; return draw(); } const d = el.querySelector(`[data-q="${k}"]`); if (d) { d.open = true; d.scrollIntoView({ block: "center", behavior: "smooth" }); } };
     const target = (t) => { if (t.startsWith("#")) quick(t.slice(1)); else go(ctx, t); };
+    el.querySelectorAll("[data-tile]").forEach((b) => b.addEventListener("click", async () => {
+      const k = b.dataset.tile;
+      if (k === "unwell") return go(ctx, "care", "triage");
+      if (k === "rest") { await ctx.setMode?.(resting ? "routine" : "rest"); await pollOnce(); msg = resting ? "Routine mode: reminders are back on." : "Rest mode: only urgent and cabin alerts will reach you."; return draw(); }
+      panel = !panel; await draw();
+      if (panel) el.querySelector("[data-panel]")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }));
     el.querySelector("[data-main]").addEventListener("click", async (e) => {
       const t = e.currentTarget.dataset.main;
       if (t === "!rest") { await ctx.setMode?.("rest"); msg = "Rest mode: only urgent and cabin alerts will reach you."; return draw(); }
@@ -131,9 +204,11 @@ function renderToday(el, ctx, arg) {
           emit("reading.added", { indicator: "sleep_hours", value: pick.sleep, source: "manual", label: "MANUAL", confidence: 1 });
           msg = `${r.summary} Saved to your record.`; ctx.onCheckin?.("log", { sleep_hours: pick.sleep });
         } else if (k === "exercise") {
-          if (pick.minutes == null) { msg = "Tap the minutes."; return draw(); }
-          const r = await api.clinicBlock(cid, { block: "exercise", minutes: pick.minutes });
-          msg = `${r.summary} Saved to your record.`; ctx.onCheckin?.("exercise", { exercise_minutes: pick.minutes });
+          const mins = pick.minutes ?? exSel?.minutes;
+          if (mins == null) { msg = "Tap the minutes."; return draw(); }
+          const r = await api.clinicBlock(cid, { block: "exercise", minutes: mins, activity: pick.activity || "workout" });
+          pick.minutes = null;
+          msg = `${r.summary} Saved to your record.`; ctx.onCheckin?.("exercise", { exercise_minutes: r.total_today });
         } else {
           const r = await api.clinicBlock(cid, { block: "evening_winddown", mood: pick.wmood });
           msg = r.recommendation || "Wind-down logged.";
@@ -150,9 +225,10 @@ function renderToday(el, ctx, arg) {
 
 // ================= the guided daily check-in (W2): scan, typed entries, taps, reaction test, summary =================
 const CK_STEPS = ["Scan", "Entries", "Mood and energy", "Reaction", "Summary"];
-const CK_VITALS = [["heart_rate", "Heart rate", "bpm", 30, 220], ["breathing_rate", "Breathing rate", "/min", 4, 60], ["spo2", "SpO2", "%", 70, 100]];
-const CK_MANUAL = [["bp_systolic", "Systolic pressure", "mmHg", 60, 250], ["bp_diastolic", "Diastolic pressure", "mmHg", 30, 150], ["glucose_mgdl", "Blood glucose", "mg/dL", 20, 600],
-  ["temp_c", "Temperature", "°C", 33, 43], ["sleep_hours", "Sleep last night", "hours", 0, 16]];
+// entry limits are what a body can show, not what is normal: a low temperature or a very fast pulse must be recordable
+const CK_VITALS = [["heart_rate", "Heart rate", "bpm", 20, 250], ["breathing_rate", "Breathing rate", "/min", 2, 80], ["spo2", "SpO2", "%", 50, 100]];
+const CK_MANUAL = [["bp_systolic", "Systolic pressure", "mmHg", 40, 300], ["bp_diastolic", "Diastolic pressure", "mmHg", 20, 200], ["glucose_mgdl", "Blood glucose", "mg/dL", 10, 900],
+  ["temp_c", "Temperature", "°C", 25, 45], ["sleep_hours", "Sleep last night", "hours", 0, 24]];
 const CK_TAPS = [["mood", "Mood", "1 low to 5 good"], ["energy_self", "Energy", "1 drained to 5 full"], ["stress_self", "Stress", "1 calm to 5 very stressed"], ["connection_self", "Connection with the crew", "1 distant to 5 close"]];
 
 function renderCheckin(el, ctx) {
@@ -211,6 +287,12 @@ function renderCheckin(el, ctx) {
         <p class="fine">Skip it if you have run it today; the last result is used.</p></section>${nav("Finish")}`;
       el.querySelector("[data-rt]").addEventListener("click", () => { keep(); ctx.screens.open("cognitive"); ctx.showNotice?.("Check-in paused. Open Daily check-in again to finish."); });
     }
+    el.querySelectorAll("input[data-g]").forEach((inp) => inp.addEventListener("input", () => {   // flagged as it is typed, with the range
+      const v = inp.value.trim(), bad = v !== "" && (!Number.isFinite(Number(v)) || Number(v) < Number(inp.min) || Number(v) > Number(inp.max));
+      inp.setAttribute("aria-invalid", String(bad));
+      const err = el.querySelector("[data-err]");
+      if (err) err.textContent = bad ? `${v} is outside ${inp.min} to ${inp.max}. Check the device and enter it again.` : "";
+    }));
     el.querySelector("[data-back]")?.addEventListener("click", () => { collect(); st.i = Math.max(0, i - 1); keep(); draw(); });
     el.querySelector("[data-next]")?.addEventListener("click", () => {
       const bad = collect();
@@ -280,6 +362,19 @@ const PROFILE_PATH = { "Name or callsign": ["callsign", false], "Duty and sleep 
   "Ongoing conditions": ["health.conditions", true], "Regular medicines": ["health.regularMedicines", true], "Past reactions to kit items": ["health.pastKitReactions", true],
   "My early signs": ["wellbeingPlan.earlySigns", true], "Who I would talk to": ["wellbeingPlan.whoToTalkTo", false] };
 
+// icon + words, so a place or mode is recognised at a glance (drawn here, in the app's stroke style; nothing is fetched)
+const ENV_ICON = {
+  station: '<circle cx="12" cy="12" r="3"/><path d="M3 12h6M15 12h6M5 8v8M19 8v8"/>',
+  transit: '<path d="M12 3c3 2.5 4 6 4 9v4H8v-4c0-3 1-6.500 4-9z"/><path d="M8 13l-3 3v3l3-1.500M16 13l3 3v3l-3-1.500M10 20h4"/>',
+  base: '<path d="M3 19h18M5 19a7 7 0 0 1 14 0"/><path d="M12 12V8M10 19v-3h4v3"/>',
+  critical: '<path d="M12 3.5l9.5 16.500h-19z"/><path d="M12 10v4.500M12 17.200v.300"/>',
+  routine: '<circle cx="12" cy="12" r="8.500"/><path d="M12 7v5l3 2"/>',
+  eva: '<circle cx="12" cy="7.500" r="3.500"/><path d="M6.500 20v-4a5.500 5.500 0 0 1 11 0v4M9.500 14.500h5"/>',
+  rest: '<path d="M19.500 14.500A8 8 0 0 1 9.500 4.500a8 8 0 1 0 10 10z"/>',
+  contingency: '<path d="M8.200 3h7.600L21 8.200v7.600L15.800 21H8.200L3 15.800V8.200z"/><path d="M12 7.500v6M12 16.300v.400"/>',
+};
+const envIcon = (k) => `<span class="env-ic" aria-hidden="true"><svg viewBox="0 0 24 24">${(ENV_ICON[k] || ENV_ICON.routine).replace(/(\d)\.(\d)00\b/g, "$1.$2")}</svg></span>`;
+
 // ================= environment and mode (section 13, W8): always confirm before switching =================
 async function renderEnvironment(el, ctx) {
   const cid = ctx.view.crewId;
@@ -293,12 +388,12 @@ async function renderEnvironment(el, ctx) {
       ${x.settling_in ? `<p class="note"><strong>Settling in:</strong> ${x.settling_days_left} day${x.settling_days_left === 1 ? "" : "s"} left. Small changes from your usual are treated as adjusting; air, range limits and red flags still alert at full strength.</p>` : ""}
       ${done ? `<article class="card cl-card"><span class="label">Switched</span><h3>${esc(done.environment || done.to)}</h3><ul class="note">${(done.changes || []).map((c) => `<li>${esc(c)}</li>`).join("")}</ul></article>` : ""}
       <h3>Environment</h3>
-      <div class="hub">${envs.map(([k, e]) => `<button type="button" data-env="${esc(k)}" aria-pressed="${o.env === k || o.env === e.id}"><strong>${esc(e.label || k)}${o.env === k ? " · now" : ""}</strong><span>${esc(e.in_plain_words || "")}</span>
+      <div class="hub">${envs.map(([k, e]) => `<button type="button" data-env="${esc(k)}" aria-pressed="${o.env === k || o.env === e.id}">${envIcon(k)}<strong>${esc(e.label || k)}${o.env === k ? " · now" : ""}</strong><span>${esc(e.in_plain_words || "")}</span>
         <span>Watches harder: ${esc(e.watches_harder || "")}</span><span>${esc(e.escalation_policy?.default_escalation || "")}${e.escalation_policy?.wait_tolerance_min != null ? ` · can wait about ${e.escalation_policy.wait_tolerance_min} min for ground (SIM)` : ""}</span></button>`).join("")}</div>
       ${pending ? `<article class="card cl-card" data-confirm><h3>Switch to ${esc(pending.label)}?</h3><p class="note">Ranges, kit, reminders and what I advise will update. No answer means no change.</p>
         <div class="exam-nav"><button class="pill pill-light" type="button" data-yes>Yes, switch</button><button class="pill pill-ghost" type="button" data-no>No</button></div></article>` : ""}
       <h3>Mode</h3>
-      <div class="hub">${Object.entries(data.modes || {}).map(([k, m]) => `<button type="button" data-mode="${esc(k)}"><strong>${esc(m.label || k)}${o.mode === k ? " · now" : ""}</strong><span>${esc(typeof m === "string" ? m : m.changes || m.what_changes || m.description || "")}</span></button>`).join("")}</div>
+      <div class="hub">${Object.entries(data.modes || {}).map(([k, m]) => `<button type="button" data-mode="${esc(k)}" aria-pressed="${o.mode === k}">${envIcon(k)}<strong>${esc(m.label || k)}${o.mode === k ? " · now" : ""}</strong><span>${esc(typeof m === "string" ? m : m.changes || m.what_changes || m.description || "")}</span></button>`).join("")}</div>
       <p class="fine">Delay and wait-tolerance numbers are labelled SIM values for the demo; real ones come from mission documents.</p><p class="note" data-msg aria-live="polite"></p>`;
     el.querySelectorAll("[data-env]").forEach((b) => b.addEventListener("click", () => {
       const e = data.environments[b.dataset.env];
@@ -409,6 +504,7 @@ async function renderWeekly(el, ctx) {
     e.currentTarget.disabled = true;
     try {
       const r = await api.ground(cid, { kind: "weekly", title: "Weekly review", body: { text: w.summary_text } });
+      ctx.showNotice?.("Weekly review sent to ground.");
       el.querySelector("[data-msg]").innerHTML = `Queued for ground (text only, no video or images). It arrives in about ${Math.max(1, Math.round((r.eta_s || 0) / 60))} minutes ${badgeHTML("SIM")}.`;
     } catch (err) { el.querySelector("[data-msg]").textContent = `Not queued: ${err.message}`; e.currentTarget.disabled = false; }
   });
@@ -527,6 +623,32 @@ function renderAlerts(el, ctx) {
   draw();
   const t = setInterval(() => { if (!el.contains(document.activeElement) || document.activeElement === document.body) draw(); }, 8000);
   return () => { alive = false; clearInterval(t); };
+}
+
+// ================= notifications: what crewmates need from you; clear one or all =================
+function renderNotifications(el, ctx) {
+  const cid = ctx.view.crewId;
+  let alive = true;
+  const draw = async () => {
+    let n;
+    try { n = await api.notifications(cid, true); } catch { if (alive) offline(el); return; }
+    if (!alive) return;
+    ctx.checkNotifications?.(false);
+    el.innerHTML = `<p class="note">When a crewmate who named you as their buddy needs help, it lands here and Sentinel tells you as soon as you are at the screen. You see that they need you, never their readings.</p>
+      ${n.items.length ? `<ul class="ground-list">${n.items.map((x) => `<li class="card cl-alert">
+        <span class="g-status ${x.level >= 3 ? "is-queued-(no-link)" : "is-awaiting-reply"}">${x.level >= 3 ? "urgent" : "check in"}</span>
+        <strong>${esc(x.title)}</strong><small>${esc(when(x.t))}</small>
+        <p class="note" style="grid-column:1/-1;margin:0">${esc(x.text)}</p>
+        <span class="cl-acts"><button class="pill pill-ghost" type="button" data-clear="${esc(x.id)}">Clear</button></span></li>`).join("")}</ul>
+        <div class="exam-nav"><button class="pill pill-ghost" type="button" data-clear-all>Clear all</button></div>`
+        : `<article class="card cl-card"><h3>Nothing waiting for you.</h3><p class="note">Set who your own buddy is in My health profile, so they are told if you need help.</p></article>`}
+      <div class="exam-nav"><button class="pill pill-ghost" type="button" data-open="profile">My buddy and sharing</button></div>`;
+    el.querySelectorAll("[data-clear]").forEach((b) => b.addEventListener("click", async () => { try { await api.notificationsClear(cid, b.dataset.clear); } catch { /* shown on redraw */ } draw(); }));
+    el.querySelector("[data-clear-all]")?.addEventListener("click", async () => { try { await api.notificationsClear(cid); } catch { /* shown on redraw */ } draw(); });
+    el.querySelector("[data-open]").addEventListener("click", () => go(ctx, "profile"));
+  };
+  draw();
+  return () => { alive = false; };
 }
 
 // ================= the kit, filtered by the profile (19.5, 14.4) =================

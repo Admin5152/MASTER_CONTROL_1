@@ -366,6 +366,52 @@ class Store:
             self._save()
             return sanitized
 
+    def add_crew(self, display_name: str, body_model: str = "male") -> dict:
+        """A new crew member: a clean record (no borrowed readings, no SIM history) so their baseline starts at
+        "Calibrating" and fills from their own check-ins. Everything else in the system works for them at once."""
+        import re
+        name = re.sub(r"\s+", " ", str(display_name or "")).strip()[:24]
+        if len(name) < 2:
+            raise ValueError("a name needs at least two characters")
+        with self.lock:
+            if any(s["display_name"].lower() == name.lower() for s in self.states.values()):
+                raise ValueError(f"{name} is already on the crew")
+            base = re.sub(r"[^a-z0-9]", "", name.lower())[:12] or "crew"
+            cid, n = base, 2
+            while cid in self.states:
+                cid, n = f"{base}{n}", n + 1
+            ref = next(iter(self.states.values()))
+            s = copy.deepcopy(self._mock()[0])
+            _fill_defaults(s)
+            s.update(crew_id=cid, display_name=name, body_model=body_model if body_model in ("male", "female") else "male")
+            for k in ("bp_systolic", "bp_diastolic", "glucose_mgdl", "temp_c", "sleep_hours", "sleep_quality", "exercise_minutes", "hydration_ml", "mood",
+                      "stress_self", "energy_self", "connection_self"):
+                s["manual"][k] = None
+            s["manual"].update(symptoms=[], symptom_log=[], meals=[], mood_tags=[], updated=None)
+            s["cognitive"].update(reaction_ms=None, baseline_ms=None)
+            s["identity"] = {"confidence": 0.0, "source": "manual"}
+            s["cabin"] = copy.deepcopy(ref["cabin"])
+            s["radiation"]["mission_profile"] = ref["radiation"]["mission_profile"]
+            s["radiation"]["mission_day"] = ref["radiation"]["mission_day"]
+            s["engagement"].update(checkins_today=0, missed_checkins=0, streak_days=0)
+            validate_full(s)
+            self.states[cid] = s
+            self.history[cid] = {}
+            self.internal[cid] = {"storm_received": 0.0, "storm_avoided": 0.0, "reaction_runs": 0, "added": time.time()}
+            self._recompute(cid)
+            self._save()
+            return {"crew_id": cid, "display_name": name}
+
+    def record_event(self, cid: str, kind: str, data: dict, cap: int = 300) -> dict:
+        """A dated record that is not a reading (an exercise session, for example)."""
+        with self.lock:
+            entry = {**data, "timestamp": now_iso(), "t": time.time()}
+            lst = self.non_reading_records.setdefault(cid, {}).setdefault(kind, [])
+            lst.append(entry)
+            del lst[:-cap]
+            self._save()
+            return copy.deepcopy(entry)
+
     def record_scan(self, cid: str, scan: dict) -> dict:
         """A finished scan (the 15-second face scan, or the full body scan): what it measured, how sure, and when.
         The readings themselves go through ingest_reading; this is the record that a scan happened and what it found."""

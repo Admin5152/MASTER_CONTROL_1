@@ -28,7 +28,7 @@ import httpx
 SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin", "cognitive",
            "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "symptom",
            "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence", "profile", "audit", "pulse",
-           "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "indicator", "environment", "onboarding", "kit", "datasets"]
+           "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "indicator", "environment", "onboarding", "kit", "datasets", "notifications"]
 ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"]
 METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
            "reaction", "talk_time", "pitch", "o2", "co2"]
@@ -243,7 +243,7 @@ SCREEN_WORDS = [
     (r"earth window", "earth_window"), (r"music|ambient sound", "music"), (r"wellbeing|well-being|well being", "wellbeing"),
     (r"daily check.?in|check.?in", "checkin"), (r"don'?t feel well|feel (sick|ill|unwell)|triage|care log|protocols?", "care"),
     (r"reminders?|my day|today'?s plan|schedule", "today"), (r"journal|diary", "journal"), (r"why this|alerts?", "alerts"),
-    (r"saved record|my record|my baseline|my normal", "record"), (r"weekly review", "weekly"), (r"medical kit|med kit", "kit"),
+    (r"saved record|my record|my baseline|my normal|health history|log(s)? history|my logs|my data", "record"), (r"vitals? history", "trends"), (r"weekly review", "weekly"), (r"medical kit|med kit", "kit"),
     (r"health log", "health_log"), (r"trends?", "trends"), (r"reaction test|cognitive", "cognitive"),
     (r"symptom|where (does )?it hurts?", "symptom"), (r"exam", "exam"), (r"weekly measures|measures", "measures"),
     (r"message (to )?ground|ground (team|control)", "ground"), (r"hardware|sensors?", "hardware"), (r"crew", "crew"),
@@ -329,11 +329,41 @@ OFFLINE_GENERAL = ("I need a connection to answer general questions, and I won't
                    "I can still tell you about your readings, the cabin and radiation.")
 
 
+SMALL_TALK = [
+    (r"\b(hi|hello|hey|good (morning|afternoon|evening))\b", "Hello {name}. Good to hear you. How are you feeling today?"),
+    (r"\bhow are you\b|\bhow('?s| is) it going\b|\bhow are things\b", "I'm steady, thanks for asking. More to the point, how are you? Anything on your mind?"),
+    (r"\b(thank you|thanks|cheers|appreciate)\b", "Any time, {name}. That's what I'm here for."),
+    (r"\bgood ?night\b|\bgoing to (bed|sleep)\b", "Sleep well, {name}. I'll keep watch and only wake you if it matters."),
+    (r"\bwho are you\b|\bwhat are you\b|\byour name\b", "I'm Sentinel, the crew's health companion. I keep an eye on how you're doing, and I'm here to talk whenever you want."),
+    (r"\b(joke|make me laugh|something funny)\b", "Why did the astronaut break up with the Moon? It needed space. I'll see myself out."),
+    (r"\b(i'?m |i am |feeling )?bored\b|\bnothing to do\b", "Long days out here. Want to race in Slipstream, check on the greenhouse, or just talk for a bit?"),
+    (r"\b(miss|missing) (home|my family|earth|my kids|my wife|my husband|my mum|my mom|my dad)\b|\bhomesick\b", "That's a lot to carry this far from home, {name}. Want to look at Earth for a while, or tell me about them?"),
+    (r"\b(talk to me|keep me company|can we talk|just want to talk|i need to talk)\b", "I'm here, {name}. Take your time. What's on your mind?"),
+    (r"\b(had|having) a (bad|hard|rough|long|tough) day\b|\btoday was (bad|hard|rough)\b", "I'm sorry it's been a hard one. Want to tell me what happened, or would a quiet few minutes help more?"),
+    (r"\b(had|having) a (good|great) day\b|\bfeel(ing)? (good|great)\b", "Glad to hear it, {name}. What made it a good one?"),
+    (r"\b(are you (there|listening)|you there|can you hear me)\b", "I'm here and listening."),
+    (r"\bwhat can you do\b|\bhelp me\b|\bwhat do you do\b", "I can run your check-in, work through a symptom step by step, show your trends, watch the cabin and radiation, or just talk. Say \"I don't feel well\", \"daily check-in\", or ask me anything about your readings."),
+    (r"\b(i love you|you('?re| are) (great|the best|awesome))\b", "That's kind of you, {name}. I've got your back out here."),
+    (r"\b(goodbye|bye|see you|talk later)\b", "Talk soon, {name}. I'm right here when you need me."),
+]
+
+
+def small_talk(t: str, name: str = "") -> str | None:
+    """A friendly line for everyday conversation when no language model is connected. Fixed, kind, and never medical:
+    it invents no facts. With a model configured, the model answers instead and this is not used."""
+    import re
+    for pat, line in SMALL_TALK:
+        if re.search(pat, t):
+            return line.format(name=name or "there").replace("  ", " ")
+    return None
+
+
 def rules_reply(state: dict, transcript: str) -> tuple[str, list[dict]]:
     name = state.get("display_name", "")
     t = (transcript or "").lower()
     if t.strip() and not is_health_question(t):
-        return OFFLINE_GENERAL, []
+        talk = small_talk(t, name)
+        return (talk, []) if talk else (OFFLINE_GENERAL, [])
     hr, base = _hr(state)
     action = state.get("action") or {}
     atype = action.get("type", "none")

@@ -270,3 +270,96 @@ def test_the_nlsp_catalogue_is_human_data_grouped_and_linked():
     assert d["kept"] == len(d["datasets"]) > 100 and "not training data" in d["use"].lower()
     assert all(x["groups"] and x["url"].startswith("https://nlsp.nasa.gov/") and x["title"] for x in d["datasets"])
     assert sum(d["by_group"].values()) >= d["kept"]
+
+
+def test_a_new_crew_member_starts_clean_and_everything_works_for_them(client):
+    c = client.post("/api/crew", json={"display_name": "Noor", "body_model": "female"}).json()
+    cid = c["crew_id"]
+    assert cid == "noor" and any(x["crew_id"] == cid for x in client.get("/api/crew").json())
+    s = client.get(f"/api/state/{cid}").json()
+    validate_full(s)
+    assert s["manual"]["bp_systolic"] is None and s["manual"]["symptom_log"] == [] and s["action"]["type"] == "none"
+    assert client.get(f"/api/record/{cid}").json()["fields"] == {}                      # no borrowed or SIM history
+    assert client.post("/api/crew", json={"display_name": "noor"}).status_code == 422   # no duplicates
+    assert client.post("/api/crew", json={"display_name": "x"}).status_code == 422
+    client.post(f"/api/state/{cid}/patch", json={"manual": {"bp_systolic": 121, "bp_diastolic": 78, "sleep_hours": 7}})
+    assert client.get(f"/api/baselines/{cid}").json()["indicators"]["manual.bp_systolic"]["stage"] == "Calibrating (1 of 7)"
+    for path in ("clinic", "plan", "wellbeing", "trends", "care/log", "alerts", "onboarding", "profile", "exercise", "scans", "crew/%s/card"):
+        url = f"/api/{path % cid}" if "%s" in path else f"/api/{path}/{cid}"
+        assert client.get(url).status_code == 200, url
+    assert client.post(f"/api/care/triage/{cid}", json={"zone": "head", "symptom": "headache", "severity": 5, "answers": {}, "log": True}).json()["urgency"] == 2
+    assert client.post(f"/api/state/{cid}/patch", json={"manual": {"bp_systolic": 192, "bp_diastolic": 124}}).json()["action"]["severity"] == "alert"
+
+
+def test_exercise_is_specific_and_sessions_add_up_over_the_day(client):
+    plan = client.get("/api/exercise/james").json()
+    assert plan["target_min"] == 120 and [s["id"] for s in plan["sessions"]][:3] == ["ared", "t2", "cevis"]
+    assert all(s["minutes"] > 0 and s["how"] and s["why"] for s in plan["sessions"]) and plan["source"]["url"].startswith("https://www.nasa.gov/")
+    a = client.post("/api/clinic/james/block", json={"block": "exercise", "minutes": 60, "activity": "ared"}).json()
+    b = client.post("/api/clinic/james/block", json={"block": "exercise", "minutes": 30, "activity": "t2"}).json()
+    assert a["total_today"] == 60 and b["total_today"] == 90 and "90 of 120 min today, 30 to go" in b["summary"]
+    assert client.get("/api/state/james").json()["manual"]["exercise_minutes"] == 90
+    today = client.get("/api/exercise/james").json()
+    assert [s["activity"] for s in today["today"]] == ["ared", "t2"] and today["post_exercise"] is True
+    client.post("/api/clock", json={"advance_hours": 24})   # a new mission day starts from zero
+    assert client.post("/api/clinic/james/block", json={"block": "exercise", "minutes": 20, "activity": "cevis"}).json()["total_today"] == 20
+
+
+def test_the_crew_card_shares_radiation_and_help_state_but_no_health_readings(client):
+    k = client.get("/api/crew/amara/card").json()
+    assert k["display_name"] == "Annie" and {"cumulative_msv", "storm_level", "sheltered", "margin_days"} <= set(k["radiation"]) and k["needs_help"] is False
+    assert not ({"vitals", "manual", "health", "wellbeing", "drift", "action"} & set(k))
+
+
+def test_seeded_demo_profiles_fill_in_until_the_person_saves_or_deletes(monkeypatch):
+    from brain.profile import Profiles
+    monkeypatch.delenv("SENTINEL_NO_SEED_PROFILES", raising=False)
+    p = Profiles(persist=False)
+    a = p.get("amara")
+    assert a["callsign"] == "Annie" and a["health"]["allergies"] == ["ibuprofen"] and a["onboarding"]["preloaded"] and a["completeness"] > 0.8
+    assert p.get("someone_new")["callsign"] == ""                                # only the roster is preloaded
+    assert p.update("amara", {"health": {"allergies": ["latex"]}})["health"]["allergies"] == ["latex"]
+    assert p.get("amara")["wellbeingPlan"]["whoToTalkTo"] == "Eliah"            # the rest of the preload is kept
+    assert p.delete("amara")["callsign"] == "" and p.get("amara")["health"]["allergies"] == []   # deleted means empty
+
+
+def test_sentinel_can_make_conversation_without_a_language_model():
+    from brain.llm import rules_reply, small_talk, OFFLINE_GENERAL
+    st = {"display_name": "Eliah"}
+    for said in ("hello", "how are you", "thanks", "tell me a joke", "I'm bored", "I miss my family", "can we talk", "good night"):
+        line, cmds = rules_reply(st, said)
+        assert line != OFFLINE_GENERAL and cmds == [], said
+    assert "Eliah" in rules_reply(st, "good morning")[0]
+    assert small_talk("what is the capital of france") is None and rules_reply(st, "what is the capital of france")[0] == OFFLINE_GENERAL   # no guessing
+
+
+def test_the_chosen_buddy_is_notified_and_can_clear_it(client):
+    import server
+    server.notes.box.clear()
+    server.profiles.update("james", {"sharing": {"buddy": "Seth", "shareUrgentWithCommander": True}})
+    r = client.post("/api/care/triage/james", json={"zone": "head", "symptom": "headache", "severity": 2, "answers": {"vision_changes": True}, "log": True}).json()
+    assert r["urgency"] == 3
+    box = client.get("/api/notifications/kenji").json()          # Seth is kenji
+    assert box["unread"] == 1 and "Eliah needs help now" == box["items"][0]["title"] and box["items"][0]["level"] == 3
+    assert not ({"readings", "vitals", "symptom", "health"} & set(box["items"][0]))   # that help is needed, never what the readings are
+    assert client.get("/api/notifications/amara").json()["count"] == 1              # the commander too, since Eliah allows it
+    assert client.get("/api/notifications/james").json()["count"] == 0              # never to yourself
+    assert client.get("/api/notifications/kenji?seen=true").json()["unread"] == 1 and client.get("/api/notifications/kenji").json()["unread"] == 0
+    assert client.post("/api/notifications/kenji/clear", json={"id": box["items"][0]["id"]}).json()["count"] == 0
+    # consent withheld: the commander is not told
+    server.notes.box.clear()
+    server.profiles.update("james", {"sharing": {"buddy": "Seth", "shareUrgentWithCommander": False}})
+    client.post("/api/care/triage/james", json={"zone": "head", "symptom": "headache", "severity": 2, "answers": {"vision_changes": True}, "log": True})
+    assert client.get("/api/notifications/kenji").json()["count"] == 1 and client.get("/api/notifications/amara").json()["count"] == 0
+    assert client.post("/api/notifications/kenji/clear", json={}).json()["cleared"] == 1
+
+
+def test_a_suit_leak_puts_a_notice_in_every_crewmates_inbox(client):
+    import server
+    server.notes.box.clear()
+    client.post("/api/suit/james", json={"action": "eva"})
+    client.post("/api/suit/james", json={"action": "leak", "region": "helmet"})
+    others = [c["crew_id"] for c in client.get("/api/crew").json() if c["crew_id"] != "james"]
+    assert all("suit pressure dropping" in client.get(f"/api/notifications/{o}").json()["items"][0]["title"] for o in others)
+    assert client.get("/api/notifications/james").json()["count"] == 0
+    client.post("/api/suit/james", json={"action": "seal"}); client.post("/api/suit/james", json={"action": "iva"})

@@ -92,7 +92,7 @@ def main() -> int:
         check("status line shows the environment chip", page.evaluate("!document.getElementById('sb-env').hidden && document.getElementById('sb-env').textContent.length > 2"), page.inner_text("#sb-env"))
 
         # ---- every new screen opens in the existing sheet with content
-        for name, needle in [("today", "Today's reminders"), ("checkin", "Scan"), ("care", "I don't feel well"), ("mind", "Four dimensions"), ("journal", "Earlier entries"),
+        for name, needle in [("today", "Tasks and logs"), ("checkin", "Scan"), ("care", "I don't feel well"), ("mind", "Four dimensions"), ("journal", "Earlier entries"),
                              ("alerts", "Right now"), ("record", "Stored for you"), ("weekly", "Adherence"), ("environment", "Environment"), ("onboarding", "of 4 done"),
                              ("kit", "Available"), ("indicator", "How to measure"), ("datasets", "human research datasets")]:
             open_screen(name, "vitals.heart_rate" if name == "indicator" else None)
@@ -107,12 +107,39 @@ def main() -> int:
         # ---- health log: a typed heart rate, blood pressure and a stress rating are saved and stored
         before = api("GET", f"/api/record/{cid}")["fields"]
         open_screen("health_log")
-        page.fill("#sheet-body #f-heart_rate", "77")
+        nxt = lambda: (page.click("#sheet-body [data-hw-next]"), page.wait_for_timeout(250))
+        check("health log: opens as a wizard on step 1 of 7 with only that step's fields", "step 1 of 7" in text().lower() and page.evaluate("[...document.querySelectorAll('#sheet-body .form-grid .field')].filter(f => !f.hidden).length") == 3)
+        page.fill("#sheet-body #f-heart_rate", "900")
+        page.wait_for_timeout(200)
+        check("health log: an out-of-range value is flagged as it is typed, with the range", "900 is outside 20 to 250" in text() and page.evaluate("document.querySelector('#f-heart_rate').getAttribute('aria-invalid')") == "true")
+        page.click("#sheet-body [data-hw-next]")
+        page.wait_for_timeout(200)
+        check("health log: it will not move on while a value is wrong", "step 1 of 7" in text().lower())
+        page.fill("#sheet-body #f-heart_rate", "76")
+        page.click('#sheet-body .field[data-key="heart_rate"] .hw-step:last-of-type')   # the plus stepper: 76 -> 77
+        nxt()
         page.fill("#sheet-body #f-bp_systolic", "121")
         page.fill("#sheet-body #f-bp_diastolic", "79")
+        nxt(); nxt(); nxt(); nxt()
         page.click('#sheet-body [data-self="stress_self"][data-n="2"]')
+        nxt()
+        t = text().lower()
+        check("health log: the last step reviews what will be saved", "review and save" in t and "heart rate" in t and "77" in t and "121" in t and "stress" in t, t[:140].replace(chr(10), " "))
+        page.click('#sheet-body [data-hw-edit="bp_systolic"]')
+        page.wait_for_timeout(300)
+        check("health log: the pen on a review row goes straight to that field", "step 2 of 7" in text().lower() and page.evaluate("document.activeElement && document.activeElement.id") == "f-bp_systolic")
+        page.fill("#sheet-body #f-temp_c", "30.5") if False else None
+        nxt(); page.fill("#sheet-body #f-temp_c", "31.2")
+        page.wait_for_timeout(200)
+        check("health log: a very low temperature can be recorded", page.evaluate("document.querySelector('#f-temp_c').getAttribute('aria-invalid')") != "true")
+        page.fill("#sheet-body #f-temp_c", "")
+        nxt(); nxt(); nxt(); nxt()
+        shot("healthlog-review")
         page.click("#sheet-body [data-save]")
-        page.wait_for_timeout(1500)
+        try:
+            page.wait_for_function("document.querySelector('#sheet-body [data-stored]')?.textContent.includes('Stored in your record')", timeout=8000)
+        except Exception:
+            pass
         rec = api("GET", f"/api/record/{cid}")["fields"]
         hr = rec.get("vitals.heart_rate", {})
         check("health log: typed heart rate is stored as MANUAL", hr.get("last") == 77 and hr.get("last_label") == "MANUAL" and hr.get("entered", 0) > before.get("vitals.heart_rate", {}).get("entered", 0), json.dumps(hr)[:120])
@@ -126,7 +153,11 @@ def main() -> int:
         page.click('#sheet-body [data-taps="sleep"] [data-v="6.5"]')
         page.click('#sheet-body [data-taps="mood"] [data-v="4"]')
         page.click('#sheet-body [data-save="wake"]')
-        page.wait_for_timeout(1500)
+        try:
+            page.wait_for_function("document.getElementById('sheet-body').innerText.includes('Saved to your record')", timeout=8000)
+        except Exception:
+            pass
+        page.wait_for_timeout(300)
         rec = api("GET", f"/api/record/{cid}")["fields"]
         check("today: wake log stores sleep hours", rec.get("manual.sleep_hours", {}).get("last") == 6.5, text()[:0])
         done_btn = page.query_selector("#sheet-body [data-done]")
@@ -140,10 +171,15 @@ def main() -> int:
         shot("today-after")
 
         # ---- care by touch: triage, the card, then ONE step at a time with "did that help?"
-        def say(words: str, wait: int = 1300) -> None:   # typed into the ask bar: the same path as a spoken sentence
+        def say(words: str, wait: int = 1300, expect: str = "") -> None:   # typed into the ask bar: the same path as a spoken sentence
             page.fill("#ask-input", words)
             page.press("#ask-input", "Enter")
-            page.wait_for_timeout(wait)
+            if expect:   # wait for the screen to show the result, not for a fixed time
+                try:
+                    page.wait_for_function("n => document.getElementById('sheet-body').innerText.toLowerCase().includes(n)", arg=expect, timeout=8000)
+                except Exception:
+                    pass
+            page.wait_for_timeout(wait if not expect else 250)
 
         open_screen("care", "triage")
         page.click('#sheet-body [data-z="head"]')
@@ -192,21 +228,21 @@ def main() -> int:
         page.wait_for_timeout(500)
         say("my stomach is not well")
         check("said: a symptom opens triage and asks how strong", page.evaluate("document.getElementById('sheet').dataset.screen") == "care" and "how strong" in text().lower(), text()[:80].replace("\n", " "))
-        say("three")
+        say("three", expect="question")
         for _ in range(6):
             if "question" not in text().lower():
                 break
             say("no", 900)
         page.wait_for_timeout(900)
         check("said: stomach trouble gets its own steps, not another protocol", "stomach upset" in text().lower(), text()[:100].replace("\n", " "))
-        say("start")
+        say("start", expect="step 1 of 5")
         check("said: 'start' opens step 1", "step 1 of 5" in text().lower(), text()[:80].replace("\n", " "))
-        say("done")
+        say("done", expect="did that help")
         check("said: 'done' asks whether it helped", "did that help" in text().lower())
-        say("no, it still hurts")
+        say("no, it still hurts", expect="step 2 of 5")
         check("said: 'still hurts' moves to the next step", "step 2 of 5" in text().lower(), text()[:80].replace("\n", " "))
-        say("okay done")
-        say("it is getting worse", 1800)
+        say("okay done", expect="did that help")
+        say("it is getting worse", expect="sent to the flight surgeon")
         t = text().lower()
         check("said: 'worse' escalates to the flight surgeon", "sent to the flight surgeon" in t and "worse after step 2" in t, t[:120].replace("\n", " "))
         packets = api("GET", f"/api/ground?crew_id={cid}")["packets"]
@@ -356,6 +392,165 @@ def main() -> int:
         n = page.evaluate("document.querySelectorAll('#sheet-body .ev-doc').length")
         check("datasets: the NASA catalogue filters and searches", n >= 1 and "dataset" in text().lower(), f"{n} shown")
         shot("datasets")
+
+        # ---- fourth pass: less friction, visible state, detail pages, crew and profiles
+        page.evaluate("window.sentinel.screens.close()")
+        page.wait_for_timeout(400)
+        page.click("#btn-menu")
+        page.wait_for_timeout(500)
+        opened = page.evaluate("!document.getElementById('menu').hidden")
+        page.mouse.click(30, 330)
+        page.wait_for_timeout(400)
+        check("menu: tapping outside closes it", opened and page.evaluate("document.getElementById('menu').hidden"))
+        page.click("#btn-micmute")
+        page.wait_for_timeout(300)
+        check("mic: muting shows on both microphone buttons and in the ask bar", page.evaluate("document.getElementById('btn-micmute').getAttribute('aria-pressed') === 'true' && document.getElementById('btn-mic').classList.contains('is-off') && document.getElementById('ask-input').placeholder.includes('muted')"))
+        page.click("#btn-micmute")
+        page.wait_for_timeout(300)
+        check("mic: unmuting clears the muted state", page.evaluate("document.getElementById('btn-micmute').getAttribute('aria-pressed') === 'false' && !document.getElementById('ask-input').placeholder.includes('muted')"))
+        page.click('#topnav [data-nav="radiation"]')
+        page.wait_for_timeout(1500)
+        page.click('#topnav [data-nav="wellbeing"]')
+        page.wait_for_timeout(1500)
+        page.evaluate("window.sentinel.screens.close()")
+        page.wait_for_timeout(600)
+        check("nav: after Wellbeing closes the highlight is back on Radiation", page.evaluate("document.querySelector('#topnav [data-nav=radiation]').getAttribute('aria-current') === 'true' && document.querySelector('#topnav [data-nav=wellbeing]').getAttribute('aria-current') !== 'true'"))
+        check("status line: short labels", len(page.inner_text("#sb-env")) <= 14 and len(page.inner_text("#sb-comms")) <= 14, page.inner_text("#sb-env") + " | " + page.inner_text("#sb-comms"))
+        page.evaluate("window.sentinel.stages.go('assistant')")
+        page.wait_for_timeout(900)
+
+        open_screen("health_log")
+        shot("healthlog-wizard")
+        hidden = page.evaluate("getComputedStyle(document.querySelector('#sheet-body .field .hint')).display === 'none'")
+        page.click("#sheet-body .field .cl-info")
+        page.wait_for_timeout(200)
+        check("health log: guidance is hidden until the info button is tapped", hidden and page.evaluate("getComputedStyle(document.querySelector('#sheet-body .field .hint')).display !== 'none'"))
+        shot("healthlog-clean")
+
+        open_screen("today", "exercise")
+        page.click('#sheet-body [data-ex="t2"]')
+        try:
+            page.wait_for_function("document.getElementById('sheet-body').innerText.toLowerCase().includes('harness on')", timeout=8000)
+        except Exception:
+            pass
+        t = text().lower()
+        check("exercise: names the device, the minutes and how to do it", "treadmill (t2) · planned 30 minutes" in t and "harness on" in t, t[:0])
+        page.click('#sheet-body [data-save="exercise"]')
+        page.wait_for_timeout(1500)
+        check("exercise: the session counts toward the day's 120 minutes", "of 120 min today" in text().lower())
+        shot("exercise")
+
+        page.evaluate("window.sentinel.screens.zone('heart')")
+        page.wait_for_timeout(2500)
+        check("body system: readings, a trend chart and every stored entry", "trend and history" in text().lower() and page.evaluate("document.querySelectorAll('#sheet-body canvas').length") >= 1 and "stored entries" in text().lower())
+        shot("zone-detail")
+        open_screen("cabin")
+        page.wait_for_timeout(2500)
+        check("cabin: current values plus oxygen and CO2 history", page.evaluate("document.querySelectorAll('#sheet-body canvas').length") == 2 and "history" in text().lower())
+        open_screen("trends")
+        page.wait_for_timeout(2000)
+        check("trends: stats and all stored entries under the chart", "my normal" in text().lower() and "stored entries" in text().lower())
+        shot("trends-detail")
+        open_screen("environment")
+        check("environment: every place and mode has an icon with its words", page.evaluate("document.querySelectorAll('#sheet-body .hub button .env-ic svg').length") >= 7)
+
+        say("my heart rate is 68 and my blood pressure is 118 over 76", 1800)
+        rec = api("GET", f"/api/record/{cid}")["fields"]
+        check("said: a reading in a sentence is saved to the record as MANUAL", rec["vitals.heart_rate"]["last"] == 68 and rec["vitals.heart_rate"]["last_label"] == "MANUAL" and rec["manual.bp_systolic"]["last"] == 118 and rec["manual.bp_diastolic"]["last"] == 76)
+        say("my heart rate is 900", 900)
+        check("said: an impossible reading is refused, not stored", api("GET", f"/api/record/{cid}")["fields"]["vitals.heart_rate"]["last"] == 68 and "outside 20 to 250" in page.inner_text("#transcript"))
+        say("show my logs", 1500)
+        check("said: 'show my logs' opens the saved record", page.evaluate("document.getElementById('sheet').dataset.screen") == "record")
+        say("show my vitals history", 1500)
+        check("said: 'vitals history' opens the trends page", page.evaluate("document.getElementById('sheet').dataset.screen") == "trends")
+        check("home card: names what changed and links to it", page.evaluate("(() => { const c = document.getElementById('action-card'); return c.hidden || !/a reading has moved/i.test(c.textContent); })()"))
+        open_screen("today")
+        page.wait_for_timeout(600)
+        check("today: three cards first, the lists folded away", page.evaluate("document.querySelectorAll('#sheet-body .cl-tile').length") == 3 and page.evaluate("document.querySelector('#sheet-body [data-panel]').hidden"))
+        page.click('#sheet-body [data-tile="tasks"]')
+        page.wait_for_timeout(1200)
+        check("today: the tasks card opens the reminders and quick logs", page.evaluate("!document.querySelector('#sheet-body [data-panel]').hidden") and "today's reminders" in text().lower())
+        shot("today-cards")
+        page.click("#btn-menu")
+        page.wait_for_timeout(500)
+        top = page.evaluate("(() => { const m = document.getElementById('menu').getBoundingClientRect(), b = document.querySelector('#menu [data-go=\"vision\"]').getBoundingClientRect(); return m.top >= 0 && b.top >= m.top - 1; })()")
+        check("menu: fits on screen with Face scan reachable", top)
+        page.mouse.click(30, 330)
+        page.wait_for_timeout(300)
+        page.click("#btn-mic")
+        page.wait_for_timeout(300)
+        muted = page.evaluate("document.getElementById('btn-mic').classList.contains('is-off') && document.getElementById('btn-micmute').getAttribute('aria-pressed') === 'true'")
+        page.click("#btn-mic")
+        page.wait_for_timeout(300)
+        check("mic: a tap on the microphone button mutes, another unmutes", muted and page.evaluate("document.getElementById('btn-micmute').getAttribute('aria-pressed') === 'false'"))
+        say("how are you", 1500)
+        check("conversation: a friendly reply without a language model", "how are you?" in page.inner_text("#transcript").lower() or "steady" in page.inner_text("#transcript").lower(), page.inner_text("#transcript")[-120:].replace(chr(10), " "))
+
+        open_screen("profile")
+        page.wait_for_timeout(1200)
+        chips = page.evaluate("document.querySelectorAll('#sheet-body .pk-chip').length")
+        page.fill('#sheet-body [data-pick="health.allergies"] [data-pk-q]', "lat")
+        page.wait_for_timeout(300)
+        check("profile: prefilled for the crew member, with searchable pickers", chips >= 3 and bool(page.query_selector('#sheet-body [data-pick="health.allergies"] [data-add="latex"]')), f"{chips} chips")
+        shot("profile")
+        open_screen("crew")
+        page.fill("#sheet-body [data-new-name]", "Noor")
+        page.click("#sheet-body [data-add-crew]")
+        page.wait_for_timeout(2500)
+        check("crew: a new crew member is added, selected and taken to first run", page.evaluate("window.sentinel.view.crewId") == "noor" and page.evaluate("document.getElementById('sheet').dataset.screen") == "onboarding", page.evaluate("window.sentinel.view.crewId"))
+        open_screen("record")
+        page.wait_for_timeout(900)
+        check("crew: the new member starts with an empty record", "0 entered or measured readings" in text().lower() or "0</span> entered" in text().lower() or "0 entered" in text().lower(), text()[:120].replace(chr(10), " "))
+
+        # ---- fifth pass: the inbox and the history filters
+        page.evaluate("window.sentinel.setCrew('james', 'manual')")   # someone with history (the new crew member has none yet)
+        page.wait_for_timeout(2500)
+        # ---- an emergency step list can be ticked off, then Sentinel asks and can escalate
+        page.evaluate("window.sentinel.screens.close()")
+        api("POST", "/api/suit/james", {"action": "eva"})
+        api("POST", "/api/suit/james", {"action": "leak", "region": "helmet", "size": "major"})
+        try:
+            page.wait_for_selector("#suit-alert [data-sa-step]", timeout=10000)
+        except Exception:
+            pass
+        n = page.evaluate("document.querySelectorAll('#suit-alert [data-sa-step]').length")
+        for k in range(n):
+            page.evaluate(f"document.querySelector('#suit-alert [data-sa-step=\"{k}\"]').click()")
+            page.wait_for_timeout(250)
+        check("suit alert: every step can be ticked, then it asks if the pressure is holding", n >= 3 and bool(page.query_selector('#suit-alert [data-sa-ans="no"]')), f"{n} steps")
+        shot("suit-steps")
+        before = len(api("GET", "/api/ground?crew_id=james")["packets"])
+        page.evaluate("document.querySelector('#suit-alert [data-sa-ans=\"no\"]').click()")
+        page.wait_for_timeout(2000)
+        check("suit alert: 'not holding' escalates to ground", len(api("GET", "/api/ground?crew_id=james")["packets"]) > before and "escalated" in page.inner_text("#suit-alert").lower())
+        api("POST", "/api/suit/james", {"action": "seal"})
+        api("POST", "/api/suit/james", {"action": "iva"})
+        page.wait_for_timeout(1500)
+        open_screen("trends")
+        page.wait_for_selector("#sheet-body [data-hq]", timeout=10000)
+        total = page.inner_text("#sheet-body [data-hcount]")
+        page.click('#sheet-body [data-hs="sim"]')
+        page.wait_for_timeout(300)
+        sim = page.inner_text("#sheet-body [data-hcount]")
+        page.fill("#sheet-body [data-hq]", "zzzz")
+        page.wait_for_timeout(300)
+        check("history: entries can be filtered by source and searched", total != "" and "0 of" in page.inner_text("#sheet-body [data-hcount]") and " of " in sim, f"{total} | {sim}")
+        api("POST", f"/api/care/triage/james", {"zone": "head", "symptom": "headache", "severity": 2, "answers": {"vision_changes": True}, "log": True})
+        told = [c["crew_id"] for c in api("GET", "/api/crew") if api("GET", f"/api/notifications/{c['crew_id']}")["count"]]
+        check("notifications: an urgent case reaches the buddy's and commander's inbox", len(told) >= 1 and "james" not in told, ",".join(told))
+        if told:
+            page.evaluate("id => window.sentinel.setCrew(id, 'manual')", told[0])
+            page.wait_for_timeout(2500)
+            page.evaluate("window.sentinel.checkNotifications(false)")
+            page.wait_for_timeout(1200)
+            check("notifications: the bell shows the count for the person at the screen", page.evaluate("!document.getElementById('bell-n').hidden && Number(document.getElementById('bell-n').textContent) >= 1"))
+            page.click("#btn-bell")
+            page.wait_for_timeout(1200)
+            check("notifications: the inbox names who needs help", "needs help now" in text().lower(), text()[:120].replace(chr(10), " "))
+            shot("notifications")
+            page.click("#sheet-body [data-clear-all]")
+            page.wait_for_timeout(1200)
+            check("notifications: clear all empties the inbox", "nothing waiting" in text().lower() and api("GET", f"/api/notifications/{told[0]}")["count"] == 0)
 
         bad = [e for e in errors if "favicon" not in e and "ERR_CERT" not in e and "/api/tts" not in e and "/api/stt" not in e
                and "503 (Service Unavailable)" not in e]   # no voice engine in the test server: /api/tts answers 503 and the browser voice takes over

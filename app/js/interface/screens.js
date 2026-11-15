@@ -19,12 +19,12 @@ export function currentScreen() { return currentName; }
 export function initScreens(ctx) {
   ctxRef = ctx;
   document.getElementById("sheet-close").addEventListener("click", () => closeScreen());
-  registerScreen("zone", { title: "Body system", render: renderZone });
+  registerScreen("zone", { title: "Body system", wide: true, render: renderZone });
   registerScreen("health_log", { title: "Health log", badge: "LIVE", render: renderHealthLog });
-  registerScreen("trends", { title: "Trends", render: renderTrends });
+  registerScreen("trends", { title: "Trends", wide: true, render: renderTrends });
   registerScreen("crew", { title: "Crew", render: renderCrew });
   registerScreen("more", { title: "More", render: renderHub });
-  registerScreen("cabin", { title: "Cabin air", badge: "SIM", render: renderCabin });
+  registerScreen("cabin", { title: "Cabin air", badge: "SIM", wide: true, render: renderCabin });
   registerScreen("settings", { title: "Settings", render: renderSettings });
   registerScreen("about", { title: "About and credits", render: renderAbout });
   registerScreen("evidence", { title: "NASA evidence", badge: "68 MRIDs", render: renderEvidence });
@@ -101,12 +101,26 @@ const api_ = {
 // ---------- zone panel ----------
 function renderZone(el, ctx, zone) {
   document.getElementById("sheet-title").textContent = ZONE_NAMES[zone] || zone;
+  el.innerHTML = `<div data-zbody></div><div data-ztrend></div>`;
+  const box = el.querySelector("[data-zbody]"), trendBox = el.querySelector("[data-ztrend]");
+  let trendCleanup = () => {};
+  const showTrend = async (field) => {
+    const k = metricOfField(field);
+    if (!k) { trendBox.innerHTML = ""; return; }
+    const fields = zoneReadings(zone, ctx.view.state, ctx.view.aux).map((r) => [r.field, r.label]).filter(([f]) => metricOfField(f));
+    trendBox.innerHTML = `<h3>Trend and history</h3>${fields.length > 1 ? `<div class="quick" style="display:flex;flex-wrap:wrap;position:static">${fields.map(([f, l]) => `<button class="chip" type="button" data-zf="${esc(f)}" aria-selected="${f === field}">${esc(l)}</button>`).join("")}</div>` : ""}
+      <div data-zchart style="margin-top:var(--s-3)"></div><div data-zentries></div>`;
+    trendBox.querySelectorAll("[data-zf]").forEach((b) => b.addEventListener("click", () => showTrend(b.dataset.zf)));
+    trendCleanup();
+    trendCleanup = await renderTrend(trendBox.querySelector("[data-zchart]"), ctx.view.crewId, k, ctx.view.state, ctx.thresholds);
+    entriesTable(trendBox.querySelector("[data-zentries]"), ctx.view.crewId, METRIC_DEFS[k]);
+  };
   const draw = () => {
     const { state, aux } = ctx.view;
     const f = ctx.facts.zones[zone] || {};
     const readings = zoneReadings(zone, state, aux);
     const sev = aux?.assessment?.zones?.[zone] || "ok";
-    const rows = readings.map((r) => `<tr>
+    const rows = readings.map((r) => `<tr class="cl-rowlink" data-ind="${esc(r.field)}" title="Open this reading">
         <td>${esc(r.label)}</td>
         <td class="num"><strong>${esc(fmt(r.value, r.field))}</strong> ${esc(r.unit || "")}</td>
         <td>${badgeHTML(r.badge)}</td>
@@ -117,7 +131,7 @@ function renderZone(el, ctx, zone) {
     const extra = zone === "bones" ? `<p>${badgeHTML("DESIGNED")} Exercise log: the wearable's accelerometer would log resistance exercise here. Not running in this build.</p>` : "";
     const rad = zone === "whole_body" ? `<p class="note">Effects NASA tracks: cancer risk, central nervous system and cognitive effects, cardiovascular effects, and cataracts. Because radiation cannot be felt, Sentinel asks for the cognitive check so a trend is noticed early. This is not a diagnosis.</p>
       <button class="pill pill-ghost" type="button" data-open="radiation">Open Radiation Watch</button>` : "";
-    el.innerHTML = `
+    box.innerHTML = `
       <h3>Your readings <span class="co-sev st-cell st-${statusKey(sev)}">${statusHTML(sev)}</span></h3>
       ${rows ? `<table class="readings"><thead><tr><th>Reading</th><th>Value</th><th>Source</th><th>Status</th><th>Change</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="note">No readings for this area yet.</p>`}
       <p style="margin-top:var(--s-4)" class="zone-acts"><button class="pill pill-dark" type="button" data-check>Check this area</button> <button class="pill pill-ghost" type="button" data-hurt>Log a symptom</button></p>
@@ -134,31 +148,34 @@ function renderZone(el, ctx, zone) {
       <p class="fine">Sentinel describes change from your own baseline. It does not diagnose; anything that worries you is a question for the flight surgeon.</p>`;
     el.querySelector("[data-open]")?.addEventListener("click", () => api_.open("radiation"));
     el.querySelector("[data-check]")?.addEventListener("click", () => { closeScreen(); ctx.director.run([{ cmd: "check_zone", zones: [zone] }]); });
-    el.querySelector("[data-hurt]")?.addEventListener("click", () => api_.open("symptom"));
+    el.querySelector("[data-hurt]")?.addEventListener("click", () => api_.open("care", { zone: zone === "heart" ? "chest" : zone === "whole_body" ? undefined : zone, view: "triage" }));
+    box.querySelectorAll("[data-ind]").forEach((r) => r.addEventListener("click", () => api_.open("indicator", r.dataset.ind)));
   };
   draw();
-  const t = setInterval(() => { if (!el.contains(document.activeElement) && !el.querySelector("details[open]")) draw(); }, 3000);
-  return () => clearInterval(t);
+  const firstField = zoneReadings(zone, ctx.view.state, ctx.view.aux).map((r) => r.field).find((f) => metricOfField(f));
+  if (firstField) showTrend(firstField);
+  const t = setInterval(() => { if (!el.contains(document.activeElement) && !box.querySelector("details[open]")) draw(); }, 3000);
+  return () => { clearInterval(t); trendCleanup(); };
   el.querySelector("[data-ev]")?.addEventListener("click", (e) => { e.preventDefault(); show("evidence", { q: "" , zone: e.currentTarget.dataset.ev }); });
 }
 
 // ---------- manual health log ----------
 const FIELDS = [
-  { key: "heart_rate", group: "vitals", label: "Heart rate", unit: "bpm", min: 30, max: 220, step: 1,
+  { key: "heart_rate", group: "vitals", label: "Heart rate", unit: "bpm", min: 20, max: 250, step: 1,
     hint: "Count the pulse at the wrist or neck for 30 seconds and double it, or read it from a device.", why: "Resting pulse shows how the heart is adapting; Sentinel compares it with your own usual." },
-  { key: "breathing_rate", group: "vitals", label: "Breathing rate", unit: "breaths/min", min: 4, max: 60, step: 1,
+  { key: "breathing_rate", group: "vitals", label: "Breathing rate", unit: "breaths/min", min: 2, max: 80, step: 1,
     hint: "Count breaths for 30 seconds at rest and double it.", why: "A change at rest can be an early sign of illness or poor cabin air." },
-  { key: "spo2", group: "vitals", label: "Oxygen saturation (SpO2)", unit: "%", min: 70, max: 100, step: 1,
+  { key: "spo2", group: "vitals", label: "Oxygen saturation (SpO2)", unit: "%", min: 50, max: 100, step: 1,
     hint: "Finger clip oximeter; keep the hand still and warm.", why: "Shows whether the blood is carrying enough oxygen." },
-  { key: "bp_systolic", label: "Blood pressure, systolic", unit: "mmHg", min: 60, max: 250, step: 1,
+  { key: "bp_systolic", label: "Blood pressure, systolic", unit: "mmHg", min: 40, max: 300, step: 1,
     hint: "Cuff on the upper arm at heart level; sit strapped in so the arm is not floating.", why: "Fluid shifts toward the head in weightlessness change how the heart and vessels work." },
-  { key: "bp_diastolic", label: "Blood pressure, diastolic", unit: "mmHg", min: 30, max: 150, step: 1,
+  { key: "bp_diastolic", label: "Blood pressure, diastolic", unit: "mmHg", min: 20, max: 200, step: 1,
     hint: "Read from the same cuff measurement.", why: "Together with systolic it shows cardiovascular load." },
-  { key: "glucose_mgdl", label: "Blood glucose", unit: "mg/dL", min: 20, max: 600, step: 1,
+  { key: "glucose_mgdl", label: "Blood glucose", unit: "mg/dL", min: 10, max: 900, step: 1,
     hint: "Finger-stick meter; wick the drop onto the strip, it will not fall in microgravity.", why: "Diet is planned months ahead; glucose shows how meals and activity are balanced." },
-  { key: "temp_c", label: "Body temperature", unit: "°C", min: 33, max: 43, step: 0.1,
+  { key: "temp_c", label: "Body temperature", unit: "°C", min: 25, max: 45, step: 0.1,
     hint: "Under the tongue or in the ear; the cabin is often warm, so rest five minutes first.", why: "Fever is an early sign that an infection may warrant a check." },
-  { key: "sleep_hours", label: "Sleep last night", unit: "hours", min: 0, max: 16, step: 0.25,
+  { key: "sleep_hours", label: "Sleep last night", unit: "hours", min: 0, max: 24, step: 0.25,
     hint: "Count from lights-out in the sleep station, not from the schedule.", why: "Light cycles every 90 minutes in orbit; sleep loss slows reaction time." },
   { key: "sleep_quality", label: "Sleep quality", unit: "1–5", min: 1, max: 5, step: 1,
     hint: "Rate how restorative sleep felt, from 1 (poor) to 5 (restful).", why: "A short self-rating helps compare sleep with your own recent pattern." },
@@ -178,7 +195,7 @@ function renderHealthLog(el, ctx) {
   const crewId = ctx.view.crewId;
   emit("checkin.started", { crewId });
   el.innerHTML = `
-    <p class="note">These readings are LIVE: you enter them. Sentinel compares them with your own usual values and the clinical reference ranges shown in each body panel.</p>
+    <div class="hw-head" data-hw-head></div>
     <form class="form-grid" novalidate>
       ${FIELDS.map((f) => `<div class="field" data-key="${f.key}">
         <label for="f-${f.key}">${esc(f.label)} <span class="note">(${esc(f.unit)})</span></label>
@@ -207,6 +224,107 @@ function renderHealthLog(el, ctx) {
     <p><button class="pill pill-dark pill-block" type="button" data-save>Save health log</button></p>
     <p class="note" data-result aria-live="polite"></p>
     <p class="note" data-stored aria-live="polite"></p>`;
+  // ---- the health log as a short wizard: one small group per step, big numbers with steppers, then a review ----
+  const HW = [
+    { t: "Heart and breathing", s: "From a device, or count for 30 seconds and double it.", keys: ["heart_rate", "breathing_rate", "spo2"], i: '<path d="M12 20s-7-4.4-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.400C19 15.600 12 20 12 20z"/><path d="M5.500 12.500h3l1.500-3 2.500 5.500 1.500-2.500h4"/>' },
+    { t: "Blood pressure", s: "Cuff on the upper arm, at heart level.", keys: ["bp_systolic", "bp_diastolic"], i: '<circle cx="12" cy="13" r="7"/><path d="M12 13l3.500-3.500M9.500 3.500h5M12 3.500V6"/>' },
+    { t: "Glucose and temperature", s: "Meter and thermometer readings.", keys: ["glucose_mgdl", "temp_c"], i: '<path d="M12 3.500c3 4 5 6.500 5 9.500a5 5 0 0 1-10 0c0-3 2-5.500 5-9.500z"/>' },
+    { t: "Sleep", s: "Last night.", keys: ["sleep_hours", "sleep_quality"], i: '<path d="M19.500 14.500A8 8 0 0 1 9.500 4.500a8 8 0 1 0 10 10z"/>' },
+    { t: "Activity and fluids", s: "Today so far.", keys: ["exercise_minutes", "hydration_ml", "meals"], i: '<path d="M4 9v6M7 6.500v11M17 6.500v11M20 9v6M7 12h10"/>' },
+    { t: "How you feel", s: "Tap what fits right now. There is no right answer.", keys: ["mood", "energy_self", "stress_self", "connection_self", "symptoms"], i: '<circle cx="12" cy="12" r="8.500"/><path d="M8.500 14a4 4 0 0 0 7 0M9 10h.010M15 10h.010"/>' },
+    { t: "Review and save", s: "Check it, then save. Blank fields are left as they were.", keys: [], i: '<path d="M5 12.500l4.500 4.500L19 7.500"/>' },
+  ];
+  let hwStep = 0;
+  const formEl = el.querySelector("form.form-grid"), saveP = el.querySelector("[data-save]").parentElement;
+  formEl.classList.add("hw");
+  el.querySelectorAll(".form-grid .field").forEach((f) => {
+    f.dataset.hwStep = String(Math.max(0, HW.findIndex((h) => h.keys.includes(f.dataset.key))));
+    const inp = f.querySelector('input[type="number"]');
+    if (!inp) return;
+    // "last: 72 (SIM)" becomes a quiet line under a large number field with minus and plus
+    const m = /last:\s*([\d.]+)?\s*(\((?:LIVE|SIM)\))?/.exec(inp.placeholder || "");
+    const lastV = m && m[1] ? Number(m[1]) : null, unit = FIELDS.find((x) => x.key === f.dataset.key)?.unit || "";
+    inp.placeholder = "—";
+    const wrap = document.createElement("div"); wrap.className = "hw-num";
+    const mk = (d, label) => { const b = document.createElement("button"); b.type = "button"; b.className = "hw-step"; b.textContent = d > 0 ? "+" : "−"; b.setAttribute("aria-label", `${label} ${f.querySelector("label").textContent.trim().split("(")[0].trim()}`);
+      b.addEventListener("click", () => { const st = Number(inp.step) || 1, cur = inp.value === "" ? (lastV ?? Number(inp.min)) : Number(inp.value) + d * st;
+        inp.value = String(Math.round(Math.min(Number(inp.max), Math.max(Number(inp.min), cur)) / st) * st).replace(/(\.\d{2})\d+$/, "$1"); inp.dispatchEvent(new Event("input")); }); return b; };
+    inp.replaceWith(wrap); wrap.append(mk(-1, "Lower"), inp, mk(1, "Raise"));
+    const u = document.createElement("span"); u.className = "hw-unit"; u.textContent = unit; wrap.append(u);
+    const last = document.createElement("span"); last.className = "hw-last fine";
+    last.textContent = `${lastV != null ? `Last: ${lastV} ${unit}${m[2] ? ` ${m[2].replace(/[()]/g, "")}` : ""}` : "No earlier value"} · accepts ${inp.min} to ${inp.max}`;
+    wrap.after(last);
+    // told at once, on the field itself: a slip is fixed while the device is still in your hand, not hunted for later
+    const live = () => {
+      const v = inp.value.trim(), n = Number(v);
+      let why = v !== "" && (!Number.isFinite(n) || n < Number(inp.min) || n > Number(inp.max)) ? `${v} is outside ${inp.min} to ${inp.max} ${unit}. Check the device and enter it again.` : "";
+      const sys = Number(el.querySelector("#f-bp_systolic")?.value), dia = Number(el.querySelector("#f-bp_diastolic")?.value);
+      if (!why && f.dataset.key === "bp_diastolic" && v !== "" && el.querySelector("#f-bp_systolic")?.value !== "" && dia >= sys) why = "Diastolic must be lower than systolic. Check which number is which.";
+      f.classList.toggle("has-err", !!why);
+      f.querySelector(".err").textContent = why;
+      inp.setAttribute("aria-invalid", String(!!why));
+    };
+    inp.addEventListener("input", live);
+    if (f.dataset.key === "bp_systolic") inp.addEventListener("input", () => el.querySelector("#f-bp_diastolic")?.dispatchEvent(new Event("input")));
+  });
+  const review = document.createElement("div"); review.className = "hw-review"; review.hidden = true; formEl.after(review);
+  const nav = document.createElement("div"); nav.className = "exam-nav hw-nav";
+  nav.innerHTML = `<button class="pill pill-ghost" type="button" data-hw-back>Back</button><button class="pill pill-light" type="button" data-hw-next>Next</button>`;
+  saveP.before(nav);
+  const stepOk = () => {   // the same limits the save uses, checked as you go so a slip is caught on its own step
+    let ok = true;
+    formEl.querySelectorAll(`.field[data-hw-step="${hwStep}"] input[type="number"]`).forEach((inp) => {
+      const w = inp.closest(".field"), v = inp.value.trim(), bad = v !== "" && (!Number.isFinite(Number(v)) || Number(v) < Number(inp.min) || Number(v) > Number(inp.max));
+      inp.dispatchEvent(new Event("input"));   // the live check owns the message
+      if (bad || w.classList.contains("has-err")) ok = false;
+    });
+    return ok;
+  };
+  const hwDraw = () => {
+    const h = HW[hwStep], last = hwStep === HW.length - 1;
+    el.querySelector("[data-hw-head]").innerHTML = `<ol class="hw-dots" aria-label="Step ${hwStep + 1} of ${HW.length}">${HW.map((x, n) => `<li class="${n < hwStep ? "is-done" : n === hwStep ? "is-now" : ""}"><button type="button" data-hw-go="${n}" aria-label="${esc(x.t)}"></button></li>`).join("")}</ol>
+      <div class="hw-title"><span class="env-ic hw-ic" aria-hidden="true"><svg viewBox="0 0 24 24">${h.i.replace(/(\d)\.(\d)00\b/g, "$1.$2").replace(/\.0(\d)0\b/g, ".0$1")}</svg></span>
+        <div><span class="label">Step ${hwStep + 1} of ${HW.length}</span><h3>${esc(h.t)}</h3><p class="fine">${esc(h.s)}</p></div></div>`;
+    el.querySelectorAll("[data-hw-go]").forEach((b) => b.addEventListener("click", () => { if (Number(b.dataset.hwGo) < hwStep || stepOk()) { hwStep = Number(b.dataset.hwGo); hwDraw(); } }));
+    formEl.querySelectorAll(".field").forEach((f) => { f.hidden = Number(f.dataset.hwStep) !== hwStep; });
+    formEl.hidden = last;
+    review.hidden = !last;
+    saveP.hidden = !last;
+    nav.querySelector("[data-hw-back]").disabled = hwStep === 0;
+    nav.querySelector("[data-hw-next]").hidden = last;
+    if (last) {
+      const pen = (key, label) => `<button type="button" class="hw-edit" data-hw-edit="${key}" aria-label="Edit ${esc(label)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg></button>`;
+      const row = (key, label, value) => `<li><span>${esc(label)}</span><strong class="num">${value}</strong>${pen(key, label)}</li>`;
+      const rows = FIELDS.map((f) => [f, el.querySelector(`#f-${f.key}`)?.value.trim()]).filter(([, v]) => v).map(([f, v]) => row(f.key, f.label, `${esc(v)} <small>${esc(f.unit)}</small>`));
+      if (mood != null) rows.push(row("mood", "Mood", `${mood} <small>of 5</small>`));
+      for (const [k, v] of Object.entries(self)) rows.push(row(k, k.replace("_self", "")[0].toUpperCase() + k.replace("_self", "").slice(1), `${v} <small>of 5</small>`));
+      const sy = el.querySelector("#f-symptoms").value.trim(), ml = el.querySelector("#f-meals").value.trim();
+      if (sy) rows.push(row("symptoms", "Symptoms", esc(sy)));
+      if (ml) rows.push(row("meals", "Meals", esc(ml)));
+      review.innerHTML = rows.length ? `<ul class="hw-list">${rows.join("")}</ul>` : `<p class="note">Nothing entered yet. Go back and add at least one reading, or close this.</p>`;
+      el.querySelector("[data-save]").disabled = !rows.length;
+      review.querySelectorAll("[data-hw-edit]").forEach((b) => b.addEventListener("click", () => {   // straight to the field, cursor in it
+        const f = formEl.querySelector(`.field[data-key="${b.dataset.hwEdit}"]`);
+        if (!f) return;
+        hwStep = Number(f.dataset.hwStep); hwDraw();
+        const inp = f.querySelector("input, [data-mood], [data-self]");
+        inp?.focus(); inp?.select?.(); f.scrollIntoView({ block: "center", behavior: "smooth" });
+      }));
+    }
+  };
+  nav.querySelector("[data-hw-back]").addEventListener("click", () => { hwStep = Math.max(0, hwStep - 1); hwDraw(); });
+  nav.querySelector("[data-hw-next]").addEventListener("click", () => { if (stepOk()) { hwStep = Math.min(HW.length - 1, hwStep + 1); hwDraw(); el.querySelector("#sheet-body, .sheet-body")?.scrollTo?.(0, 0); document.getElementById("sheet-body").scrollTop = 0; } });
+  // a value the save rejects sends you to its step
+  el.querySelector("[data-save]").addEventListener("click", () => setTimeout(() => { const bad = formEl.querySelector(".field.has-err"); if (bad) { hwStep = Number(bad.dataset.hwStep); hwDraw(); } }, 0));
+  hwDraw();
+  el.querySelectorAll(".form-grid .field").forEach((f) => {   // less to read: the guidance opens on demand
+    if (!f.querySelector(".hint, .why")) return;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "cl-info"; b.textContent = "i";
+    b.setAttribute("aria-label", "How to measure this and why it matters"); b.setAttribute("aria-expanded", "false");
+    b.addEventListener("click", (e) => { e.preventDefault(); b.setAttribute("aria-expanded", String(f.classList.toggle("is-info"))); });
+    f.querySelector("label")?.append(" ", b);
+  });
   el.querySelectorAll("[data-self]").forEach((b) => b.addEventListener("click", () => {
     self[b.dataset.self] = Number(b.dataset.n);
     el.querySelectorAll(`[data-self="${b.dataset.self}"]`).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
@@ -306,6 +424,7 @@ function renderTrends(el, ctx, metric) {
   el.innerHTML = `<div class="quick" style="display:flex;flex-wrap:wrap;position:static" role="tablist">${Object.entries(METRIC_DEFS).map(([k, d]) =>
     `<button class="chip" type="button" role="tab" data-m="${k}" aria-selected="${k === m}">${esc(d.label)}</button>`).join("")}</div>
     <div data-chart style="margin-top: var(--s-4)"></div>
+    <div data-entries></div>
     <div class="exam-nav"><button class="pill pill-ghost" type="button" data-more="weekly">Weekly review: sleep and reaction together</button><button class="pill pill-ghost" type="button" data-more="mind">Wellbeing dimensions</button><button class="pill pill-ghost" type="button" data-more="record">My saved record</button></div>`;
   el.querySelectorAll("[data-more]").forEach((b) => b.addEventListener("click", () => api_.open(b.dataset.more)));
   let cleanup = () => {};
@@ -314,17 +433,71 @@ function renderTrends(el, ctx, metric) {
     el.querySelectorAll("[data-m]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.m === k)));
     document.getElementById("sheet-title").textContent = `Trend: ${METRIC_DEFS[k].label}`;
     cleanup = await renderTrend(el.querySelector("[data-chart]"), ctx.view.crewId, k, ctx.view.state, ctx.thresholds);
+    entriesTable(el.querySelector("[data-entries]"), ctx.view.crewId, METRIC_DEFS[k]);
   };
   el.querySelectorAll("[data-m]").forEach((b) => b.addEventListener("click", () => load(b.dataset.m)));
   load(m);
   return () => cleanup();
 }
 
+/** Under a chart: latest, my normal, the week's low and high, then every stored entry with where it came from. */
+async function entriesTable(box, crewId, def) {
+  if (!box || !def) return;
+  box.innerHTML = "";
+  let pts = [], base = null;
+  try { [pts, base] = await Promise.all([api.history(crewId, def.field).then((r) => r.points || []), api.baselines(crewId).then((b) => b.indicators[def.field]).catch(() => null)]); } catch { return; }
+  if (!pts.length) return;
+  const wk = pts.filter((p) => p.t >= Date.now() / 1000 - 7 * 86400).map((p) => p.v), last = pts[pts.length - 1];
+  const lab = (p) => p.label || (p.source === "sim" ? "SIM" : p.source === "user" || p.source === "manual" ? "MANUAL" : "LIVE");
+  const tile = (k, v) => `<div class="card cl-stat"><span class="label">${k}</span><strong class="num">${v}</strong></div>`;
+  box.innerHTML = `<div class="cl-stats">${tile("Latest", `${esc(fmt(last.v, def.field))} <small>${esc(def.unit)}</small>`)}${tile("My normal", base ? `${esc(fmt(base.median, def.field))} <small>± ${esc(fmt(base.spread, def.field))}</small>` : "—")}
+      ${tile("7-day low", wk.length ? esc(fmt(Math.min(...wk), def.field)) : "—")}${tile("7-day high", wk.length ? esc(fmt(Math.max(...wk), def.field)) : "—")}</div>
+    <p class="fine">${base ? esc(base.stage) : ""}${base ? ` · ${base.entered} entered or measured of ${base.count} stored` : ""}</p>
+    <details class="more" open><summary>All ${pts.length} stored entries</summary>
+      <div class="ev-tools hist-tools"><input type="search" data-hq placeholder="Search a date or a value: Nov 14, 72…" aria-label="Search the entries">
+        <div class="ev-chips">${[["", "All sources"], ["mine", "Entered by me"], ["live", "Measured"], ["sim", "SIM"]].map(([k, l]) => `<button type="button" data-hs="${k}" aria-pressed="${k === ""}">${l}</button>`).join("")}</div>
+        <div class="ev-chips">${[["0", "All time"], ["1", "Today"], ["7", "7 days"], ["30", "30 days"]].map(([k, l]) => `<button type="button" data-hd="${k}" aria-pressed="${k === "0"}">${l}</button>`).join("")}</div></div>
+      <p class="fine" data-hcount></p>
+      <table class="readings"><thead><tr><th>When</th><th>Value</th><th>Source</th></tr></thead><tbody data-hbody></tbody></table></details>`;
+  const rows = [...pts].reverse().map((p) => ({ p, when: new Date(p.t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), val: fmt(p.v, def.field), lab: lab(p) }));
+  let src = "", days = 0;
+  const draw = () => {
+    const q = box.querySelector("[data-hq]").value.trim().toLowerCase(), since = days ? Date.now() / 1000 - days * 86400 : 0;
+    const shown = rows.filter((r) => (!src || (src === "mine" ? r.lab === "MANUAL" : src === "sim" ? r.lab === "SIM" : r.lab.startsWith("LIVE"))) && r.p.t >= since
+      && (!q || `${r.when} ${r.val} ${r.lab}`.toLowerCase().includes(q)));
+    box.querySelector("[data-hcount]").textContent = `${shown.length} of ${rows.length} entries`;
+    box.querySelector("[data-hbody]").innerHTML = shown.slice(0, 200).map((r) => `<tr><td>${esc(r.when)}</td><td class="num"><strong>${esc(r.val)}</strong> ${esc(def.unit)}</td><td>${badgeHTML(r.lab)}</td></tr>`).join("") || `<tr><td colspan="3" class="note">No entry matches.</td></tr>`;
+  };
+  box.querySelector("[data-hq]").addEventListener("input", draw);
+  box.querySelectorAll("[data-hs]").forEach((b) => b.addEventListener("click", () => { src = b.dataset.hs; box.querySelectorAll("[data-hs]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); draw(); }));
+  box.querySelectorAll("[data-hd]").forEach((b) => b.addEventListener("click", () => { days = Number(b.dataset.hd); box.querySelectorAll("[data-hd]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); draw(); }));
+  draw();
+}
+const metricOfField = (field) => Object.entries(METRIC_DEFS).find(([, d]) => d.field === field)?.[0] || null;
+
 // ---------- crew ----------
 function renderCrew(el, ctx) {
   el.innerHTML = `<p class="note">Choose who is using Sentinel. A manual choice is badged <span class="badge badge-sim">manual</span>; a voice match is badged LIVE.</p>
     <div class="hub" style="margin-top:var(--s-4)">${ctx.view.crew.map((c) => `<button type="button" data-crew="${esc(c.crew_id)}"><strong>${esc(c.display_name)}</strong><span>${c.crew_id === ctx.view.crewId ? "Using Sentinel now" : "Switch to"}</span></button>`).join("")}</div>`;
   el.querySelectorAll("[data-crew]").forEach((b) => b.addEventListener("click", () => { ctx.setCrew(b.dataset.crew, "manual"); closeScreen(); }));
+  el.insertAdjacentHTML("beforeend", `<h3>Add a crew member</h3>
+    <p class="note">They start with a clean record: no borrowed readings, baselines calibrate from their own check-ins, and everything in Sentinel works for them straight away.</p>
+    <label class="pf-field"><span>Name or callsign</span><input type="text" data-new-name maxlength="24" placeholder="e.g. Noor" autocomplete="off"></label>
+    <div class="pf-field"><span>Body model</span><div class="mood-row"><button type="button" data-bm="male" aria-pressed="true">Male</button><button type="button" data-bm="female" aria-pressed="false">Female</button></div></div>
+    <p><button class="pill pill-dark" type="button" data-add-crew>Add and set up</button> <span class="note" data-add-msg aria-live="polite"></span></p>`);
+  let bm = "male";
+  el.querySelectorAll("[data-bm]").forEach((b) => b.addEventListener("click", () => { bm = b.dataset.bm; el.querySelectorAll("[data-bm]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); }));
+  el.querySelector("[data-add-crew]").addEventListener("click", async () => {
+    const name = el.querySelector("[data-new-name]").value.trim(), msg = el.querySelector("[data-add-msg]");
+    if (name.length < 2) { el.querySelector("[data-new-name]").focus(); return; }
+    try {
+      const c = await api.crewAdd(name, bm);
+      ctx.view.crew = await api.crew();
+      emit("crew.added", { crewId: c.crew_id });
+      ctx.setCrew(c.crew_id, "manual");
+      setTimeout(() => api_.open("onboarding"), 700);   // first run: consent, kit, profile, first check-in
+    } catch (e) { msg.textContent = e.message; }
+  });
 }
 
 // ---------- the More hub: everything else, grouped ----------
@@ -348,6 +521,16 @@ function renderHub(el, ctx) {
 // ---------- cabin ----------
 function renderCabin(el, ctx) {
   const th = ctx.thresholds?.absolute || {};
+  const host = el;
+  host.innerHTML = `<div data-cnow></div><h3>History</h3><div data-c1></div><div data-ce1></div><div data-c2 style="margin-top:var(--s-4)"></div><div data-ce2></div>`;
+  el = host.querySelector("[data-cnow]");
+  const cleanups = [];
+  (async () => {
+    for (const [k, c1, c2] of [["o2", "[data-c1]", "[data-ce1]"], ["co2", "[data-c2]", "[data-ce2]"]]) {
+      cleanups.push(await renderTrend(host.querySelector(c1), ctx.view.crewId, k, ctx.view.state, ctx.thresholds));
+      entriesTable(host.querySelector(c2), ctx.view.crewId, METRIC_DEFS[k]);
+    }
+  })();
   const draw = () => {
     const c = ctx.view.state?.cabin || {};
     const lv = (k) => (th[k]?.levels || []).map((l) => `${l.severity} ${l.below != null ? "below " + l.below : "above " + l.above} <span class="kind kind-${l.kind}">${esc(l.kind)}</span> <a class="src-link" href="${esc(l.source?.url || "")}" target="_blank" rel="noopener">${esc(l.source?.title || "")}</a>`).join("<br>");
@@ -361,7 +544,7 @@ function renderCabin(el, ctx) {
   };
   draw();
   const t = setInterval(draw, 1500);
-  return () => clearInterval(t);
+  return () => { clearInterval(t); cleanups.forEach((f) => { try { f(); } catch { /* chart already gone */ } }); };
 }
 
 // ---------- settings: theme, camera, microphone, voice ----------

@@ -228,11 +228,24 @@ export function renderRadiation(el, ctx) {
     if (!s) return;
 
     const r = s.radiation;
+    if (!r) return;
     const explorerKey = `${ctx.view.crewId}:${r.mission_profile}`;
     if (explorerKey !== explorerProfile) {
       closeExplorer?.();
       const others = (ctx.view.crew || []).filter((c) => c.crew_id !== ctx.view.crewId).map((c) => c.display_name);
-      closeExplorer = mountPlanetExplorer(explorerHost, r.mission_profile, s.display_name, others);
+      closeExplorer = mountPlanetExplorer(explorerHost, r.mission_profile, s.display_name, others, async (site, box) => {
+        // a crewmate on the map: where they are, their radiation exposure and shelter state, and whether they need help.
+        // Nothing from their health record: that is theirs to share.
+        const c = (ctx.view.crew || []).find((x) => x.display_name === site.name);
+        if (!c) return;
+        try {
+          const k = await api.crewCard(c.crew_id), x = k.radiation, me = c.crew_id === ctx.view.crewId;
+          box.innerHTML = `<strong>${esc(k.display_name)}${me ? " (you)" : ""}</strong> · ${esc(site.status)} · ${esc(k.mode)} mode ${badgeHTML("SIM")}<br>
+            Dose so far <strong>${x.cumulative_msv} mSv</strong> of ${x.career_limit_msv} · now ${x.dose_rate_usv_h} µSv/h · storm S${x.storm_level}${x.margin_days != null ? ` · about ${Math.round(x.margin_days)} days of margin` : ""}<br>
+            ${x.shelter_advised ? (x.sheltered ? "In shelter." : "<strong>Shelter advised and not yet sheltered.</strong>") : "No shelter needed."}${k.needs_help ? " <strong>Has an urgent alert: check on them.</strong>" : " No urgent alert."}${k.buddy ? ` Buddy: ${esc(k.buddy)}.` : ""}
+            <span class="fine">Health readings are private to ${me ? "you" : esc(k.display_name)}.</span>`;
+        } catch { /* offline: the site line stays */ }
+      });
       explorerProfile = explorerKey;
     }
 

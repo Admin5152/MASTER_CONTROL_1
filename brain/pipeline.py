@@ -33,7 +33,7 @@ PHYSICAL_BOUNDS: dict[str, tuple[float, float]] = {
     "vitals.heart_rate": (25.0, 250.0),
     "vitals.breathing_rate": (4.0, 60.0),
     "vitals.spo2": (50.0, 100.0),
-    "manual.temp_c": (32.0, 43.5),
+    "manual.temp_c": (25.0, 45.0),   # what a body can show, so hypothermia can be recorded; unusual values are flagged, not refused
     "manual.bp_systolic": (50.0, 260.0),
     "manual.bp_diastolic": (30.0, 160.0),
     "manual.glucose_mgdl": (20.0, 500.0),

@@ -3,7 +3,7 @@
 export const SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin",
   "cognitive", "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "organ", "symptom",
   "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence", "profile", "audit", "pulse",
-  "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "indicator", "environment", "onboarding", "kit", "datasets"];
+  "today", "checkin", "care", "mind", "journal", "alerts", "record", "weekly", "indicator", "environment", "onboarding", "kit", "datasets", "notifications"];
 export const ZONES = ["head", "eyes", "heart", "lungs", "gut", "bones", "whole_body"];
 export const METRICS = ["heart_rate", "breathing_rate", "spo2", "bp", "glucose", "temp", "sleep", "mood",
   "reaction", "talk_time", "pitch", "o2", "co2"];

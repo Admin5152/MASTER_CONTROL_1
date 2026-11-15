@@ -7,8 +7,51 @@ import { TOOLS } from "./support.js";
 const LIST = (v) => (Array.isArray(v) ? v.join(", ") : "");
 const SPLIT = (s) => String(s || "").split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
 
+// A list field as chips: pick from suggestions (search filters them), or type your own and press Enter. Less typing,
+// fewer spelling variants, so an allergy matches its kit item. The hidden input keeps the value the save code reads.
+const COMMON = {
+  "health.allergies": ["none", "penicillin", "sulfa drugs", "aspirin", "latex", "adhesive tape", "nuts", "shellfish"],
+  "health.conditions": ["none", "asthma", "migraine", "seasonal rhinitis", "high blood pressure", "diabetes", "motion sickness", "back pain", "anxiety"],
+  "health.regularMedicines": ["none", "vitamin D", "antihistamine", "melatonin", "blood pressure medicine", "inhaler", "oral contraceptive"],
+  "health.pastKitReactions": ["none"],
+  "wellbeingPlan.earlySigns": ["can't sleep", "short temper", "no appetite", "going quiet", "headache", "low energy", "restless", "homesick", "skipping meals"],
+};
+function pickerHTML(path, label, values, hint) {
+  return `<div class="pf-field pk" data-pick="${path}"><span>${esc(label)}</span>
+    <div class="pk-sel" data-sel></div>
+    <input type="search" data-pk-q placeholder="${esc(hint || "Search, or type your own and press Enter")}" aria-label="${esc(label)}: search or add" autocomplete="off">
+    <div class="pk-opts" data-opts></div>
+    <input type="hidden" data-path="${path}" value="${esc((values || []).join(", "))}"></div>`;
+}
+function wirePickers(el, kitNames) {
+  el.querySelectorAll("[data-pick]").forEach((box) => {
+    const path = box.dataset.pick, hidden = box.querySelector("[data-path]"), q = box.querySelector("[data-pk-q]");
+    let sel = hidden.value.split(",").map((x) => x.trim()).filter(Boolean);
+    const options = [...new Set([...(COMMON[path] || []), ...(/allergies|pastKitReactions|regularMedicines/.test(path) ? kitNames : [])])];
+    const draw = () => {
+      hidden.value = sel.join(", ");
+      box.querySelector("[data-sel]").innerHTML = sel.map((v) => `<button type="button" class="pk-chip" data-rm="${esc(v)}" aria-label="Remove ${esc(v)}">${esc(v)} <b aria-hidden="true">×</b></button>`).join("") || `<span class="fine">Nothing chosen yet</span>`;
+      const f = q.value.trim().toLowerCase();
+      const opts = options.filter((o) => !sel.some((s) => s.toLowerCase() === o.toLowerCase()) && (!f || o.toLowerCase().includes(f))).slice(0, f ? 12 : 7);
+      box.querySelector("[data-opts]").innerHTML = opts.map((o) => `<button type="button" data-add="${esc(o)}">${esc(o)}</button>`).join("") +
+        (f && !options.some((o) => o.toLowerCase() === f) && !sel.some((s) => s.toLowerCase() === f) ? `<button type="button" data-add="${esc(q.value.trim())}">Add "${esc(q.value.trim())}"</button>` : "");
+      box.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { sel = sel.filter((v) => v !== b.dataset.rm); draw(); }));
+      box.querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => add(b.dataset.add)));
+    };
+    const add = (v) => {
+      v = String(v || "").trim().slice(0, 60);
+      if (!v) return;
+      sel = v.toLowerCase() === "none" ? ["none"] : [...sel.filter((s) => s.toLowerCase() !== "none" && s.toLowerCase() !== v.toLowerCase()), v];   // "none" stands alone
+      q.value = ""; draw();
+    };
+    q.addEventListener("input", draw);
+    q.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add(q.value); } });
+    draw();
+  });
+}
+
 export function registerProfile(registerScreen) {
-  registerScreen("profile", { title: "My health profile", render: renderProfile });
+  registerScreen("profile", { title: "My health profile", wide: true, render: renderProfile });
 }
 
 async function renderProfile(el, ctx) {
@@ -22,6 +65,7 @@ async function renderProfile(el, ctx) {
     <div class="pf-meter"><div class="pf-ring" style="--p:${pct}"><b>${pct}%</b></div>
       <div><strong>${pct >= 100 ? "Profile complete" : "Profile builds over time"}</strong>
       <p class="note">${p.missing?.length ? `Still empty: ${esc(p.missing.slice(0, 4).join(", "))}${p.missing.length > 4 ? "…" : ""}. Nothing is forced.` : "Everything is filled in."}</p></div></div>
+    ${p.onboarding?.preloaded && !p.onboarding?.confirmed ? `<p class="note">These details were filled in for you (demo values) by the mission planner. Change anything that is wrong, then save: it becomes yours.</p>` : ""}
     <h3>You</h3>
     ${field("callsign", "Name or callsign", p.callsign, "e.g. Ace")}
     ${field("preferences.reminderTimes.checkin", "Morning check-in", p.preferences?.reminderTimes?.checkin, "08:00", "time")}
@@ -29,13 +73,13 @@ async function renderProfile(el, ctx) {
     ${field("mission.dutySchedule", "Duty and sleep schedule", p.mission?.dutySchedule, "e.g. work 08-18, sleep 22-06")}
     <h3>Health background <span class="badge badge-sim">private</span></h3>
     <p class="fine">Used to make kit suggestions safer: an allergy blocks the matching item. Write "none" if there are none; an empty answer is not the same as "none". Never sent to ground unless you choose.</p>
-    ${field("health.allergies", "Allergies", LIST(p.health?.allergies), "e.g. ibuprofen, penicillin, or none")}
-    ${field("health.conditions", "Ongoing conditions", LIST(p.health?.conditions), "or none")}
-    ${field("health.regularMedicines", "Regular medicines", LIST(p.health?.regularMedicines), "or none")}
-    ${field("health.pastKitReactions", "Past reactions to kit items", LIST(p.health?.pastKitReactions), "or none")}
+    ${pickerHTML("health.allergies", "Allergies", p.health?.allergies)}
+    ${pickerHTML("health.conditions", "Ongoing conditions", p.health?.conditions)}
+    ${pickerHTML("health.regularMedicines", "Regular medicines", p.health?.regularMedicines)}
+    ${pickerHTML("health.pastKitReactions", "Past reactions to kit items", p.health?.pastKitReactions)}
     <label class="pf-check"><input type="checkbox" data-path="health.includeInDigest" ${p.health?.includeInDigest ? "checked" : ""}> Include my health background in digests to the flight surgeon</label>
     <h3>Wellbeing plan</h3>
-    ${field("wellbeingPlan.earlySigns", "My early signs", LIST(p.wellbeingPlan?.earlySigns), "e.g. can't sleep, snapping at people, no appetite")}
+    ${pickerHTML("wellbeingPlan.earlySigns", "My early signs", p.wellbeingPlan?.earlySigns)}
     <div class="pf-field"><span>What helps me (in order)</span><div class="pf-tools">${Object.entries(TOOLS).map(([k, t]) => `<button type="button" data-help="${k}" aria-pressed="${(p.wellbeingPlan?.whatHelps || []).includes(k)}">${esc(t.name)}</button>`).join("")}</div></div>
     ${field("wellbeingPlan.whoToTalkTo", "Who I would talk to", p.wellbeingPlan?.whoToTalkTo, "a crewmate, the psychologist, family")}
     <label class="pf-check"><input type="checkbox" data-path="wellbeingPlan.cameraMoodAnalysis" ${p.wellbeingPlan?.cameraMoodAnalysis ? "checked" : ""}> Camera mood analysis on</label>
@@ -43,6 +87,7 @@ async function renderProfile(el, ctx) {
     <label class="pf-field"><span>Crew buddy (gets urgent alerts first)</span><select data-path="sharing.buddy"><option value="">Choose…</option>${crew.map((c) => `<option ${p.sharing?.buddy === c.display_name ? "selected" : ""}>${esc(c.display_name)}</option>`).join("")}</select></label>
     <label class="pf-check"><input type="checkbox" data-path="sharing.shareUrgentWithCommander" ${p.sharing?.shareUrgentWithCommander ? "checked" : ""}> Tell the commander in an urgent situation</label>
     <div class="pf-actions"><button type="button" class="pill pill-light" data-save>Save</button><button type="button" class="pill pill-ghost" data-export>Export</button><button type="button" class="pill pill-ghost" data-delete>Delete my profile</button><span class="note" data-msg aria-live="polite"></span></div>`;
+  wirePickers(el, (ctx.kit?.items || []).map((i) => String(i.name || "").split(" (")[0].toLowerCase()).filter(Boolean));
   const helps = [...(p.wellbeingPlan?.whatHelps || [])];
   el.querySelectorAll("[data-help]").forEach((b) => b.addEventListener("click", () => {
     const k = b.dataset.help, i = helps.indexOf(k);

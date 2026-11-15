@@ -43,6 +43,7 @@ from brain.onboarding import onboarding  # noqa: E402
 from brain import indicators as indmod  # noqa: E402
 from brain.pipeline import pipeline  # noqa: E402
 from brain.alerts import alerts  # noqa: E402
+from brain.notify import Notifications  # noqa: E402
 from brain import protocols as protomod  # noqa: E402
 from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
@@ -55,6 +56,7 @@ from brain.race_rooms import RaceRooms  # noqa: E402
 from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
+notes = Notifications()
 store.sensitivity = alerts.feedback_adjustments   # "not useful" feedback reaches the decision engine (19.5)
 suits = Suits()
 audit = Audit()
@@ -183,10 +185,89 @@ def crew():
     return store.crew()
 
 
+@app.post("/api/crew")
+def crew_add(body: dict = Body(...)):
+    """Add a crew member. They start with a clean record and an empty profile, and every function works for them."""
+    try:
+        c = store.add_crew(str(body.get("display_name", "")), str(body.get("body_model", "male")))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    audit.record("brain", "crew.added", c["crew_id"], {"display_name": c["display_name"]})
+    return c
+
+
+@app.get("/api/crew/{cid}/card")
+def crew_card(cid: str):
+    """What the crew may see about a crewmate on the shared map: where they are (SIM), their radiation exposure and
+    shelter state, and whether they need help. No readings, no health background (section 28)."""
+    _need(cid)
+    s = store.get(cid)
+    r = s["radiation"]
+    a = store.assessment(cid)["radiation"]
+    act = s.get("action") or {}
+    prof = profiles.get(cid)
+    return {"crew_id": cid, "display_name": s["display_name"], "callsign": prof.get("callsign") or s["display_name"],
+            "buddy": (prof.get("sharing") or {}).get("buddy") or "", "mode": ops.status(cid, s)["mode"], "environment": store.extras(cid)["environment"],
+            "radiation": {"cumulative_msv": round(r["cumulative_msv"], 1), "career_limit_msv": r["career_limit_msv"], "dose_rate_usv_h": round(r.get("dose_rate_usv_h", 0.0), 2),
+                          "storm_level": r["storm_level"], "sheltered": bool(r["sheltered"]), "shelter_advised": bool(r.get("shelter_status")),
+                          "storm_received_msv": a["storm_received_msv"], "storm_avoided_msv": a["storm_avoided_msv"], "margin_days": a["margin_days"], "label": "SIM"},
+            "needs_help": act.get("severity") == "alert", "label": "SIM"}
+
+
+@app.get("/api/exercise/{cid}")
+def exercise_plan(cid: str):
+    """The exercise countermeasure made specific: device, minutes and how; today's sessions and total."""
+    _need(cid)
+    from brain.clinic import EXERCISE_PLAN
+    day = int(store.mission_clock()["mission_day"])
+    ex = store.internal.get(cid, {}).get("exercise") or {}
+    sessions = [e for e in store.get_non_reading(cid, "exercise") if e.get("day") == day]
+    return {**EXERCISE_PLAN, "total_today": ex.get("total", 0.0) if ex.get("day") == day else 0.0, "today": sessions,
+            "post_exercise": store.extras(cid)["post_exercise"]}
+
+
 @app.get("/api/state/{cid}")
 def get_state(cid: str):
     _need(cid)
     return store.get(cid)
+
+
+def _notify_contacts(cid: str, title: str, text: str, level: int = 3, kind: str = "help") -> dict:
+    """Put a notice in the inbox of the crew buddy this person chose, and of the commander if they allow it.
+    It waits there until that person is at the screen. Returns who was told."""
+    crew = store.crew()
+    by_name = {c["display_name"].lower(): c["crew_id"] for c in crew}
+    prof = profiles.get(cid)
+    who = safety.people(crew, cid)
+    me = store.get(cid)["display_name"]
+    buddy_name = (prof.get("sharing") or {}).get("buddy") or (prof.get("emergency") or {}).get("buddy") or who["buddy"]
+    told = {}
+    targets = [("buddy", buddy_name)]
+    if level >= 3 and (prof.get("sharing") or {}).get("shareUrgentWithCommander", True):
+        targets.append(("commander", who["commander"]))
+    for role, name in targets:
+        to = by_name.get(str(name).lower())
+        if to and to != cid and to not in told.values():
+            notes.add(to, title.format(name=me), text.format(name=me, role=role), about_cid=cid, about_name=me, level=level, kind=kind)
+            told[role] = to
+    if told:
+        audit.record("brain", "notify.contacts", cid, {"told": sorted(told), "level": level, "kind": kind})
+    return told
+
+
+@app.get("/api/notifications/{cid}")
+def notifications_get(cid: str, seen: bool = False):
+    """This person's inbox: notices that a crewmate needs help, newest first."""
+    _need(cid)
+    return notes.list(cid, mark_seen=seen)
+
+
+@app.post("/api/notifications/{cid}/clear")
+def notifications_clear(cid: str, body: dict = Body(default={})):
+    _need(cid)
+    n = notes.clear(cid, body.get("id"))
+    audit.record("brain", "notify.cleared", cid, {"count": n})
+    return {"cleared": n, **notes.list(cid)}
 
 
 _ALERT_LEVEL = {"info": 1, "watch": 2, "alert": 3}
@@ -242,7 +323,7 @@ def scan_save(cid: str, body: dict = Body(...)):
         def num(k, lo, hi):
             v = body.get(k)
             return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and lo <= v <= hi else None
-        hr, br, conf = num("heart_rate", 30, 220), num("breathing_rate", 4, 60), num("confidence", 0, 1) or 0.0
+        hr, br, conf = num("heart_rate", 20, 250), num("breathing_rate", 2, 80), num("confidence", 0, 1) or 0.0
         if hr is not None:
             store.set_context(cid, hr_confidence=conf)   # below 0.35 the pulse is an estimate: shown, never alarming (S5)
             state = store.ingest_reading(cid, {"metric": "heart_rate", "value": round(hr), "label": "LIVE estimate", "confidence": round(conf, 2), "source": "camera"})
@@ -661,6 +742,7 @@ def safety_alert(cid: str, body: dict = Body(default={})):
     p = ground.send(cid, "crisis", "Urgent wellbeing concern", {
         "text": f"URGENT wellbeing concern | crew: {name} | category: {cat.replace('_', ' ')} | buddy alerted: {who['buddy']} | "
                 f"commander alerted: {who['commander']} | onboard: safety script and grounding screen. Please contact the crew."}, "URGENT", ops.hold_until())
+    _notify_contacts(cid, "{name} needs you now", "{name} asked for support. Please go to them now and stay with them.", 3, "safety")   # the category never travels
     audit.record("brain", "safety.urgent_concern", cid, {"category": cat, "buddy_alerted": who["buddy"], "commander_alerted": who["commander"], "priority": "URGENT"})
     return {"category": cat, "label": "SIM", **who, "lines": [safety.LINES["first"], safety.LINES["then"].format(buddy=who["buddy"])], "packet": p}
 
@@ -803,6 +885,7 @@ def care_triage_evaluate(cid: str, body: dict = Body(...)):
             d = ops.digest(cid, s, store.assessment(cid), suits.status(cid), f"Triage: {symptom or zone}, urgent")
             res["packet"] = ground.send(cid, "digest", "Digest: URGENT (triage)", {"text": d["text"]}, "URGENT", ops.hold_until())
             res["alerted"] = safety.people(store.crew(), cid)
+            _notify_contacts(cid, "{name} needs help now", "{name} reported an urgent symptom. Go to them, and follow the mission's emergency procedure. A priority digest has gone to the flight surgeon.", 3, "urgent")
             audit.record("brain", "digest.queued", cid, {"priority": "URGENT", "reason": "triage"})
     return res
 
@@ -884,6 +967,7 @@ def care_protocol_escalate(run_id: str, body: dict = Body(default={})):
     d = ops.digest(cid, store.get(cid), store.assessment(cid), suits.status(cid), f"{run['title']}: {done} of {len(run['steps'])} steps done, no improvement. {run.get('escalation_note') or ''}"[:200])
     run["packet"] = ground.send(cid, "digest", f"Digest: ACT ({run['title']})", {"text": d["text"]}, "URGENT" if d["priority"] == "URGENT" else "ACT", ops.hold_until())
     audit.record("brain", "digest.queued", cid, {"priority": run["packet"].get("priority"), "reason": "protocol not resolving"})
+    _notify_contacts(cid, "{name} could use a check-in", "{name} went through the care steps without relief, and it has gone to the flight surgeon. Look in on them when you can.", 2, "escalated")
     return run
 
 
@@ -1068,7 +1152,15 @@ def suit_action(cid: str, body: dict = Body(default={})):
         region = body.get("region") or region_from_text(str(body.get("text", "")))
         if region not in SUIT_REGIONS:
             raise HTTPException(400, f"unknown suit region {region}")
-        return suits.leak(cid, region, str(body.get("size", "leak")))
+        st = suits.leak(cid, region, str(body.get("size", "leak")))
+        # the whole crew is told: each finds it in their inbox, shown and spoken when they are at the screen
+        me = store.get(cid)["display_name"]
+        for c in store.crew():
+            if c["crew_id"] != cid:
+                notes.add(c["crew_id"], f"{me}: suit pressure dropping", f"{me}'s suit is losing pressure at the {st.get('region_label') or region} during the EVA. Be ready to help them back to the airlock.",
+                          about_cid=cid, about_name=me, level=3, kind="suit")
+        audit.record("brain", "notify.crew", cid, {"kind": "suit", "told": len(store.crew()) - 1})
+        return st
     if a == "seal":
         return suits.seal(cid)
     raise HTTPException(400, "action must be eva, iva, leak or seal")
@@ -1368,6 +1460,8 @@ def alerts_tick(cid: str):
     for a in r["expired"]:
         who = safety.people(store.crew(), cid)
         a["buddy"] = who["buddy"] if a.get("level", 1) >= 3 else None
+        if a.get("level", 1) >= 3:
+            _notify_contacts(cid, "{name} has not answered an urgent alert", "{name} did not respond to an urgent alert on Sentinel. Please check on them now.", 3, "unanswered")
         audit.record("brain", "alert.expired", cid, {"alert_id": a["alert_id"], "level": a.get("level"), "buddy_alerted": a["buddy"]})
     for a in r["represent"]:
         audit.record("brain", "alert.represented", cid, {"alert_id": a["alert_id"], "count": a.get("represent_count")})
