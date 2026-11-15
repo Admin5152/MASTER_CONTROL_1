@@ -1,5 +1,5 @@
 // Director command whitelist and validator. Pure (no DOM): tested with node --test.
-// The backend (brain/llm.py) keeps the same whitelist for LLM replies.
+// The backend (brain/ai/llm.py) keeps the same whitelist for LLM replies.
 export const SCREENS = ["home", "assistant", "mission", "body", "vitals", "vision", "health_log", "trends", "radiation", "cabin",
   "cognitive", "orb_calm", "aurora_run", "race", "greenhouse", "grounding", "hardware", "crew", "wellbeing", "exam", "ground", "measures", "organ", "symptom",
   "interventions", "earth_window", "music", "connection", "readings", "settings", "about", "evidence", "profile", "audit", "pulse",

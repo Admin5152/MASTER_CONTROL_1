@@ -4,15 +4,15 @@ and Recommendation Cards Grounded in NASA MRIDs.
 import pytest
 from fastapi.testclient import TestClient
 
-from brain.alerts import AlertManager, alerts
-from brain.pipeline import ClinicalPipeline, pipeline
-from brain.protocols import (
+from brain.clinical.alerts import AlertManager, alerts
+from brain.core.pipeline import ClinicalPipeline, pipeline
+from brain.clinical.protocols import (
     PROTOCOLS_CATALOG,
     build_recommendation_card,
     find_matching_protocols,
     get_protocol,
 )
-from brain.store import Store
+from brain.core.store import Store
 from server import app
 
 

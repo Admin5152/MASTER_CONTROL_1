@@ -7,10 +7,10 @@
 - 15.6 Support flows & closed-loop learning (FR-45 pre/post efficacy delta ranking)
 - 15.7 Team wellbeing & safeguards (encrypted journal FR-47, crew pulse AC-22, team cohesion)
 """
-from brain.wellbeing import WellbeingEngine, TOOLKIT, CLINICAL_SCALES
-from brain.crew_pulse import CrewPulse
-from brain.store import Store
-from brain.profile import Profiles
+from brain.crew.wellbeing import WellbeingEngine, TOOLKIT, CLINICAL_SCALES
+from brain.crew.crew_pulse import CrewPulse
+from brain.core.store import Store
+from brain.core.profile import Profiles
 
 
 def test_section_15_2_four_dimensions_independent():

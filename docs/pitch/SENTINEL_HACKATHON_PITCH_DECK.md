@@ -143,7 +143,7 @@
   - Non-contact webcam photoplethysmography (rPPG) extracts pulse and respiration rate in real time without sensors.
   - Manual vitals validation (Blood Pressure, Blood Glucose, Core Temp, Sleep Quality).
   - Neuro-behavioral 30-second Psychomotor Vigilance Task (PVT) for fatigue and lapse counting.
-* **The Unified State Store (`brain/store.py`):**
+* **The Unified State Store (`brain/core/store.py`):**
   - Thread-safe local persistence (`data/state.json`).
   - Append-only telemetry history capped at 2,000 points per metric.
   - Strict ingestion gate: rejects any telemetry packet lacking a data `label` or `confidence` score.
@@ -245,13 +245,13 @@
 * **Why Statistics & Deterministic Rules Beat Generative AI:**
   - Standard LLMs suffer from hallucinations, stochastic unpredictability, and unverified medical advice.
   - **Sentinel's Iron Rule:** Rules and clinical protocols make 100% of the diagnostic and triage decisions. The LLM only handles conversational rephrasing.
-* **The 5-Layer Detection Pipeline (`brain/drift.py` & `brain/thresholds.py`):**
+* **The 5-Layer Detection Pipeline (`brain/rules/drift.py` & `brain/rules/thresholds.py`):**
   1. **Absolute Safe Limits:** Instant breach detection (e.g., Cabin $O_2 < 19.5\%$ or Heart Rate $> 160\text{ bpm}$).
   2. **Personal Baseline Drift:** Evaluates rolling 14-day median and Median Absolute Deviation (MAD). Catches subtle individual deviations that appear 'normal' on population charts.
   3. **Multi-Day Trend Slopes:** Least-squares linear regression identifying steady deterioration over 3–5 days.
   4. **Cross-Signal Compounding Patterns:** Evaluates multi-system strain (e.g., decreased sleep + slower PVT reaction time + flattened mood = Level 2 Fatigue Syndrome).
   5. **Contextual Suppression:** Automatically silences alerts if vitals shift during or immediately following scheduled EVA or heavy exercise sessions.
-* **The Brain LLM with Numeric Guard (`brain/llm.py`):**
+* **The Brain LLM with Numeric Guard (`brain/ai/llm.py`):**
   - Groq-accelerated lightweight Llama/Whisper model with local fallback.
   - Regex-enforced Numeric Guard: guarantees the model can never introduce unverified dosages, numbers, or unauthorized medications into spoken responses.
 
@@ -309,7 +309,7 @@
 - **Honesty Callout:** `Label: SIM · Awareness & Shelter Guidance Only · Does Not Measure Physical Dose`
 
 #### Slide Content
-* **Real-Time Space Weather Tracking (`brain/radiation.py`):**
+* **Real-Time Space Weather Tracking (`brain/mission/radiation.py`):**
   - Continuous ingestion from NOAA GOES satellite real-time proton flux JSON feeds (with local snapshot fallback for offline resilience).
   - Categorizes Solar Particle Events (SPEs) into NOAA S-scale space weather alerts.
 * **Autonomous Shelter Advisory Protocol:**
@@ -351,10 +351,10 @@
   1. **Trigger (03:14 AM):** Astronaut wakes with throbbing orbital pain and visual blurring during sleep block.
   2. **Contact (03:15 AM):** Hands-free voice trigger: *"Hey Sentinel, I don't feel well."* Astronaut taps the Head/Eyes zone on the 3D body figure.
   3. **Triage & Red-Flag Screening (03:15 AM):** Sentinel prompts 3 rapid clinical questions: sudden onset, visual field defect, or nausea. Screens for acute SANS (Spaceflight Associated Neuro-ocular Syndrome) and intracranial pressure shifts.
-  4. **Protocol Execution (`brain/decision.py`):** Matches Protocol `P-HEAD-SANS` (Level 2 Act). Evaluates NASA MR017 and MR010L guidelines.
-  5. **Medical Kit & Allergy Safety Filter (`brain/profile.py`):** Suggests Acetaminophen from *Medical Kit Drawer 3B*; cross-references astronaut's encrypted profile to guarantee no hepatic contraindications or active medication interactions.
+  4. **Protocol Execution (`brain/rules/decision.py`):** Matches Protocol `P-HEAD-SANS` (Level 2 Act). Evaluates NASA MR017 and MR010L guidelines.
+  5. **Medical Kit & Allergy Safety Filter (`brain/core/profile.py`):** Suggests Acetaminophen from *Medical Kit Drawer 3B*; cross-references astronaut's encrypted profile to guarantee no hepatic contraindications or active medication interactions.
   6. **Closed-Loop Follow-up:** Directs astronaut to rest in a seated position; initiates a 5-minute dark-cabin Orb Calm breathing exercise; sets an automated 30-minute recheck timer.
-  7. **Asynchronous Ground Digest (`brain/ground.py`):** Encrypts and queues a priority Clinical Digest for Houston Flight Medicine.
+  7. **Asynchronous Ground Digest (`brain/mission/ground.py`):** Encrypts and queues a priority Clinical Digest for Houston Flight Medicine.
 
 #### Speaker Script (50 seconds)
 > "Let’s walk through a real-world scenario to see how all six modules function together as an integrated clinical workflow:

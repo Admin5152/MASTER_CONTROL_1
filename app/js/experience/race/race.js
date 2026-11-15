@@ -26,7 +26,7 @@ const DIFF = {
 };
 const SURF_LEN = 170;     // how far the planet run lasts (track units)
 
-// ---- multiplayer: rooms on the laptop's server (brain/race_rooms.py) ----
+// ---- multiplayer: rooms on the laptop's server (brain/crew/race_rooms.py) ----
 function deviceId() {
   try { let v = localStorage.getItem("sentinel.device"); if (!v) { v = Math.random().toString(36).slice(2, 10); localStorage.setItem("sentinel.device", v); } return v; } catch { return "dev" + Math.floor(Math.random() * 1e6); }
 }

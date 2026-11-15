@@ -4,10 +4,10 @@ and Ground Handoff with Delay Simulator.
 import pytest
 from fastapi.testclient import TestClient
 
-from brain.ground import Ground
-from brain.plan import PlanEngine, plan
-from brain.profile import filter_kit_items, kit_filter
-from brain.store import Store
+from brain.mission.ground import Ground
+from brain.clinical.plan import PlanEngine, plan
+from brain.core.profile import filter_kit_items, kit_filter
+from brain.core.store import Store
 from server import app
 
 

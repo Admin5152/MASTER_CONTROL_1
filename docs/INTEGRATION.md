@@ -38,14 +38,14 @@ Everything is a reading. A reading goes through the same stages whatever produce
 
 | Stage | What happens | Where in the code |
 | --- | --- | --- |
-| Check | A value outside what a body or a sensor can produce is refused and a remeasure is asked for | `brain/devices.py`, `brain/pipeline.py` |
-| Label | Every reading carries its source, LIVE / MANUAL / SIM, and a confidence from 0 to 1 | `brain/store.py` |
-| Store | Kept on the device, encrypted at rest; survives a restart | `brain/store.py`, `brain/vault.py` |
+| Check | A value outside what a body or a sensor can produce is refused and a remeasure is asked for | `brain/core/devices.py`, `brain/core/pipeline.py` |
+| Label | Every reading carries its source, LIVE / MANUAL / SIM, and a confidence from 0 to 1 | `brain/core/store.py` |
+| Store | Kept on the device, encrypted at rest; survives a restart | `brain/core/store.py`, `brain/core/vault.py` |
 | My normal | A median and spread per person per reading, from their own history | `Store.learn_baselines` |
-| Assess | Reference ranges, change from my normal, trend, and two or more independent signals moving together | `brain/thresholds.py`, `brain/drift.py`, `brain/indicators.py` |
-| Decide | An urgency level 0 to 3, a protocol, a kit item filtered by the person's allergies | `brain/decision.py`, `brain/care.py`, `brain/protocols.py` |
+| Assess | Reference ranges, change from my normal, trend, and two or more independent signals moving together | `brain/rules/thresholds.py`, `brain/rules/drift.py`, `brain/rules/indicators.py` |
+| Decide | An urgency level 0 to 3, a protocol, a kit item filtered by the person's allergies | `brain/rules/decision.py`, `brain/clinical/care.py`, `brain/clinical/protocols.py` |
 | Present | Screen, voice and sound by level; quiet hours respected | `app/js/` |
-| Escalate | Alerts follow through; the buddy is told; a text digest is queued for ground | `brain/alerts.py`, `brain/notify.py`, `brain/ground.py` |
+| Escalate | Alerts follow through; the buddy is told; a text digest is queued for ground | `brain/clinical/alerts.py`, `brain/crew/notify.py`, `brain/mission/ground.py` |
 
 Rules that do not bend:
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from brain import llm
+from brain.ai import llm
 
 ROOT = Path(__file__).resolve().parent.parent
 KOKORO = (ROOT / "models" / "tts" / "kokoro-v1.0.onnx").exists()
@@ -23,7 +23,7 @@ def _clean_memory():
 
 
 def _state():
-    from brain.store import Store
+    from brain.core.store import Store
     return Store(persist=False, fresh=True).get("james")
 
 
@@ -128,7 +128,7 @@ def test_stt_local_whisper_transcribes_kokoro_speech(client):
         import os
         import subprocess
         import sys
-        p = subprocess.run([sys.executable, "-m", "brain.whisper_worker"], input=FIXTURE.read_bytes(), capture_output=True,
+        p = subprocess.run([sys.executable, "-m", "brain.ai.whisper_worker"], input=FIXTURE.read_bytes(), capture_output=True,
                            cwd=str(ROOT), env=dict(os.environ, OPENBLAS_NUM_THREADS="1"))
         if b"failed to allocate memory" in p.stderr:
             pytest.skip("not enough free memory on this machine for local Whisper next to the server's torch stack")
@@ -171,7 +171,7 @@ def test_prompt_forbids_invented_time_dependent_facts(monkeypatch):
 
 def test_a_promised_action_without_a_command_line_still_happens():
     """The smaller fallback models say "Opening settings." and forget the COMMANDS line: the action is inferred."""
-    from brain import llm
+    from brain.ai import llm
     assert llm.infer_commands("go to settings", "Opening settings.") == [{"cmd": "open_screen", "name": "settings"}]
     assert llm.infer_commands("start a breathing exercise", "Starting a guided breathing exercise.") == [{"cmd": "open_screen", "name": "orb_calm"}]
     assert llm.infer_commands("show me my heart", "Your heart rate is 51. Opening your vitals.") == [{"cmd": "point_to", "zone": "heart"}]
@@ -183,7 +183,8 @@ def test_a_promised_action_without_a_command_line_still_happens():
 
 def test_health_questions_carry_the_matching_nasa_mrids():
     """A body question brings its NASA documents into the prompt; small talk brings none; MRID ids pass the number guard."""
-    from brain import llm, mrid
+    from brain.ai import llm
+    from brain.rules import mrid
     assert "MEDB 1.10" in [d["id"] for d in mrid.relevant("what happens to your eyes in space")]
     assert "MEDB 1.8" in [d["id"] for d in mrid.relevant("my ears are ringing")]
     assert "MR084L" not in [d["id"] for d in mrid.relevant("how is my heart")]      # "heart" is not "hear"
@@ -196,7 +197,7 @@ def test_health_questions_carry_the_matching_nasa_mrids():
 
 
 def test_elevenlabs_meter_starts_fresh_for_a_new_key(tmp_path, monkeypatch):
-    from brain import speech
+    from brain.ai import speech
     monkeypatch.setattr(speech, "USAGE", tmp_path / "tts_usage.json")
     monkeypatch.setattr(speech, "DATA", tmp_path)
     monkeypatch.setenv("ELEVENLABS_API_KEY", "old-key")
@@ -210,6 +211,6 @@ def test_elevenlabs_meter_starts_fresh_for_a_new_key(tmp_path, monkeypatch):
 
 
 def test_eliah_is_spoken_elia_but_written_eliah():
-    from brain.speech import say_as
+    from brain.ai.speech import say_as
     assert say_as("Hello Eliah, I'm Sentinel.") == "Hello Elia, I'm Sentinel."
     assert say_as("Ask Eliahs crew") == "Ask Eliahs crew"     # only the whole name

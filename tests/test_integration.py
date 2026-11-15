@@ -10,9 +10,9 @@ Verifies the end-to-end integration of all Sentinel modules:
 - SI7: Golden scenarios S1–S19 pass (INT-8)
 """
 import pytest
-from brain.ground import Ground
-from brain.ops import Ops
-from brain.store import Store, VALID_LABELS
+from brain.mission.ground import Ground
+from brain.mission.ops import Ops
+from brain.core.store import Store, VALID_LABELS
 
 
 def test_SI1_store_rejects_reading_without_label_or_confidence(client, store):
@@ -231,7 +231,7 @@ def test_SI6_event_bus_audit(client):
 def test_SI7_all_golden_scenarios_pass():
     """SI7: All golden scenarios S1–S19 pass."""
     import tests.test_golden as tg
-    from brain.store import Store
+    from brain.core.store import Store
     from fastapi.testclient import TestClient
     import server
 

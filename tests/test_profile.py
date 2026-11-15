@@ -7,10 +7,10 @@
 import os
 os.environ["SENTINEL_NO_NETWORK"] = "1"
 os.environ["SENTINEL_NO_WARM"] = "1"
-from brain.profile import Profiles, kit_filter, calibration_info
-from brain.store import Store
-from brain.ops import Ops
-from brain.clinic import Clinic
+from brain.core.profile import Profiles, kit_filter, calibration_info
+from brain.core.store import Store
+from brain.mission.ops import Ops
+from brain.clinical.clinic import Clinic
 
 ITEM = {"id": "ibuprofen", "name": "Ibuprofen (NSAID)"}
 
@@ -161,7 +161,7 @@ def test_section_14_4_export_and_sensitive_redaction():
 def test_section_14_4_health_background_in_digest_requires_consent():
     store = Store(persist=False, fresh=True)
     ops = Ops()
-    from brain.profile import profiles
+    from brain.core.profile import profiles
 
     # Default profile: includeInDigest is False
     profiles.update("kenji", {
@@ -239,7 +239,7 @@ def test_delete_and_endpoints():
 def test_section_14_4_table_row_early_signs_recognized():
     """Row 5: 'My early signs' -> Sentinel recognises them when the astronaut reports them."""
     store = Store(persist=False, fresh=True)
-    from brain.profile import profiles
+    from brain.core.profile import profiles
     # Configure Kenji's early signs in profile
     profiles.update("kenji", {
         "health": {"allergies": ["none"], "regularMedicines": ["none"]},
@@ -255,7 +255,7 @@ def test_section_14_4_table_row_early_signs_recognized():
 def test_section_14_4_table_row_what_helps_me_tool_order():
     """Row 4: 'What helps me' -> Calming tools offered in the order that suits that person."""
     store = Store(persist=False, fresh=True)
-    from brain.profile import profiles
+    from brain.core.profile import profiles
     # User ranks greenhouse first, then race
     profiles.update("kenji", {
         "wellbeingPlan": {"whatHelps": ["greenhouse", "race"]},
@@ -272,7 +272,7 @@ def test_section_14_4_table_row_what_helps_me_tool_order():
 
 def test_section_14_4_table_row_duty_and_sleep_schedule_rest_respect():
     """Row 3: Duty and sleep schedule -> Reminders land at sensible times and respect rest."""
-    from brain.profile import is_in_sleep_block, get_reminder_schedule
+    from brain.core.profile import is_in_sleep_block, get_reminder_schedule
     prof = {
         "preferences": {"reminderTimes": {"checkin": "07:00", "winddown": "22:00"}},
         "mission": {"sleepBlock": "22:30-06:30", "dutySchedule": "transit_shift_b"},

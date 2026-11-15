@@ -9,9 +9,9 @@ This test file formally validates that the complete backend architecture support
 """
 import pytest
 import time
-from brain.store import Store, VALID_LABELS
-from brain.pipeline import ClinicalPipeline
-from brain.indicators import (
+from brain.core.store import Store, VALID_LABELS
+from brain.core.pipeline import ClinicalPipeline
+from brain.rules.indicators import (
     TRACKED_INDICATORS,
     INDEPENDENCE_GROUPS,
     get_indicator_group,
@@ -20,23 +20,23 @@ from brain.indicators import (
     verify_single_source_of_truth,
     validate_non_reading_record
 )
-from brain.protocols import (
+from brain.clinical.protocols import (
     PROTOCOLS_CATALOG,
     get_protocol,
     find_matching_protocols,
     build_recommendation_card
 )
-from brain.alerts import AlertManager
-from brain.plan import PlanEngine, SCHEDULE_TEMPLATES
-from brain.ground import Ground
-from brain.clinic import Clinic, CLINICAL_MODES
-from brain.care import CareEngine
-from brain.profile import Profiles, kit_filter, filter_kit_items
-from brain.wellbeing import WellbeingEngine
-from brain import environment as envmod
-from brain import safety
-from brain.crew_pulse import CrewPulse
-from brain.ops import Ops
+from brain.clinical.alerts import AlertManager
+from brain.clinical.plan import PlanEngine, SCHEDULE_TEMPLATES
+from brain.mission.ground import Ground
+from brain.clinical.clinic import Clinic, CLINICAL_MODES
+from brain.clinical.care import CareEngine
+from brain.core.profile import Profiles, kit_filter, filter_kit_items
+from brain.crew.wellbeing import WellbeingEngine
+from brain.mission import environment as envmod
+from brain.rules import safety
+from brain.crew.crew_pulse import CrewPulse
+from brain.mission.ops import Ops
 
 
 # ==============================================================================

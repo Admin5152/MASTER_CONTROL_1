@@ -8,8 +8,8 @@ os.environ["SENTINEL_NO_WARM"] = "1"
 
 import pytest
 import server
-import brain.llm as llm
-import brain.protocols as protocols
+import brain.ai.llm as llm
+import brain.clinical.protocols as protocols
 from fastapi import HTTPException
 
 

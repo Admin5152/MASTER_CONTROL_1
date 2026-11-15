@@ -1,4 +1,4 @@
-// Daily eye check (see brain/eyes.py): how the eyes blink, open and follow, and how the person sees.
+// Daily eye check (see brain/clinical/eyes.py): how the eyes blink, open and follow, and how the person sees.
 // 1. Relax and look at the camera (12 s): the face mesh, zoomed on the eyes, measures blinking, eyelid opening and
 //    left/right evenness; a close-up of the eye area with the mesh drawn on it is kept with the check.
 // 2. Follow the dot (12 s): the irises are tracked against a moving dot (smooth pursuit).

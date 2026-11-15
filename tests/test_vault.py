@@ -1,7 +1,7 @@
 """Encryption at rest: health files are unreadable on disk, readable by Sentinel, and old plaintext migrates."""
 import json
 
-from brain import vault
+from brain.core import vault
 
 
 def test_round_trip_is_encrypted_on_disk(tmp_path, monkeypatch):

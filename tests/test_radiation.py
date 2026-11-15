@@ -2,8 +2,8 @@
 import json
 from pathlib import Path
 
-from brain.radiation import SpaceWeather, cumulative_dose, flux_to_level, load_snapshot, parse_protons, storm_dose_step
-from brain.thresholds import load_thresholds
+from brain.mission.radiation import SpaceWeather, cumulative_dose, flux_to_level, load_snapshot, parse_protons, storm_dose_step
+from brain.rules.thresholds import load_thresholds
 
 ROOT = Path(__file__).resolve().parent.parent
 TH = load_thresholds()
@@ -32,7 +32,7 @@ def test_parser_reads_saved_snapshot():
 
 def test_spaceweather_falls_back_to_snapshot_when_network_fails(client, monkeypatch, tmp_path):
     import server
-    import brain.radiation as rad
+    import brain.mission.radiation as rad
 
     def boom():
         raise OSError("network down")
@@ -88,7 +88,7 @@ def test_feed_cycle_transitions_and_metadata(store):
 
 def test_readings_reject_missing_or_invalid_metadata(store):
     import pytest
-    from brain.contract import ContractError
+    from brain.core.contract import ContractError
     for patch in [{"cumulative_msv": 2}, {"dose_rate_usv_h": 1, "label": "LIVE", "confidence": 1},
                   {"event_level": "storm", "label": "SIM", "confidence": 0.5}]:
         with pytest.raises(ContractError):
@@ -118,7 +118,7 @@ def test_storm_dose_accumulates_monotonically(store):
         before = current
 
 def test_feed_integrates_elapsed_time_and_marks_history(store, monkeypatch):
-    import brain.store as module
+    import brain.core.store as module
     now = [1000.0]
     monkeypatch.setattr(module.time, "time", lambda: now[0])
     store.apply_radiation_feed({"level": 0, "source": "snapshot"})
@@ -139,7 +139,7 @@ def test_radiation_event_endpoint(client):
 
 def test_surface_location_contract(store):
     import pytest
-    from brain.contract import ContractError
+    from brain.core.contract import ContractError
     loc = {"latitude": -4.5895, "longitude": 137.4417, "source": "sim", "updated": ""}
     state = store.patch("james", {"radiation": {"mission_profile": "mars_surface", "location": loc}})
     assert state["radiation"]["location"] == loc
@@ -150,7 +150,7 @@ def test_surface_location_contract(store):
 
 
 def test_feed_freshness_uses_measurement_timestamp():
-    from brain.radiation import feed_freshness
+    from brain.mission.radiation import feed_freshness
     data = {"time": "2026-01-01T00:00:00Z", "source": "live"}
     assert not feed_freshness(data, 1767225600 + 60)["stale"]
     assert feed_freshness(data, 1767225600 + 901)["stale"]

@@ -31,5 +31,5 @@ def client(monkeypatch):
 
 @pytest.fixture()
 def store():
-    from brain.store import Store
+    from brain.core.store import Store
     return Store(persist=False, fresh=True)

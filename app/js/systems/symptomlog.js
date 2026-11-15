@@ -15,7 +15,7 @@ export const ONSETS = [
   { value: "yesterday", word: "Since yesterday" },
   { value: "days", word: "Several days" },
 ];
-export const LOG_MAX = 20;   // brain/contract.py SYMPTOM_LOG_MAX
+export const LOG_MAX = 20;   // brain/core/contract.py SYMPTOM_LOG_MAX
 
 // Words a crew member would use, never a diagnosis. Those the onboard kit maps (shared/med_kit.json
 // symptom_map) lead to a kit suggestion from the rules engine; the others are logged for the surgeon.

@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from brain import llm
-from brain.decision import decide
-from brain.drift import compute_drift
-from brain.medicine import load_kit, suggest
-from brain.thresholds import evaluate_absolute, load_thresholds
+from brain.ai import llm
+from brain.rules.decision import decide
+from brain.rules.drift import compute_drift
+from brain.clinical.medicine import load_kit, suggest
+from brain.rules.thresholds import evaluate_absolute, load_thresholds
 
 ROOT = Path(__file__).resolve().parent.parent
 TH = load_thresholds()
@@ -73,7 +73,7 @@ def test_five_states_give_five_interventions(store):
     hr = base["baseline"]["heart_rate"]
 
     def variant(**patch):
-        from brain.contract import deep_merge
+        from brain.core.contract import deep_merge
         return deep_merge(base, patch)
 
     states = [
@@ -140,7 +140,7 @@ def test_with_key_reply_contains_a_state_number():
     if not key:
         pytest.skip("LLM_API_KEY empty")
     os.environ["LLM_API_KEY"] = key
-    from brain.store import Store
+    from brain.core.store import Store
     st = Store(persist=False, fresh=True)
     r = llm.chat(st.get("james"), "How am I doing?")
     assert r["source"] == "llm", r
@@ -169,7 +169,7 @@ def test_every_threshold_has_source_and_kind():
 
 
 def test_mock_data_satisfies_contract():
-    from brain.contract import validate_full
+    from brain.core.contract import validate_full
     data = json.loads((ROOT / "shared" / "mock_data.json").read_text())
     assert len(data["crew"]) == 6
     for c in data["crew"]:

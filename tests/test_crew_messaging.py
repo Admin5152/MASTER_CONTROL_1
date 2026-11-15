@@ -5,8 +5,8 @@ os.environ["SENTINEL_NO_WARM"] = "1"
 import tempfile
 from pathlib import Path
 import pytest
-from brain.messages import MessagesStore, conversation_key
-from brain.store import Store
+from brain.crew.messages import MessagesStore, conversation_key
+from brain.core.store import Store
 from fastapi.testclient import TestClient
 import server
 

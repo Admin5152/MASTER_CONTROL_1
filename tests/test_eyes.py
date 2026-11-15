@@ -1,5 +1,5 @@
 """Daily eye check: blinking, eyelids, eye tracking, vision self-tests; baseline and plain verdicts."""
-from brain.eyes import EyeChecks, BASELINE_N
+from brain.clinical.eyes import EyeChecks, BASELINE_N
 
 M = {"blink_rate": 16.0, "incomplete": 0.1, "aperture": 0.30, "asymmetry": 0.04, "pursuit": 0.85, "lag_ms": 120}
 SNAP = "data:image/jpeg;base64,AAAA"

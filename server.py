@@ -27,37 +27,38 @@ for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".
                     (".task", "application/octet-stream")):
     mimetypes.add_type(_type, _ext)
 
-from brain import llm, speech  # noqa: E402
-from brain.ground import Ground  # noqa: E402
-from brain.suit import Suits, REGIONS as SUIT_REGIONS, region_from_text  # noqa: E402
-from brain.ops import Ops, MODES as OPS_MODES  # noqa: E402
-from brain import safety  # noqa: E402
-from brain.profile import profiles  # noqa: E402
-from brain.audit import Audit  # noqa: E402
-from brain import environment as envmod  # noqa: E402
-from brain.clinic import Clinic, CLINICAL_MODES, DAY_BLOCKS  # noqa: E402
-from brain.crew_pulse import CrewPulse  # noqa: E402
-from brain.eyes import EyeChecks  # noqa: E402
-from brain.wellbeing import wellbeing, TOOLKIT, CLINICAL_SCALES  # noqa: E402
-from brain.care import care  # noqa: E402
-from brain.plan import plan  # noqa: E402
-from brain.trends import trends  # noqa: E402
-from brain.onboarding import onboarding  # noqa: E402
-from brain import indicators as indmod  # noqa: E402
-from brain.pipeline import pipeline  # noqa: E402
-from brain.alerts import alerts  # noqa: E402
-from brain.notify import Notifications  # noqa: E402
-from brain.devices import Devices  # noqa: E402
-from brain import protocols as protomod  # noqa: E402
+from brain.ai import llm  # noqa: E402
+from brain.ai import speech
+from brain.mission.ground import Ground  # noqa: E402
+from brain.mission.suit import Suits, REGIONS as SUIT_REGIONS, region_from_text  # noqa: E402
+from brain.mission.ops import Ops, MODES as OPS_MODES  # noqa: E402
+from brain.rules import safety  # noqa: E402
+from brain.core.profile import profiles  # noqa: E402
+from brain.core.audit import Audit  # noqa: E402
+from brain.mission import environment as envmod  # noqa: E402
+from brain.clinical.clinic import Clinic, CLINICAL_MODES, DAY_BLOCKS  # noqa: E402
+from brain.crew.crew_pulse import CrewPulse  # noqa: E402
+from brain.clinical.eyes import EyeChecks  # noqa: E402
+from brain.crew.wellbeing import wellbeing, TOOLKIT, CLINICAL_SCALES  # noqa: E402
+from brain.clinical.care import care  # noqa: E402
+from brain.clinical.plan import plan  # noqa: E402
+from brain.rules.trends import trends  # noqa: E402
+from brain.core.onboarding import onboarding  # noqa: E402
+from brain.rules import indicators as indmod  # noqa: E402
+from brain.core.pipeline import pipeline  # noqa: E402
+from brain.clinical.alerts import alerts  # noqa: E402
+from brain.crew.notify import Notifications  # noqa: E402
+from brain.core.devices import Devices  # noqa: E402
+from brain.clinical import protocols as protomod  # noqa: E402
 from systems.skin import Skin  # noqa: E402
 import json  # noqa: E402
 import threading  # noqa: E402
-from brain.contract import ContractError  # noqa: E402
-from brain.radiation import SpaceWeather, storm_dose_step, feed_freshness  # noqa: E402
-from brain.store import Store  # noqa: E402
+from brain.core.contract import ContractError  # noqa: E402
+from brain.mission.radiation import SpaceWeather, storm_dose_step, feed_freshness  # noqa: E402
+from brain.core.store import Store  # noqa: E402
 from systems import speaker  # noqa: E402
-from brain.race_rooms import RaceRooms  # noqa: E402
-from brain.messages import crew_messages  # noqa: E402
+from brain.crew.race_rooms import RaceRooms  # noqa: E402
+from brain.crew.messages import crew_messages  # noqa: E402
 from systems.scenarios import NAMES as SCENARIO_NAMES, Scenarios  # noqa: E402
 
 store = Store(persist=os.getenv("SENTINEL_NO_PERSIST") != "1", fresh=os.getenv("SENTINEL_FRESH") == "1")
@@ -237,7 +238,7 @@ def crew_card(cid: str):
 def exercise_plan(cid: str):
     """The exercise countermeasure made specific: device, minutes and how; today's sessions and total."""
     _need(cid)
-    from brain.clinic import EXERCISE_PLAN
+    from brain.clinical.clinic import EXERCISE_PLAN
     day = int(store.mission_clock()["mission_day"])
     ex = store.internal.get(cid, {}).get("exercise") or {}
     sessions = [e for e in store.get_non_reading(cid, "exercise") if e.get("day") == day]
@@ -849,7 +850,7 @@ def pulse_answer(cid: str, body: dict = Body(...)):
     return r
 
 
-# ---- daily eye check (SANS screening aid; never a diagnosis: see brain/eyes.py) ----
+# ---- daily eye check (SANS screening aid; never a diagnosis: see brain/clinical/eyes.py) ----
 @app.get("/api/eyes/{cid}")
 def eyes_get(cid: str):
     _need(cid)
@@ -1994,7 +1995,7 @@ def kit_filter_endpoint(body: dict = Body(...)):
             kit_items = kit_data.get("items", [])
         except Exception:
             kit_items = []
-    from brain.profile import filter_kit_items
+    from brain.core.profile import filter_kit_items
     return filter_kit_items(kit_items, prof)
 
 

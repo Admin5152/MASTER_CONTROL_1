@@ -5,10 +5,10 @@ exactly what is missing, and the day a feature lands its xfail turns into a fail
 """
 import pytest
 
-from brain.ground import Ground
-from brain.ops import Ops
-from brain.profile import Profiles, kit_filter
-from brain import safety
+from brain.mission.ground import Ground
+from brain.mission.ops import Ops
+from brain.core.profile import Profiles, kit_filter
+from brain.rules import safety
 
 LEVEL = {"ROUTINE": 0, "WATCH": 1, "ACT": 2, "URGENT": 3}
 
@@ -109,13 +109,13 @@ def test_S10_link_down_then_up_queues_then_sends_urgent_first():
 
 
 def test_S11_spoken_environment_is_recognised_then_confirmed():
-    from brain import environment
+    from brain.mission import environment
     m = environment.match("Hey Sentinel, we're in the transit cabin now")
     assert m["env"] == "transit"   # the page asks "Confirm?" and only a yes calls set_environment
 
 
 def test_S12_ambiguous_environment_asks_which():
-    from brain import environment
+    from brain.mission import environment
     m = environment.match("we're somewhere cold")
     assert "ask" in m and "planetary base" in m["question"]
 
@@ -164,7 +164,7 @@ def test_S18_camera_mood_off_still_leaves_self_report(store):
 
 
 def test_S19_crew_pulse_needs_three_responses():
-    from brain.crew_pulse import CrewPulse
+    from brain.crew.crew_pulse import CrewPulse
     p = CrewPulse(persist=False)
     p.answer(1, "a", {"together": 4, "heard": 3}); r = p.answer(1, "b", {"together": 2, "heard": 5})
     assert r["responses"] == 2 and not r["shown"] and "team" not in r      # two answers: nothing shown

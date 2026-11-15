@@ -31,7 +31,7 @@ All 7 integration phases defined in Section 11.5 of the Sentinel Product Documen
 
 | Phase | Milestone Description | Dependencies | Status | Verification Reference |
 | :--- | :--- | :--- | :--- | :--- |
-| **Phase 0** | **Core Foundation:** State store (`brain/store.py`), event bus (`app/js/core/bus.js`), mock data (`shared/mock_data.json`), environment profiles (`brain/environment.py`). | None | **DONE** | Store initializes 6 crew with 14-day history; bus pub/sub active; environments load. |
+| **Phase 0** | **Core Foundation:** State store (`brain/core/store.py`), event bus (`app/js/core/bus.js`), mock data (`shared/mock_data.json`), environment profiles (`brain/mission/environment.py`). | None | **DONE** | Store initializes 6 crew with 14-day history; bus pub/sub active; environments load. |
 | **Phase 1** | **P4 (Vitals) Wiring:** Typed vital signs entry into store and decision pipeline (`/api/reading/{cid}`, `/api/state/{cid}/patch`). | Phase 0 | **DONE** | Ingesting BP/HR triggers threshold evaluation; body zone color updates via contract state. |
 | **Phase 2** | **P3 (Face/Voice) Wiring:** Camera rPPG/expression readings and voice transcription/prosody streams into store. | Phase 0 | **DONE** | Face emotion inference (`/api/face/emotion`), STT (`/api/stt`), TTS (`/api/tts`), rPPG pulse mapped to `vitals.heart_rate`. |
 | **Phase 3** | **P1 (Radiation) Wiring:** Live NOAA spaceweather feed, dosimeter rates, shelter status, and cumulative career limits. | Phase 0 | **DONE** | `spaceweather_loop` and `storm_dose_loop` active; radiation screen receives live/model stream. |
@@ -45,11 +45,11 @@ All 7 integration phases defined in Section 11.5 of the Sentinel Product Documen
 
 | Requirement ID | Specification Description | Priority | Implementation Location | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **INT-1** | **Strict Ingestion Validation:** State store persists per crew member and rejects any reading missing explicit `label` (`LIVE`, `MANUAL`, `SIM`, `DESIGNED`) or `confidence` (`0.0`–`1.0`). | Must Have (M) | `brain/store.py` (`ingest_reading`), `server.py` (`POST /api/reading/{cid}`, `POST /api/reading`) | **PASSED** (Verified by `test_SI1`) |
-| **INT-2** | **Sequential Decision Pipeline:** Recomputes sequentially on every state patch: `radiation.py` (dose/storm) -> `thresholds.py` (absolute limits) -> `drift.py` (14-day baseline drift) -> `decision.py` (ordered action hierarchy). | Must Have (M) | `brain/store.py` (`_recompute`), `brain/decision.py` | **PASSED** (Verified by `test_SI2`) |
-| **INT-3** | **Audit Trail Logging:** Unified event bus logging; every user action, state change, and system event writes to audit log without leaking sensitive protected health information (PHI). | Must Have (M) | `brain/audit.py`, `server.py` (`POST /api/audit`, `GET /api/audit`) | **PASSED** (Verified by `test_SI6`, `test_audit.py`) |
-| **INT-4** | **Standardized Mock Roster:** Loads 6 crew members (`james`, `amara`, `kenji`, `sofia`, `lukas`, `priya`) with 14-day SIM history on startup. | Must Have (M) | `shared/mock_data.json`, `brain/store.py` (`_mock`, `_seed_history`) | **PASSED** (Verified by `test_SI4`, `test_mock_data_satisfies_contract`) |
-| **INT-5** | **Store-and-Forward Ground Handoff:** Digest queue with SIM delay simulator (default 12.7 min one-way), holding messages during blackout and transmitting urgent messages first on reconnection. | Should Have (S) | `brain/ground.py`, `brain/ops.py`, `server.py` (`/api/digest`, `/api/ops`) | **PASSED** (Verified by `test_SI3`, `test_ground.py`, `test_ops.py`) |
+| **INT-1** | **Strict Ingestion Validation:** State store persists per crew member and rejects any reading missing explicit `label` (`LIVE`, `MANUAL`, `SIM`, `DESIGNED`) or `confidence` (`0.0`–`1.0`). | Must Have (M) | `brain/core/store.py` (`ingest_reading`), `server.py` (`POST /api/reading/{cid}`, `POST /api/reading`) | **PASSED** (Verified by `test_SI1`) |
+| **INT-2** | **Sequential Decision Pipeline:** Recomputes sequentially on every state patch: `radiation.py` (dose/storm) -> `thresholds.py` (absolute limits) -> `drift.py` (14-day baseline drift) -> `decision.py` (ordered action hierarchy). | Must Have (M) | `brain/core/store.py` (`_recompute`), `brain/rules/decision.py` | **PASSED** (Verified by `test_SI2`) |
+| **INT-3** | **Audit Trail Logging:** Unified event bus logging; every user action, state change, and system event writes to audit log without leaking sensitive protected health information (PHI). | Must Have (M) | `brain/core/audit.py`, `server.py` (`POST /api/audit`, `GET /api/audit`) | **PASSED** (Verified by `test_SI6`, `test_audit.py`) |
+| **INT-4** | **Standardized Mock Roster:** Loads 6 crew members (`james`, `amara`, `kenji`, `sofia`, `lukas`, `priya`) with 14-day SIM history on startup. | Must Have (M) | `shared/mock_data.json`, `brain/core/store.py` (`_mock`, `_seed_history`) | **PASSED** (Verified by `test_SI4`, `test_mock_data_satisfies_contract`) |
+| **INT-5** | **Store-and-Forward Ground Handoff:** Digest queue with SIM delay simulator (default 12.7 min one-way), holding messages during blackout and transmitting urgent messages first on reconnection. | Should Have (S) | `brain/mission/ground.py`, `brain/mission/ops.py`, `server.py` (`/api/digest`, `/api/ops`) | **PASSED** (Verified by `test_SI3`, `test_ground.py`, `test_ops.py`) |
 | **INT-6** | **Sourced Medical Configs:** All clinical thresholds, indicator facts, and onboard med kit items cite authoritative sources (NASA MRID JSC 28913, clinical literature). | Must Have (M) | `shared/thresholds.json`, `shared/facts.json`, `shared/med_kit.json`, `shared/contract.json` | **PASSED** (Verified by `test_zone_facts_cite_mrids`, `test_every_threshold_has_source_and_kind`) |
 | **INT-7** | **Full System Merge:** All 5 sub-features integrate cleanly into a single unified frontend and backend without module collisions. | Must Have (M) | `server.py`, `app/js/core/commands.js`, `app/js/core/bus.js` | **PASSED** (Verified by `test_SI5`, `test_systems.py`) |
 | **INT-8** | **Golden Scenarios & Acceptance:** Golden scenarios S1–S19 and acceptance criteria AC-1–AC-22 pass 100%. | Must Have (M) | `tests/test_golden.py`, `tests/test_integration.py` | **PASSED** (21/21 golden scenarios green) |
@@ -76,7 +76,7 @@ The dedicated test file `tests/test_integration.py` provides formal validation o
 ## 5. Clinical Experience & Workflows (Part 4: Sections 12 & 13)
 
 ### 5.1 Five Clinical Modes (Section 12.1)
-Implemented in `brain/clinic.py` (`Clinic.get_clinical_mode`) and exposed via `GET /api/clinic/{cid}`:
+Implemented in `brain/clinical/clinic.py` (`Clinic.get_clinical_mode`) and exposed via `GET /api/clinic/{cid}`:
 1. **Monitor:** Continuous passive telemetry (camera rPPG, voice, cabin sensors); anomaly engine watches silently.
 2. **Check-up:** Scheduled daily check-in (scan, vitals, mood, reaction test, summary).
 3. **Triage:** Symptom or pattern anomaly triage; body-zone picker, structured questions, urgency level determination.
@@ -84,7 +84,7 @@ Implemented in `brain/clinic.py` (`Clinic.get_clinical_mode`) and exposed via `G
 5. **Escalate:** Severe red-flag symptoms, cabin air alarms, priority store-and-forward digest to flight surgeon.
 
 ### 5.2 A Day with Sentinel: Daily Blocks (Section 12.2)
-Implemented in `brain/clinic.py` (`Clinic.current_block`, `Clinic.execute_*`) and exposed via `POST /api/clinic/{cid}/block`:
+Implemented in `brain/clinical/clinic.py` (`Clinic.current_block`, `Clinic.execute_*`) and exposed via `POST /api/clinic/{cid}/block`:
 - **Wake:** 2-tap fast log for hours slept and mood (< 10 seconds).
 - **Morning Check-in:** 2-minute guided check-in ending in a clear summary line.
 - **Work Block:** Heads-down passive monitoring, silent unless it matters.
@@ -96,7 +96,7 @@ Implemented in `brain/clinic.py` (`Clinic.current_block`, `Clinic.execute_*`) an
 - **Weekly Review:** Aggregates 7-day adherence, averages, countermeasure effectiveness (`GET /api/clinic/{cid}/weekly`).
 
 ### 5.3 Environments and Modes (Section 13)
-Implemented in `brain/environment.py`, `brain/ops.py`, and `server.py`:
+Implemented in `brain/mission/environment.py`, `brain/mission/ops.py`, and `server.py`:
 - **Spoken Understanding (13.1):**
   - Station: *"space station"*, *"in orbit"*, *"on the station"*
   - Transit: *"spacecraft"*, *"space cabin"*, *"in transit"*, *"on the way to Mars"*
@@ -139,7 +139,7 @@ The `dataset/_catalog.json` indexes **94 NASA Medical Requirements Integration D
 
 1. **`shared/contract.json`**  
    - Complete JSON schema defining the frozen state object.  
-   - Validated on state patch by `brain/contract.py` (`validate_full`, `validate_patch`).
+   - Validated on state patch by `brain/core/contract.py` (`validate_full`, `validate_patch`).
 2. **`shared/thresholds.json`**  
    - Clinical reference ranges with upper/lower bounds, units, severity levels (`info`, `watch`, `alert`), and NASA MRID source citations.
 3. **`shared/facts.json`**  
@@ -191,11 +191,11 @@ Access the application at `https://localhost:8443/app/`.
   - Absolute physiological range limits (`flag_ground`), cabin air alerts (`flag_cabin`), radiation storm alerts (`flag_radiation`), and clinical red flags (`flag_redflag`) fire at full strength.
   - Verified by golden acceptance test `test_S16_settling_in_softens_personal_alerts_but_not_limits`.
 
-### 9.2 Section 14 Personal Health Profile Architecture (`brain/profile.py`)
+### 9.2 Section 14 Personal Health Profile Architecture (`brain/core/profile.py`)
 - **14.1 Principles:**
   - Progressive profile builder: grows over time with check-in questions when fields are missing.
   - Mission preload capability (`Profiles.preload(cid, data, preloaded_by)`) and astronaut confirmation (`Profiles.confirm(cid)`).
-  - Encrypted on-device storage (`data/profiles.json` via `brain/vault.py`), sensitive health background leaves device only with explicit consent.
+  - Encrypted on-device storage (`data/profiles.json` via `brain/core/vault.py`), sensitive health background leaves device only with explicit consent.
 - **14.2 Seven Core Profile Sections:**
   1. *Identity & preferences:* callsign, language, units, voice style, glove mode, reminder times.
   2. *Mission context:* environment, mode, duty schedule, sleep block, EVA roster.
@@ -222,7 +222,7 @@ Access the application at `https://localhost:8443/app/`.
   - View, export (`GET /api/profile/{cid}/export?sensitive=true/false`), and delete (`DELETE /api/profile/{cid}`).
   - Health background is excluded from flight surgeon digests unless explicit consent (`includeInDigest = True`) is set.
   - Missing health background returns AC-18 `"profile incomplete, check the label"`.
-  - Device-level encryption at rest via `brain/vault.py`.
+  - Device-level encryption at rest via `brain/core/vault.py`.
 
 ### 9.3 Verification Status
 - **Test Suite:** 16 passed in `tests/test_profile.py`, 12 passed in `tests/test_clinic.py`, 5 passed in `tests/test_ops.py`, 28 passed in `tests/test_golden.py` + `tests/test_integration.py`.
@@ -234,7 +234,7 @@ Access the application at `https://localhost:8443/app/`.
 ## 10. Mental Wellbeing Engine Architecture (Section 15, FR-40 to FR-50)
 
 ### 10.1 Four Dimensions (Section 15.2 & 15.3)
-- Implemented in `brain/wellbeing.py` (`WellbeingEngine.evaluate`):
+- Implemented in `brain/crew/wellbeing.py` (`WellbeingEngine.evaluate`):
   1. **Mood:** Evaluates self-rating (1-5), optional tags (`tired`, `irritable`, `anxious`, `lonely`, `motivated`), camera valence/arousal (when enabled).
   2. **Energy:** Sleep duration and quality, subjective energy, cognitive reaction time vs baseline. Generates a clinical readiness note.
   3. **Stress:** Subjective stress, resting pulse deviations, acute stress-spike detection.
@@ -246,7 +246,7 @@ Access the application at `https://localhost:8443/app/`.
 - **Level 0 (Steady):** Near baseline -> `"You're steady."`
 - **Level 1 (Check-in):** 1 dimension drifting -> Gentle query offering 1 countermeasure (`"Your energy has been lower than usual. Want a short reset?"`).
 - **Level 2 (Support plan):** 2+ dimensions drifting -> Opens guided support flow with top 3 personal tools (`"A few things have shifted this week. Here are three that have helped before."`).
-- **Level 3 (Urgent concern):** Explicit reporting of acute distress, self-harm, or panic -> Fixed W14 safety script via `brain/safety.py`. *Level 3 never fires from statistics alone.*
+- **Level 3 (Urgent concern):** Explicit reporting of acute distress, self-harm, or panic -> Fixed W14 safety script via `brain/rules/safety.py`. *Level 3 never fires from statistics alone.*
 
 ### 10.3 Support Toolkit Catalogue (Section 15.5)
 10 activities with scientific mechanisms cited from `shared/wellbeing_science.json`:
@@ -268,7 +268,7 @@ Access the application at `https://localhost:8443/app/`.
 ### 10.5 Team Cohesion & Privacy Safeguards (Section 15.7)
 - **Team Cohesion:** `evaluate_team_cohesion(crew_states)` computes voice talk-time shares and generates non-judgmental cohesion notes (maps to NASA Inadequate Teamwork risk).
 - **Crew Pulse Survey (FR-49, AC-22):** 2 weekly questions; results only unlock at team level once $\ge 3$ respondents participate, with names strictly anonymized.
-- **On-Device Private Journal (FR-47):** `data/journal.json` encrypted with AES via `brain/vault.py`. Note contents never travel over telemetry, digests, or network.
+- **On-Device Private Journal (FR-47):** `data/journal.json` encrypted with AES via `brain/core/vault.py`. Note contents never travel over telemetry, digests, or network.
 
 ### 10.6 REST API Endpoints (`server.py`)
 - `GET /api/wellbeing/{cid}`: Four-dimensional assessment, drifting dimensions, level, and wording.
@@ -295,19 +295,19 @@ Access the application at `https://localhost:8443/app/`.
 ### 11.1 Screen Backend Mapping
 | Screen | Backend Engine / Module | APIs Provided | Special States Managed |
 | :--- | :--- | :--- | :--- |
-| **Home (Screen 1)** | `brain/store.py`, `brain/ops.py` | `GET /api/assessment/{cid}`, `GET /api/aux/{cid}` | `calibrating` (`Calibrating (n of 7)`), link chip (`delayed`/`live`/`blackout`) |
-| **Indicator Detail (Screen 2)** | `brain/store.py` (`indicator_detail`) | `GET /api/indicator/{cid}/{metric}` | Low-confidence estimate flag (`is_estimate: True`, `label: SIM`, confidence $\le 0.35$) |
-| **Check-in Flow (Screen 3)** | `brain/clinic.py` | `POST /api/clinic/{cid}/checkin` | Camera unavailable fallback to `label: MANUAL`, resumable |
-| **Care: Triage (Screen 4)** | `brain/care.py` (`CareEngine`) | `GET /api/care/triage/questions`, `POST /api/care/triage/{cid}` | Red-flag symptoms trigger immediate jump to level 3 urgent card |
-| **Care: Protocol Runner (Screen 5)** | `brain/care.py` (`CareEngine`) | `POST /api/care/protocol/start`, `POST /api/care/protocol/{id}/step`, `POST /api/care/protocol/{id}/pause`, `POST /api/care/protocol/{id}/resume`, `POST /api/care/protocol/{id}/escalate`, `POST /api/care/protocol/{id}/complete` | States: `running`, `paused`, `escalated`, `completed`; timers and tick-box steps |
-| **Care: Log (Screen 6)** | `brain/care.py` (`CareEngine`) | `GET /api/care/log/{cid}` | Informative empty state when no prior clinical events logged |
-| **Trends (Screen 7)** | `brain/trends.py` (`TrendsEngine`) | `GET /api/trends/{cid}?days=7` | Sleep vs reaction time correlation view; `not_enough_data` flag if $< 3$ points |
-| **Plan (Screen 8)** | `brain/plan.py` (`PlanEngine`) | `GET /api/plan/{cid}`, `POST /api/plan/{cid}/snooze`, `POST /api/plan/{cid}/complete`, `POST /api/plan/{cid}/reminder` | Schedule templates (`transit_day_v1`), conflict detection (`has_conflicts: True`) |
-| **Wellbeing (Screen 9)** | `brain/wellbeing.py` | `GET /api/wellbeing/{cid}`, `POST /api/wellbeing/{cid}/session`, `GET /api/wellbeing/{cid}/journal` | Level 3 urgent concern triggers fixed safety script only |
-| **Crew & Cabin (Screen 10)** | `brain/store.py`, `brain/wellbeing.py` | `GET /api/state/{cid}`, `GET /api/wellbeing/team/cohesion` | Cabin alarm takeover (`flag_cabin`) |
-| **Ground (Screen 11)** | `brain/ground.py`, `brain/ops.py` | `GET /api/digest/{cid}`, `POST /api/digest/{cid}`, `GET /api/ground/{cid}` | `offline`, `queued`, `replied` packet states |
-| **Profile & Settings (Screen 12)** | `brain/profile.py` | `GET /api/profile/{cid}`, `PATCH /api/profile/{cid}`, `GET /api/profile/{cid}/export` | Profile preview, completeness meter |
-| **Onboarding (Screen 13)** | `brain/onboarding.py` | `GET /api/onboarding/{cid}`, `POST /api/onboarding/{cid}/step` | Checklist (consent, kit, voice, calibration); `resumable_step` tracking |
+| **Home (Screen 1)** | `brain/core/store.py`, `brain/mission/ops.py` | `GET /api/assessment/{cid}`, `GET /api/aux/{cid}` | `calibrating` (`Calibrating (n of 7)`), link chip (`delayed`/`live`/`blackout`) |
+| **Indicator Detail (Screen 2)** | `brain/core/store.py` (`indicator_detail`) | `GET /api/indicator/{cid}/{metric}` | Low-confidence estimate flag (`is_estimate: True`, `label: SIM`, confidence $\le 0.35$) |
+| **Check-in Flow (Screen 3)** | `brain/clinical/clinic.py` | `POST /api/clinic/{cid}/checkin` | Camera unavailable fallback to `label: MANUAL`, resumable |
+| **Care: Triage (Screen 4)** | `brain/clinical/care.py` (`CareEngine`) | `GET /api/care/triage/questions`, `POST /api/care/triage/{cid}` | Red-flag symptoms trigger immediate jump to level 3 urgent card |
+| **Care: Protocol Runner (Screen 5)** | `brain/clinical/care.py` (`CareEngine`) | `POST /api/care/protocol/start`, `POST /api/care/protocol/{id}/step`, `POST /api/care/protocol/{id}/pause`, `POST /api/care/protocol/{id}/resume`, `POST /api/care/protocol/{id}/escalate`, `POST /api/care/protocol/{id}/complete` | States: `running`, `paused`, `escalated`, `completed`; timers and tick-box steps |
+| **Care: Log (Screen 6)** | `brain/clinical/care.py` (`CareEngine`) | `GET /api/care/log/{cid}` | Informative empty state when no prior clinical events logged |
+| **Trends (Screen 7)** | `brain/rules/trends.py` (`TrendsEngine`) | `GET /api/trends/{cid}?days=7` | Sleep vs reaction time correlation view; `not_enough_data` flag if $< 3$ points |
+| **Plan (Screen 8)** | `brain/clinical/plan.py` (`PlanEngine`) | `GET /api/plan/{cid}`, `POST /api/plan/{cid}/snooze`, `POST /api/plan/{cid}/complete`, `POST /api/plan/{cid}/reminder` | Schedule templates (`transit_day_v1`), conflict detection (`has_conflicts: True`) |
+| **Wellbeing (Screen 9)** | `brain/crew/wellbeing.py` | `GET /api/wellbeing/{cid}`, `POST /api/wellbeing/{cid}/session`, `GET /api/wellbeing/{cid}/journal` | Level 3 urgent concern triggers fixed safety script only |
+| **Crew & Cabin (Screen 10)** | `brain/core/store.py`, `brain/crew/wellbeing.py` | `GET /api/state/{cid}`, `GET /api/wellbeing/team/cohesion` | Cabin alarm takeover (`flag_cabin`) |
+| **Ground (Screen 11)** | `brain/mission/ground.py`, `brain/mission/ops.py` | `GET /api/digest/{cid}`, `POST /api/digest/{cid}`, `GET /api/ground/{cid}` | `offline`, `queued`, `replied` packet states |
+| **Profile & Settings (Screen 12)** | `brain/core/profile.py` | `GET /api/profile/{cid}`, `PATCH /api/profile/{cid}`, `GET /api/profile/{cid}/export` | Profile preview, completeness meter |
+| **Onboarding (Screen 13)** | `brain/core/onboarding.py` | `GET /api/onboarding/{cid}`, `POST /api/onboarding/{cid}/step` | Checklist (consent, kit, voice, calibration); `resumable_step` tracking |
 
 ### 11.2 Verification Status
 - **Screens Test Suite:** 6 passed in `tests/test_screens.py` in **1.76s**.
@@ -326,12 +326,12 @@ Access the application at `https://localhost:8443/app/`.
 - **The Group Rule (15 Independence Groups):**
   - "If a measurement does not change a status, a recommendation or a reminder, we do not track it. The group column is the independence group used for the pattern rule: two indicators in the same group count as one signal."
   - Groups: `cardio`, `respiratory`, `metabolic`, `thermal`, `sleep`, `cognitive`, `mood`, `energy`, `social`, `voice`, `activity`, `nutrition`, `cabin`, `radiation`, `adherence`.
-  - Implemented in `brain/indicators.py`: `get_indicator_group()`, `group_signals()`, and `count_independent_signals()`.
+  - Implemented in `brain/rules/indicators.py`: `get_indicator_group()`, `group_signals()`, and `count_independent_signals()`.
 - **Layer 4 Pattern Across Signals (Section 19.2):**
   - "Two or more independent signal groups moving the wrong way inside one window raise a pattern flag (for example slower reactions, flatter mood and shorter sleep)."
   - Evaluated in `evaluate_pattern_layer()`, returning Level 2 "Act" pattern alert grouping all reasons into a single explanation per clinical fatigue controls (Section 19.5).
 - **Non-Reading Records Engine:**
-  - Implemented in `brain/indicators.py` and `brain/store.py`:
+  - Implemented in `brain/rules/indicators.py` and `brain/core/store.py`:
     - `symptoms` (zone, type, severity 0-10, onset, duration)
     - `protocol_runs` (steps done, outcome, duration)
     - `kit_usage` (item_id, dose, reason, timestamp)
@@ -360,7 +360,7 @@ Access the application at `https://localhost:8443/app/`.
 ## 13. Sections 18 & 19 Implementation: Clinical Pipeline, 5 Layers & Protocol Library
 
 ### 13.1 Overview & Requirements
-- **The 9-Stage Clinical Pipeline (`brain/pipeline.py`):**
+- **The 9-Stage Clinical Pipeline (`brain/core/pipeline.py`):**
   1. `Ingest`: Reads from any source, verifies authenticity, logs raw input. Rejects unknown sources with audit logging.
   2. `Validate`: Checks physical limits, rapid delta changes, and confidence. Flags implausible values requiring remeasurement (never silently drops).
   3. `Normalize`: Standardizes units (degF $\to$ C, kPa $\to$ mmHg), tags ISO timestamp, and assigns contract label.
@@ -371,12 +371,12 @@ Access the application at `https://localhost:8443/app/`.
   7. `Decide`: Triage logic matching protocols, active kit filter, recheck timers, priority digests. Unmatched symptoms generate generic card + escalate.
   8. `Present`: Modality dispatch (screen, voice, sound, orb) per Section 19.6 presentation matrix. Breaks through quiet hours ONLY for Level 3 and cabin alerts.
   9. `Learn`: Closed-loop outcome recording and bounded sensitivity tuning without loosening safe limits.
-- **Alert Lifecycle & Fatigue Controls (`brain/alerts.py`):**
+- **Alert Lifecycle & Fatigue Controls (`brain/clinical/alerts.py`):**
   - Manages all 8 states: `detected` $\to$ `presented` $\to$ `acknowledged` $\to$ `acting` $\to$ `rechecking` $\to$ `resolved` / `escalated` / `expired`.
   - Snooze controls: enforces reason, max 2 snoozes, **blocks snooze on Level 3 urgent alerts**.
   - Fatigue controls: cooldown per alert type, one alert per cause (grouped pattern alerts).
   - Explainability: "Why this?" plain-language generator citing readings, baseline delta, rule name, and NASA MRID citation.
-- **Protocol Library & Recommendation Cards (`brain/protocols.py`):**
+- **Protocol Library & Recommendation Cards (`brain/clinical/protocols.py`):**
   - Starter set of 10 clinical protocols with verified NASA MRID sources:
     1. `headache_tx` (NASA MRID `MEDB 1.2`, `MR010L`)
     2. `stress_low_mood_tx` (NASA MRID `MEDB 7.1`, `MEDB 7.2`)
@@ -404,7 +404,7 @@ Access the application at `https://localhost:8443/app/`.
 
 ## 14. Sections 20 & 21 Implementation: Reminders, Scheduling & Ground Handoff
 
-### 14.1 Section 20 Reminders & Scheduling Architecture (`brain/plan.py`)
+### 14.1 Section 20 Reminders & Scheduling Architecture (`brain/clinical/plan.py`)
 - **9 Reminder Types Handled:**
   1. `checkin` (routine daily health scan)
   2. `measurement` (scheduled BP, glucose, temperature)
@@ -426,7 +426,7 @@ Access the application at `https://localhost:8443/app/`.
 - **Automated Clinical Rechecks (`create_recheck_reminder`):**
   - Generates follow-up reminder linked to original protocol run, prompting remeasurement and logging outcome.
 
-### 14.2 Section 21 Ground Handoff Architecture (`brain/ground.py`)
+### 14.2 Section 21 Ground Handoff Architecture (`brain/mission/ground.py`)
 - **Text-Only Clinical Digests:**
   - Guaranteed privacy: video frames, raw voice recordings, and camera imagery are strictly excluded.
   - Strict text payloads containing telemetry summary, protocol actions, and clinical questions.

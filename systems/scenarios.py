@@ -181,7 +181,7 @@ class Scenarios:
                    crew_id, label)
         series: list[dict] = []
         self.storm = {"label": label, "series": series, "level": 0, "flux": 0.3, "event": ev}
-        from brain.radiation import flux_to_level, storm_dose_step
+        from brain.mission.radiation import flux_to_level, storm_dose_step
         th = self.store.thresholds
         # climb to S3 over 20 s, hold 10 s, decay over 20 s (one point per second)
         profile = [0.3 * (1500 / 0.3) ** (i / 20) for i in range(1, 21)] + [1500.0] * 10 + \

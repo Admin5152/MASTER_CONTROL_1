@@ -8,12 +8,12 @@ Verifies backend support for all 13 screens and special states:
 - Screen 8: Plan (today's reminders, schedule template, conflict detection, snooze)
 - Screen 13: Onboarding (first run checklist, consent, kit confirmation, voice enrolment, resumable state)
 """
-from brain.care import CareEngine, DEFAULT_PROTOCOLS
-from brain.plan import PlanEngine, SCHEDULE_TEMPLATES
-from brain.trends import TrendsEngine
-from brain.onboarding import OnboardingEngine
-from brain.store import Store
-from brain.profile import Profiles
+from brain.clinical.care import CareEngine, DEFAULT_PROTOCOLS
+from brain.clinical.plan import PlanEngine, SCHEDULE_TEMPLATES
+from brain.rules.trends import TrendsEngine
+from brain.core.onboarding import OnboardingEngine
+from brain.core.store import Store
+from brain.core.profile import Profiles
 
 
 def test_screen_2_indicator_detail_backend():

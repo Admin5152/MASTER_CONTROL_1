@@ -1,7 +1,7 @@
 """Suit integrity (SIM): a leak is flagged from falling pressure, in the right region, and clears when sealed."""
 import time
 
-from brain.suit import BREACH_PSI, NOMINAL_PSI, Suits, region_from_text
+from brain.mission.suit import BREACH_PSI, NOMINAL_PSI, Suits, region_from_text
 
 
 def test_stowed_in_the_cabin_and_steady_on_an_eva():

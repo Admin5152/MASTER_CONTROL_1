@@ -64,13 +64,13 @@ data/, models/, certs/   local only (git-ignored): the record, caches, usage met
 
 | Feature | Front end | Back end |
 |---|---|---|
-| Talking to Sentinel | `js/main.js` (handleCommand, say, captions), `js/voice/voice.js` | `brain/llm.py`, `brain/speech.py`, routes `/api/chat/stream`, `/api/stt`, `/api/tts` |
-| Screen changes and pointing | `js/core/director.js` (every command), `js/core/intents.js` (local phrases) | `brain/llm.py` `validate_commands` (same whitelist as `js/core/commands.js`) |
+| Talking to Sentinel | `js/main.js` (handleCommand, say, captions), `js/voice/voice.js` | `brain/ai/llm.py`, `brain/ai/speech.py`, routes `/api/chat/stream`, `/api/stt`, `/api/tts` |
+| Screen changes and pointing | `js/core/director.js` (every command), `js/core/intents.js` (local phrases) | `brain/ai/llm.py` `validate_commands` (same whitelist as `js/core/commands.js`) |
 | Body, X-ray, scan, organ view | `js/world/body3d.js`, `js/world/fit.js` (anatomy fitted inside each body at load), `js/interface/bodypanel.js`, `js/interface/body.js` (zone status, pointing regions), `js/experience/missionmed.js` (organ) | readings via `/api/state`, `/api/aux`; how to measure / why it matters with MRIDs in `shared/facts.json` |
-| Symptom entry ("Where does it hurt?") | `js/systems/symptom.js`, `js/systems/symptomlog.js` | `manual.symptom_log` in the contract, kit match in `brain/decision.py` |
-| Readings, badges, range bars | `js/interface/readings.js`, `js/interface/ranges.js`, `js/interface/tiles.js` | `brain/thresholds.py`, `brain/drift.py` |
-| Reaction test | `js/systems/cognitive.js`, `js/systems/pvt.js` | baseline in `brain/store.py` |
-| Exam, ground, measures | `js/experience/missionmed.js` | `brain/ground.py`, `/api/ground`, `/api/log` |
+| Symptom entry ("Where does it hurt?") | `js/systems/symptom.js`, `js/systems/symptomlog.js` | `manual.symptom_log` in the contract, kit match in `brain/rules/decision.py` |
+| Readings, badges, range bars | `js/interface/readings.js`, `js/interface/ranges.js`, `js/interface/tiles.js` | `brain/rules/thresholds.py`, `brain/rules/drift.py` |
+| Reaction test | `js/systems/cognitive.js`, `js/systems/pvt.js` | baseline in `brain/core/store.py` |
+| Exam, ground, measures | `js/experience/missionmed.js` | `brain/mission/ground.py`, `/api/ground`, `/api/log` |
 | Space race | `js/experience/race/` | `/api/log` (session fields) |
 
 ## Run it
@@ -99,13 +99,13 @@ Add a test with every change to pure logic: Python in `tests/test_*.py` (use the
 
 ## The shared state contract
 
-One JSON object per crew member, defined in `shared/contract.json` (a frozen block plus listed additions). `POST /api/state/{id}/patch` deep-merges a partial object, validates it, re-runs drift and decisions, and returns the new state. **Unknown fields are rejected with 422**, so nobody invents private fields. To add a field: add it to `shared/contract.json` (and its enum if it has one), to every crew in `shared/mock_data.json`, document it under "Contract additions" in the README, and add a test. Numbers that are not state (game sessions, test details) go to the history through `POST /api/log/{id}` with a field listed in `brain/store.py` `LOG_FIELDS`.
+One JSON object per crew member, defined in `shared/contract.json` (a frozen block plus listed additions). `POST /api/state/{id}/patch` deep-merges a partial object, validates it, re-runs drift and decisions, and returns the new state. **Unknown fields are rejected with 422**, so nobody invents private fields. To add a field: add it to `shared/contract.json` (and its enum if it has one), to every crew in `shared/mock_data.json`, document it under "Contract additions" in the README, and add a test. Numbers that are not state (game sessions, test details) go to the history through `POST /api/log/{id}` with a field listed in `brain/core/store.py` `LOG_FIELDS`.
 
 ## Adding a Director command
 
-1. Add it to `validateCommands` in `app/js/core/commands.js` and to `validate_commands` in `brain/llm.py` (same rules).
+1. Add it to `validateCommands` in `app/js/core/commands.js` and to `validate_commands` in `brain/ai/llm.py` (same rules).
 2. Implement it in `step()` in `app/js/core/director.js` (return a promise that resolves when its animation ends).
-3. Add phrases to `app/js/core/intents.js` and describe it in `SYSTEM_PROMPT` in `brain/llm.py`.
+3. Add phrases to `app/js/core/intents.js` and describe it in `SYSTEM_PROMPT` in `brain/ai/llm.py`.
 4. Add tests on both sides.
 
 ## Workflow

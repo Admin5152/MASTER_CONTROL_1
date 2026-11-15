@@ -2,7 +2,8 @@
 import json
 from pathlib import Path
 
-from brain import llm, safety
+from brain.ai import llm
+from brain.rules import safety
 
 CASES = json.loads((Path(__file__).parent / "fixtures" / "safety_cases.json").read_text(encoding="utf-8"))
 

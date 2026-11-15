@@ -1,7 +1,7 @@
 # Person 3 Change Log — Face, AI Model & Voice
 
 **Module owner:** Person 3  
-**Files in scope:** `brain/speech.py`, `brain/whisper_worker.py`, `brain/llm.py`,
+**Files in scope:** `brain/ai/speech.py`, `brain/ai/whisper_worker.py`, `brain/ai/llm.py`,
 `systems/speaker.py`, `app/js/systems/face.js`, `app/js/core/intents.js`,
 `app/js/interface/orb.js`
 
@@ -18,9 +18,9 @@
 | FACE-3 | rPPG heart rate from forehead ROI, confidence 0–1, label LIVE | ✅ Working | `app/js/vision/vision.js` `samplePulse()` / `estimate()` + `app/js/systems/face.js` `estimatePulse()` | POS algorithm in `rppg.js`. `quality < 0.35` suppresses reading. Emits `reading.added` + `vision:hr`. |
 | FACE-4 | Mood opt-in: valence/arousal from blendshapes only if profile opt-in set | ✅ Working | `app/js/systems/face.js` `pushBlendshapes()` / `estimateMood()` | `optInMood` flag; respects `setOptInMood(false)` to suppress. |
 | FACE-5 | VAD + wake phrase "hey Sentinel" + intent matching | ✅ Working | `app/js/core/intents.js` `matchIntent()` | Wake word detection lives in `app/js/voice/voice.js` (teammate file). Intent matching fully implemented here. |
-| FACE-6 | Groq Whisper STT + local faster-whisper fallback | ✅ Working | `brain/speech.py` `stt()` / `stt_groq()` / `stt_local()` + `brain/whisper_worker.py` `main()` | Groq first; subprocess fallback on failure. 16 kHz resampling in worker. |
-| FACE-7 | Brain LLM card rephraser: ≤ 2 sentences, no invented numbers | ✅ Working | `brain/llm.py` `rephrase_card()` + `card_numbers_ok()` | `CARD_SYSTEM_PROMPT`, numeric guard, `rules_rephrase_card()` scripted fallback. |
-| FACE-8 | TTS chain: ElevenLabs → Kokoro → browser fallback, listen paused while speaking | ✅ Working | `brain/speech.py` `tts()` / `tts_eleven()` / `tts_kokoro()` | Disk cache, budget cap (9000 chars default). Browser fallback noted for JS caller. |
+| FACE-6 | Groq Whisper STT + local faster-whisper fallback | ✅ Working | `brain/ai/speech.py` `stt()` / `stt_groq()` / `stt_local()` + `brain/ai/whisper_worker.py` `main()` | Groq first; subprocess fallback on failure. 16 kHz resampling in worker. |
+| FACE-7 | Brain LLM card rephraser: ≤ 2 sentences, no invented numbers | ✅ Working | `brain/ai/llm.py` `rephrase_card()` + `card_numbers_ok()` | `CARD_SYSTEM_PROMPT`, numeric guard, `rules_rephrase_card()` scripted fallback. |
+| FACE-8 | TTS chain: ElevenLabs → Kokoro → browser fallback, listen paused while speaking | ✅ Working | `brain/ai/speech.py` `tts()` / `tts_eleven()` / `tts_kokoro()` | Disk cache, budget cap (9000 chars default). Browser fallback noted for JS caller. |
 | FACE-9 | Speaker ID with Resemblyzer, graceful fallback when unavailable | ✅ Working | `systems/speaker.py` `identify()` / `available()` / `enrol()` | Returns `{crew_id: null, reason: "..."}` when Resemblyzer not installed or no voiceprints. |
 
 | Test | Requirement | Status | Note |
@@ -87,9 +87,9 @@
 | `app/js/systems/face.js` | `estimateBreathingRate()` | Created: zero-crossing on smoothed chest-Y signal, 8–32 bpm gate | FACE-2 breathing rate | FACE-2 | — |
 | `app/js/systems/face.js` | `FaceSystem` class | Created: pulse tracker wrapper, pose/blendshape buffers, `emitReadings()` | FACE-1/2/3/4 | FACE-1–4 | SF1,SF5,SF6 |
 | `app/js/core/intents.js` | `matchIntent()` `checkVerb` | Added `has(t,"headache")` and `/ (have|got) (a|an)? /` to symptom clause | SF3: "I have a headache" was not matching | FACE-5 | SF3 |
-| `brain/llm.py` | `rephrase_card()` | Added: CARD_SYSTEM_PROMPT, numeric guard, LLM call, scripted fallback | FACE-7, FACE-9 card rephraser | FACE-7, FACE-9 | SF4, SF7 |
-| `brain/llm.py` | `rules_rephrase_card()` | Added: scripted level 1/2/3 fallback, ≤ 2 sentences, no invented facts | FACE-9 offline fallback | FACE-9 | SF4 |
-| `brain/llm.py` | `card_numbers_ok()` | Added: numeric guard for card rephrase (companion to `numbers_ok`) | FACE-7 no hallucinated numbers | FACE-7 | SF7 |
+| `brain/ai/llm.py` | `rephrase_card()` | Added: CARD_SYSTEM_PROMPT, numeric guard, LLM call, scripted fallback | FACE-7, FACE-9 card rephraser | FACE-7, FACE-9 | SF4, SF7 |
+| `brain/ai/llm.py` | `rules_rephrase_card()` | Added: scripted level 1/2/3 fallback, ≤ 2 sentences, no invented facts | FACE-9 offline fallback | FACE-9 | SF4 |
+| `brain/ai/llm.py` | `card_numbers_ok()` | Added: numeric guard for card rephrase (companion to `numbers_ok`) | FACE-7 no hallucinated numbers | FACE-7 | SF7 |
 | `docs/model_card.md` | (new file) | Created formal model card | Spec requirement | — | — |
 
 **Rule 2 violations in this pass (documented above):** `vision.js`, `voice.js`, `server.py`
@@ -159,9 +159,9 @@ Open the app → camera scan modal → allow camera → face the webcam. You sho
 
 > **STATUS: COMPLETE** (implemented in baseline pass, verified)
 >
-> TTS chain (FACE-8): ElevenLabs → Kokoro → (browser Web Speech is JS-side fallback noted for caller). Disk cache, 9000-char ElevenLabs budget. `brain/speech.py` `tts()`.
+> TTS chain (FACE-8): ElevenLabs → Kokoro → (browser Web Speech is JS-side fallback noted for caller). Disk cache, 9000-char ElevenLabs budget. `brain/ai/speech.py` `tts()`.
 >
-> Card rephraser (FACE-7, FACE-9): `rephrase_card()` in `brain/llm.py`. Numeric guard prevents hallucinated numbers. `rules_rephrase_card()` scripted offline fallback. SF4 ✅ SF7 ✅.
+> Card rephraser (FACE-7, FACE-9): `rephrase_card()` in `brain/ai/llm.py`. Numeric guard prevents hallucinated numbers. `rules_rephrase_card()` scripted offline fallback. SF4 ✅ SF7 ✅.
 >
 > No API keys hardcoded — all via `os.getenv()`. ✅
 >
@@ -230,10 +230,10 @@ Other findings from the diagnosis:
 
 | File | Function | What changed | Why | Req |
 |---|---|---|---|---|
-| `brain/llm.py` | `_get_hsemotion()` | Loads once; prints `[sentinel face] HSEmotion model loaded from <path> in N s` or `HSEmotion model NOT loaded: <reason>`; a failed load raises `FaceModelUnavailable(reason)` and is retried at most every 30 s. Prefers `data/models/enet_b0_8_va_mtl.onnx`, then `~/.hsemotion/`, then the library's download. | Load once at startup, log clearly, work offline | FACE-3 |
-| `brain/llm.py` | `warm_hsemotion()` | No longer swallows errors; logs the warm-up result | A silent failure hid the real state | FACE-3 |
-| `brain/llm.py` | `hsemotion_status()` (new), `FaceModelUnavailable` (new) | Status `{loaded, error, path}` for `/api/health`; typed error for the endpoint | So "model unavailable" is only said when true | FACE-3 |
-| `brain/llm.py` | `predict_face_emotion()`, `FACE_EMOTIONS` | Returns `scores` for all eight emotions; converts OpenCV BGR to the RGB the model expects. Nothing is written to disk. | Eight bars; correct colour order | FACE-3 |
+| `brain/ai/llm.py` | `_get_hsemotion()` | Loads once; prints `[sentinel face] HSEmotion model loaded from <path> in N s` or `HSEmotion model NOT loaded: <reason>`; a failed load raises `FaceModelUnavailable(reason)` and is retried at most every 30 s. Prefers `data/models/enet_b0_8_va_mtl.onnx`, then `~/.hsemotion/`, then the library's download. | Load once at startup, log clearly, work offline | FACE-3 |
+| `brain/ai/llm.py` | `warm_hsemotion()` | No longer swallows errors; logs the warm-up result | A silent failure hid the real state | FACE-3 |
+| `brain/ai/llm.py` | `hsemotion_status()` (new), `FaceModelUnavailable` (new) | Status `{loaded, error, path}` for `/api/health`; typed error for the endpoint | So "model unavailable" is only said when true | FACE-3 |
+| `brain/ai/llm.py` | `predict_face_emotion()`, `FACE_EMOTIONS` | Returns `scores` for all eight emotions; converts OpenCV BGR to the RGB the model expects. Nothing is written to disk. | Eight bars; correct colour order | FACE-3 |
 | `app/js/systems/face.js` | `EMOTIONS`, `faceCropBox()`, `topEmotion()` (new) | Emotion list in model order; padded square face crop from landmarks, clamped to the frame; top emotion | Crop sent to the model; panel rows | FACE-3 |
 | `app/js/systems/face.js` | `EmotionWindow` (new) | Rolling mean over the last 5 replies; `ready` only after 3 | Bars do not flicker; one frame never raises a flag | FACE-3 |
 | `app/js/systems/face.js` | `EMOTION_NOTES` (new) | The status lines: "no face detected", "expression model unavailable", "camera mood analysis is off for this profile", "expression service not reachable", "reading…", "camera off" | Agreed wording in one place | FACE-3, FACE-4 |

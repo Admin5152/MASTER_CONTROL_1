@@ -20,9 +20,9 @@ Covers:
    - Same problem, different plan (severe, air, sleep, mood)
 """
 import pytest
-from brain import environment as envmod
-from brain.clinic import Clinic, CLINICAL_MODES, DAY_BLOCKS
-from brain.ops import Ops
+from brain.mission import environment as envmod
+from brain.clinical.clinic import Clinic, CLINICAL_MODES, DAY_BLOCKS
+from brain.mission.ops import Ops
 
 
 def test_section_12_1_five_clinical_modes_defined():

@@ -1,7 +1,7 @@
 """Slipstream multiplayer rooms."""
 import pytest
 
-from brain.race_rooms import PLAYER_TTL_S, RaceRooms
+from brain.crew.race_rooms import PLAYER_TTL_S, RaceRooms
 
 
 class Clock:

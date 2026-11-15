@@ -1,5 +1,5 @@
 """Store-and-forward to ground (SIM transport) and the new session log fields."""
-from brain.ground import Ground
+from brain.mission.ground import Ground
 
 
 def test_packet_moves_from_queued_to_awaiting_reply():

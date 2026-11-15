@@ -38,7 +38,7 @@ def test_slow_reaction_raises_head_drift(store):
 
 
 def test_first_three_runs_set_reaction_baseline():
-    from brain.store import Store
+    from brain.core.store import Store
     st = Store(persist=False, fresh=True)
     st.internal["james"]["reaction_runs"] = 0  # a new crew member with no baseline yet
     for ms in (300, 340, 320):

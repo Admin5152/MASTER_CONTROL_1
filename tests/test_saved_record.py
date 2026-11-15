@@ -8,15 +8,15 @@ from __future__ import annotations
 
 import pytest
 
-from brain.contract import validate_full
+from brain.core.contract import validate_full
 
 
 @pytest.fixture()
 def disk(tmp_path, monkeypatch):
     """A Store that really writes to disk, in a temp folder, with its own key."""
     from cryptography.fernet import Fernet
-    import brain.store as store_mod
-    import brain.vault as vault
+    import brain.core.store as store_mod
+    import brain.core.vault as vault
     monkeypatch.setenv("SENTINEL_DATA_KEY", Fernet.generate_key().decode())
     monkeypatch.setattr(vault, "_fernet", None)
     monkeypatch.setattr(store_mod, "DATA", tmp_path)
@@ -164,7 +164,7 @@ def test_a_protocol_run_carries_its_alert_through_acting_to_resolved_or_escalate
 
 
 def test_an_unanswered_alert_is_presented_again_then_expires_and_alerts_the_buddy():
-    from brain.alerts import AlertManager
+    from brain.clinical.alerts import AlertManager
     m = AlertManager()
     a = m.create_alert("james", "flag_ground:heart", level=3, title="Reading past the alert line", reason="x")
     m.present_alert(a["alert_id"])
@@ -210,7 +210,7 @@ def test_ticked_and_snoozed_template_reminders_keep_their_title(client):
 
 
 def test_every_body_area_gets_steps_and_can_escalate(client):
-    from brain.care import DEFAULT_PROTOCOLS
+    from brain.clinical.care import DEFAULT_PROTOCOLS
     cases = {"hand or wrist pain": ("bones", "muscle_joint_tx"), "numb or tingling fingers": ("bones", "muscle_joint_tx"), "swollen foot": ("bones", "muscle_joint_tx"),
              "knee or ankle pain": ("bones", "muscle_joint_tx"), "back pain": ("bones", "muscle_joint_tx"), "neck pain": ("bones", "muscle_joint_tx"),
              "chest tightness": ("chest", "chest_discomfort_tx"), "cough": ("lungs", "airway_cold_tx"), "sore throat": ("lungs", "airway_cold_tx"), "ear pain": ("lungs", "airway_cold_tx"),
@@ -312,7 +312,7 @@ def test_the_crew_card_shares_radiation_and_help_state_but_no_health_readings(cl
 
 
 def test_seeded_demo_profiles_fill_in_until_the_person_saves_or_deletes(monkeypatch):
-    from brain.profile import Profiles
+    from brain.core.profile import Profiles
     monkeypatch.delenv("SENTINEL_NO_SEED_PROFILES", raising=False)
     p = Profiles(persist=False)
     a = p.get("amara")
@@ -324,7 +324,7 @@ def test_seeded_demo_profiles_fill_in_until_the_person_saves_or_deletes(monkeypa
 
 
 def test_sentinel_can_make_conversation_without_a_language_model():
-    from brain.llm import rules_reply, small_talk, OFFLINE_GENERAL
+    from brain.ai.llm import rules_reply, small_talk, OFFLINE_GENERAL
     st = {"display_name": "Eliah"}
     for said in ("hello", "how are you", "thanks", "tell me a joke", "I'm bored", "I miss my family", "can we talk", "good night"):
         line, cmds = rules_reply(st, said)
@@ -403,7 +403,7 @@ def test_suit_telemetry_drives_the_suit_state_and_tells_the_crew(client):
 
 
 def test_the_assistant_can_say_what_is_connected():
-    from brain.llm import rules_reply
+    from brain.ai.llm import rules_reply
     line, cmds = rules_reply({"display_name": "Eliah", "devices": "Connected now: SpaceWear watch: heart rate 74, spo2 97."}, "which devices are connected")
     assert "SpaceWear watch" in line and cmds == [{"cmd": "open_screen", "name": "devices"}]
     assert "camera" in rules_reply({"display_name": "Eliah"}, "what sensors are working")[0].lower()

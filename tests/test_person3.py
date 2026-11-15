@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from brain import llm
+from brain.ai import llm
 from server import app
 
 client = TestClient(app)

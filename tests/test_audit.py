@@ -1,5 +1,5 @@
 """Audit (INT-3, NFR-6, SI6): every event appears; actions are recorded; nothing sensitive is written."""
-from brain.audit import Audit
+from brain.core.audit import Audit
 
 
 def test_events_are_recorded_newest_first_and_filterable():

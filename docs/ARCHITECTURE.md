@@ -30,7 +30,7 @@
 
 ## The Director (command bus)
 
-Every screen change and body move goes through `director.run(commands)` (`app/js/core/director.js`). Commands run in order; each resolves when its animation ends; a new run cancels the current one cleanly. The whitelist (`app/js/core/commands.js`, mirrored in `brain/llm.py`):
+Every screen change and body move goes through `director.run(commands)` (`app/js/core/director.js`). Commands run in order; each resolves when its animation ends; a new run cancels the current one cleanly. The whitelist (`app/js/core/commands.js`, mirrored in `brain/ai/llm.py`):
 
 `point_to {zone}` · `check_zone {zones}` · `start_scan` · `open_screen {name}` · `show_chart {metric}` · `rotate_body {view|angle}` · `zoom_body {zone|reset}` · `xray {on, style?}` · `isolate {part}` · `show_radiation {on}` · `close`
 
@@ -51,7 +51,7 @@ Three sources feed it: the **rules engine** (when `action.zone` changes, Sentine
 
 ## Rules engine
 
-`brain/store.py` holds state per crew member (from `shared/mock_data.json`, persisted to `data/state.json`) and an append-only history. On every patch: `drift.py` computes change from each person's baseline per metric (thresholds in `shared/thresholds.json`, all `demo_placeholder` percentages), `thresholds.py` checks absolute limits with their `kind` and `source`, and `decision.py` sets `action` by an ordered list of rules (cabin alert, radiation storm, alert vitals, symptom with a kit match, stress, fatigue or low mood, mild drift, none). The LLM never touches `action`.
+`brain/core/store.py` holds state per crew member (from `shared/mock_data.json`, persisted to `data/state.json`) and an append-only history. On every patch: `drift.py` computes change from each person's baseline per metric (thresholds in `shared/thresholds.json`, all `demo_placeholder` percentages), `thresholds.py` checks absolute limits with their `kind` and `source`, and `decision.py` sets `action` by an ordered list of rules (cabin alert, radiation storm, alert vitals, symptom with a kit match, stress, fatigue or low mood, mild drift, none). The LLM never touches `action`.
 
 ## LLM, TTS and STT chains
 

@@ -198,7 +198,7 @@ export function wearIntent(text, { open = false } = {}) {
   return { intent: `wear_${c.action}`, action: "control_wearable", target: c.part || "wearable", commands: [c] };
 }
 
-// W14 urgent wellbeing concern: the same DRAFT list as brain/safety.py (clinician review required before real use).
+// W14 urgent wellbeing concern: the same DRAFT list as brain/rules/safety.py (clinician review required before real use).
 // Checked first, before any other intent, and it never reaches the language model.
 const CONCERN = {
   self_harm: [/\b(kill|hurt|harm|cut) (myself|my self)\b/, /\bend (my|it all|my life)\b/, /\b(want|wanna|going) to die\b/, /\bdon t want to (live|be alive|be here|wake up)\b/, /\bdo not want to (live|be alive|be here)\b/, /\bsuicid/, /\bbetter off dead\b/, /\bno reason to live\b/, /\btake my (own )?life\b/, /\bnot worth living\b/],

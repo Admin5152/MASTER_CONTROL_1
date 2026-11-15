@@ -4,7 +4,7 @@ and NASA MRID Dataset Grounding (Single Source of Truth).
 import pytest
 from fastapi.testclient import TestClient
 
-from brain.indicators import (
+from brain.rules.indicators import (
     INDEPENDENCE_GROUPS,
     NON_READING_SCHEMAS,
     TRACKED_INDICATORS,

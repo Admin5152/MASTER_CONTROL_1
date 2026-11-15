@@ -1,6 +1,6 @@
 """Mission operations: environment and link from the profile, a blackout holds the digest, the priority rule."""
-from brain.ground import Ground
-from brain.ops import Ops
+from brain.mission.ground import Ground
+from brain.mission.ops import Ops
 
 
 def state(**kw):
