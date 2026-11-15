@@ -59,7 +59,10 @@ void main() {
   float passed = step(uScan, vY) * step(vY, uTop);
   float show = max(uAmt, passed) * vis * uFade;
   if (show < 0.004) discard;
-  float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), p);
+  // clamped and NaN-safe: a zero-length normal (generated lung mesh) or a dot a hair over 1 gave NaN, and the
+  // glow pass spread that one pixel into a black screen (the flash when switching body parts)
+  vec3 nN = dot(vN, vN) > 1e-12 ? normalize(vN) : vec3(0.0, 0.0, 1.0);
+  float f = pow(clamp(1.0 - abs(dot(nN, normalize(vV))), 0.0, 1.0), p);
   float a = clamp(b + k * f, 0.0, 1.0) * show;
   gl_FragColor = vec4(c * (0.55 + 0.9 * f) * uGain, a);
 }`;
@@ -217,7 +220,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, onB
   const breachMat = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: breachU,   // light added on top: it reads on both bodies and in X-ray
     vertexShader: "attribute float aB; varying float vB; varying vec3 vN; varying vec3 vV; void main(){ vB = aB; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }",
-    fragmentShader: "uniform float uT; uniform vec3 uC; uniform float uOp; varying float vB; varying vec3 vN; varying vec3 vV; void main(){ if (vB < 0.02) discard; float f = pow(1.0 - abs(dot(vN, vV)), 1.4); float pulse = 0.62 + 0.38 * sin(uT * 5.0); gl_FragColor = vec4(uC * (0.95 + 0.8 * f), vB * (0.62 + 0.38 * f) * pulse * uOp); }",
+    fragmentShader: "uniform float uT; uniform vec3 uC; uniform float uOp; varying float vB; varying vec3 vN; varying vec3 vV; void main(){ if (vB < 0.02) discard; float f = pow(clamp(1.0 - abs(dot(vN, vV)), 0.0, 1.0), 1.4); float pulse = 0.62 + 0.38 * sin(uT * 5.0); gl_FragColor = vec4(uC * (0.95 + 0.8 * f), vB * (0.62 + 0.38 * f) * pulse * uOp); }",
   });
   const breachShell = new THREE.Mesh(clay.geometry, breachMat);
   breachShell.scale.setScalar(1.016); breachShell.renderOrder = 26; breachShell.visible = false;
@@ -272,7 +275,7 @@ export async function createBody(world, host, { tablet = false, onZoneClick, onB
         .replace("#include <worldpos_vertex>", "#include <worldpos_vertex>\nvWY2 = (modelMatrix * vec4(transformed, 1.0)).y;");
       sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying float vWY2; uniform vec3 uRim; uniform float uTopY; uniform float uSpan; uniform vec3 uVessel; uniform float uVesselAmt;")
         .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb = mix(diffuseColor.rgb, uVessel, uVesselAmt * smoothstep(uTopY - uSpan * 0.42, uTopY - uSpan * 0.12, vWY2));")
-        .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  float rimF = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 2.6);\n  totalEmissiveRadiance += uRim * rimF;");
+        .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  float rimF = pow(clamp(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 0.0, 1.0), 2.6);\n  totalEmissiveRadiance += uRim * rimF;");
     };
     nodes[n].rm = rm;
   }
