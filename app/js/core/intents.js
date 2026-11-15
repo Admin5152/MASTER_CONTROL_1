@@ -106,7 +106,7 @@ export function findZones(text) {
  *  bare: also accept the name on its own (used while the "Who are you?" chooser is open). Returns a crew_id or null. */
 // how speech recognition tends to spell each crew name (Whisper writes "Elijah" for Eliah, "Gabriel" for Gadiel)
 const NAME_ALIASES = {
-  eliah: ["elijah", "elia", "eliya", "eliyah", "ilya", "elya", "ilia", "eleah", "elyah", "aliyah", "eliahs"],
+  eliah: ["elijah", "elia", "eliya", "eliyah", "ilya", "elya", "ilia", "eleah", "elyah", "aliyah", "eliahs", "airleah", "airlia", "aerlia", "erleah", "erlia", "arleah", "airlie", "ailia", "aleah", "earlier"],
   annie: ["anne", "ann", "anny", "ani", "annies"],
   seth: ["sett", "seths"],
   sad: ["saad", "sahd", "saud", "sa'ad"],

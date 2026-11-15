@@ -207,3 +207,9 @@ def test_elevenlabs_meter_starts_fresh_for_a_new_key(tmp_path, monkeypatch):
     speech._add_usage(120)
     assert speech.usage()["eleven_chars"] == 120
     assert "new-key" not in (tmp_path / "tts_usage.json").read_text()   # only a fingerprint is stored
+
+
+def test_eliah_is_spoken_airleah_but_written_eliah():
+    from brain.speech import say_as
+    assert say_as("Hello Eliah, I'm Sentinel.") == "Hello Airleah, I'm Sentinel."
+    assert say_as("Ask Eliahs crew") == "Ask Eliahs crew"     # only the whole name

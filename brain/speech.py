@@ -46,9 +46,20 @@ ELEVEN_MODEL = "eleven_flash_v2_5"
 MAX_TTS_CHARS = 400
 
 
+# how names are said aloud (the screen keeps the real spelling): "Eliah" is "AIR-lee-ah"
+PRONOUNCE = {"Eliah": "Airleah"}
+
+
+def say_as(text: str) -> str:
+    """The text as it should be spoken: crew names respelled the way they are pronounced."""
+    for name, spoken in PRONOUNCE.items():
+        text = re.sub(r"\b" + re.escape(name) + r"\b", spoken, text, flags=re.IGNORECASE)
+    return text
+
+
 def _norm_text(text: str) -> str:
     from brain.llm import normalize  # local import: llm imports nothing from here
-    t = normalize(text or "")
+    t = say_as(normalize(text or ""))
     t = re.sub(r"\s+", " ", t).strip()
     return t[:MAX_TTS_CHARS]
 
