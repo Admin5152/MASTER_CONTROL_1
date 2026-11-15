@@ -46,8 +46,8 @@ ELEVEN_MODEL = "eleven_flash_v2_5"
 MAX_TTS_CHARS = 400
 
 
-# how names are said aloud (the screen keeps the real spelling): "Eliah" is "AIR-lee-ah"
-PRONOUNCE = {"Eliah": "Airleah"}
+# how names are said aloud (the screen keeps the real spelling): "Eliah" is said "Aleah"
+PRONOUNCE = {"Eliah": "Aleah"}
 
 
 def say_as(text: str) -> str:
@@ -109,7 +109,9 @@ VOCABULARY_HINT = (
     "race, greenhouse, hardware, sentinel skin, crew, wellbeing, cabin, mission, body, "
     "heart rate, pulse, breathing rate, spo2, blood pressure, glucose, temperature, sleep, mood, "
     "head, eyes, heart, lungs, chest, stomach, gut, bones, muscles, spine, skull, ribcage, pelvis, "
-    "rotate, zoom, xray, isolate, scan, check, triage, headache, sore, hurts, tight"
+    "rotate, zoom, xray, isolate, scan, check, triage, headache, sore, hurts, tight, "
+    "Mars, Moon, Earth, Jupiter, Saturn, ISS, space station, NASA, Artemis, Apollo, orbit, astronaut, spacewalk, EVA, "
+    "spacesuit, microgravity, oxygen, carbon dioxide, solar storm, light delay, rocket, launch, wait, hold on, go on"
 )
 
 

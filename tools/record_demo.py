@@ -20,7 +20,7 @@ HOOK = """(() => {
   const st = AudioBufferSourceNode.prototype.start;
   AudioBufferSourceNode.prototype.start = function (...a) {
     const buf = this.buffer;
-    if (buf && buf.duration > 0.3 && window.__clip) {
+    if (buf && buf.duration > 0.3 && !this.loop && window.__clip) {   // voice clips only, not the looping ambient bed
       const d = buf.getChannelData(0), pcm = new Int16Array(d.length);
       for (let i = 0; i < d.length; i++) pcm[i] = Math.max(-1, Math.min(1, d[i])) * 32767;
       let bin = ""; const u8 = new Uint8Array(pcm.buffer);

@@ -4,6 +4,7 @@ import { emit, on } from "./core/bus.js";
 import { createDirector } from "./core/director.js";
 import { crewFromSpeech, matchIntent, wellbeingConcern } from "./core/intents.js";
 import { audioContext, cue, setMuted, isMuted } from "./core/sound.js";
+import { setAmbient, duckAmbient, asideAmbient, refreshAmbient } from "./core/ambient.js";
 import { createStages } from "./core/stages.js";
 import { patch, pollOnce, setCrew, startPolling, view } from "./core/state.js";
 import * as body from "./interface/body.js";
@@ -101,6 +102,9 @@ async function boot() {
     setTimeout(ready, 900);
   };
   const go = () => { introRun = intro.run({ onForm: form, onDone: () => {} }); };
+  setAmbient("start");
+  const firstTouch = () => { audioContext(); for (const ev of ["pointerdown", "keydown"]) document.removeEventListener(ev, firstTouch, true); };
+  for (const ev of ["pointerdown", "keydown"]) document.addEventListener(ev, firstTouch, true);
   if (window.gsap) go(); else window.addEventListener("load", go, { once: true });
   // a tap anywhere (except on the greeting) skips the intro
   $("start-screen").addEventListener("click", (e) => {
@@ -153,6 +157,7 @@ async function start() {
   if (g && !matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise((r) => g.to("#start-screen", { opacity: 0, duration: 0.3, onComplete: r }));
   $("start-screen").hidden = true;
   $("app").hidden = false;
+  setAmbient("app");
   // "Who's here?" first, at once: it covers the screen, so the app builds behind it instead of making Begin feel slow
   appReady = (async () => {
     await mountApp();
@@ -698,7 +703,7 @@ function wireControls() {
   // full screen: the button, F, or by voice; the icon follows the real state (Esc and swipe-down exit too)
   $("btn-fullscreen").addEventListener("click", () => toggleFullscreen());
   document.addEventListener("fullscreenchange", syncFullscreen); document.addEventListener("webkitfullscreenchange", syncFullscreen);
-  $("btn-mute").addEventListener("click", (e) => { const m = !isMuted(); setMuted(m); e.currentTarget.setAttribute("aria-pressed", String(m)); });
+  $("btn-mute").addEventListener("click", (e) => { const m = !isMuted(); setMuted(m); refreshAmbient(); e.currentTarget.setAttribute("aria-pressed", String(m)); });
   $("sb-crew-name").addEventListener("click", () => director.run([{ cmd: "open_screen", name: "crew" }]));
   window.addEventListener("keydown", (e) => {
     if (e.target.closest?.("input, textarea, select")) return;
@@ -821,6 +826,13 @@ function wireVoice() {
   on("voice:transcript", ({ text, final }) => { if (!final && text) caption(`“${text}”`, ""); });
   on("voice:level", (l) => { if (orb.getState() === "listening") orb.setLevel(l); });
   on("voice:speak-level", (l) => orb.setSpeakLevel(l));
+  let ambSpeak = false, ambHear = false;
+  on("voice:speaking-start", () => { ambSpeak = true; duckAmbient(true); });
+  on("voice:speaking-end", () => { ambSpeak = false; duckAmbient(ambHear); });
+  on("voice:capture", (onNow) => { ambHear = !!onNow; duckAmbient(ambSpeak || ambHear); });
+  const OWN_SOUND = new Set(["orb_calm", "race", "greenhouse", "music"]);
+  on("screen:open", (name) => asideAmbient(OWN_SOUND.has(name)));
+  on("screen:close", () => asideAmbient(false));
   on("voice:capture", (onNow) => {
     $("btn-mic").setAttribute("aria-pressed", String(!!onNow));
     if (onNow) { orb.setState("listening"); stages.setOrbBig(true); }

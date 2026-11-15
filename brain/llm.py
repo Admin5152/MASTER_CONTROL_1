@@ -51,6 +51,11 @@ How to talk:
 - Remember the conversation so far: "and yesterday?", "why?", "show me" refer to what was just said.
 - If they are just chatting, or say how they feel, respond like a person first, then offer one useful thing.
 - If you did not understand, say so in a few words and ask one short question.
+- Speak like a person, never like the software. STATE uses internal labels: never say them. Do not say "zone",
+  "protocol", "pattern-protocol", "multi-signal", "flag" or "flagged", "action", "level", "severity", "assessment",
+  "SIM" or any field name. Say what was actually noticed, in everyday words ("your voice has sounded flatter than
+  usual for two days", "your sleep has been short"), and the one thing to do now. "I've let the flight surgeon know"
+  is fine; "a digest is queued" is not.
 
 There are two kinds of question.
 1. Health and mission questions (how they are, their readings, body, sleep, mood, cabin, radiation, the mission):
@@ -58,11 +63,15 @@ There are two kinds of question.
    - Describe changes from the person's own baseline. Never diagnose; never say "you have" a condition.
      You may say something "may warrant a check with the flight surgeon".
    - Any medicine mention must include "consult mission medical protocol before use".
-   - If action.type is not "none", say what Sentinel is doing about it (action.detail).
-   - At most two short sentences.
-2. General questions and conversation (facts, science, places, a joke, how something works, how their day is going):
-   answer naturally and correctly in two to four short spoken sentences, like a well-read friend. Keep the
-   conversation going when they want to chat; ask a short question back now and then. If you are not sure, say so.
+   - If action.type is not "none", say in plain words what changed and the one thing to do now. action.detail is
+     internal shorthand for you to read, never to quote.
+   - At most two or three short sentences.
+2. General questions and conversation (facts, science, history, places, how something works, a joke, their day):
+   give a real, informative answer, like a well-read friend who loves explaining: the key fact first, then one
+   concrete number, example or comparison, then a little of why. Three to five short spoken sentences; more only
+   if they ask you to go deeper. Do not steer back to their health or readings unless they ask. Keep the
+   conversation going when they want to chat; ask a short question back now and then. If you are not sure, say so
+   plainly rather than guess.
    SPACE is your speciality: human spaceflight and its history (Mercury to Artemis, Mir, the ISS, Tiangong), how
    rockets and orbits work (delta-v, Hohmann transfers, launch windows, aerobraking), Mars and lunar missions and
    their hazards, the body in space (bone and muscle loss, fluid shift and SANS, radiation, sleep, isolation),
@@ -518,20 +527,39 @@ def evidence_for(transcript: str) -> str:
     return mrid.context(transcript)
 
 
+def is_general(transcript: str) -> bool:
+    """Nothing about this person, the crew or their readings ("how do rockets work?", "tell me a joke")."""
+    t = transcript or ""
+    return not (PERSONAL.search(t) or HEALTH_WORDS.search(t))
+
+
+def _state_light(state: dict) -> dict:
+    """For a general question: who is talking, what is on screen and the mission, not the health record (the
+    model then answers the question instead of drifting to readings, and replies sooner)."""
+    out = {k: state[k] for k in ("display_name", "app", "ops") if k in state}
+    md = (state.get("radiation") or {}).get("mission_day")
+    if md is not None:
+        out["mission_day"] = md
+    return out
+
+
 def build_messages(state: dict, transcript: str, history: list[dict] | None = None) -> list[dict]:
     msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
     msgs += history or []
     ev = evidence_for(transcript)
     evidence = f"\n\nNASA MRID EVIDENCE (the team's dataset, NASA JSC 28913):\n{ev}" if ev else ""
-    msgs.append({"role": "user", "content": "STATE:\n" + json.dumps(_state_for_prompt(state), separators=(",", ":")) + evidence + "\n\nCREW SAID:\n" + transcript})
+    st = _state_light(state) if is_general(transcript) else _state_for_prompt(state)
+    msgs.append({"role": "user", "content": "STATE:\n" + json.dumps(st, separators=(",", ":")) + evidence + "\n\nCREW SAID:\n" + transcript})
     return msgs
 
 
-def _body(cfg: dict, messages: list[dict], stream: bool, model: str | None = None) -> dict:
+def _body(cfg: dict, messages: list[dict], stream: bool, model: str | None = None, think: bool = False) -> dict:
+    """think: a knowledge question gets more reasoning (a better answer, about a second slower); health and
+    commands stay quick."""
     model = model or cfg["model"]
-    body = {"model": model, "temperature": 0.5, "max_tokens": 1100, "messages": messages, "stream": stream}
+    body = {"model": model, "temperature": 0.5, "max_tokens": 1800 if think else 1100, "messages": messages, "stream": stream}
     if "gpt-oss" in model:
-        body["reasoning_effort"] = "low"
+        body["reasoning_effort"] = "medium" if think else "low"
     elif "qwen" in model:
         body["reasoning_effort"] = "none"
     return body
@@ -591,8 +619,9 @@ def stream_llm(state: dict, transcript: str, history: list[dict] | None = None, 
     messages = build_messages(state, transcript, history)
     headers = {"Authorization": f"Bearer {cfg['key']}"}
     last = "no model"
+    think = is_general(transcript)
     for model in model_chain(cfg):
-        with _client().stream("POST", f"{cfg['base_url']}/chat/completions", json=_body(cfg, messages, True, model), headers=headers,
+        with _client().stream("POST", f"{cfg['base_url']}/chat/completions", json=_body(cfg, messages, True, model, think), headers=headers,
                               timeout=httpx.Timeout(timeout, read=timeout)) as r:
             if r.status_code != 200:
                 r.read()

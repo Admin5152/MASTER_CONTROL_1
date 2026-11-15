@@ -6,7 +6,7 @@
 export const VAD_DEFAULTS = {
   frameMs: 20,
   startFrames: 3,       // consecutive speech frames to open an utterance (60 ms)
-  hangMs: 560,          // silence that closes it (shorter = a faster reply; longer cuts fewer mid-sentence pauses)
+  hangMs: 750,          // silence that closes it: long enough for a thinking pause mid-question, short enough to feel quick
   maxMs: 15000,         // hard cap on one utterance
   minMs: 350,           // shorter bursts (clicks, coughs) are dropped
   floorInit: 0.004,     // starting noise floor (RMS)
