@@ -286,7 +286,7 @@ async function mountApp() {
     settings.set("theme", light ? "light" : "dark");
     world.setTheme(light ? "light" : "dark");
   };
-  voiceMod.setVoice(settings.get("voice") || "bri");
+  voiceMod.setVoice(settings.get("voice") || "lance");
   ctx.setCrew = (id, src) => switchCrew(id, src);
   ctx.onCheckin = onCheckin;
   ctx.openIntervention = openIntervention;

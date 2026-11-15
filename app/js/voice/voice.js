@@ -47,8 +47,8 @@ function voiceProblem(what, detail) {
 
 let onCommand = () => {};
 let onUtteranceAudio = () => {};
-let voiceId = "bri";
-export function setVoice(id) { voiceId = id || "bri"; }
+let voiceId = "lance";
+export function setVoice(id) { voiceId = id || "lance"; }
 export function initVoice({ onCommand: oc, onUtterance }) {
   onCommand = oc;
   onUtteranceAudio = onUtterance || (() => {});
