@@ -286,7 +286,7 @@ async function mountApp() {
     settings.set("theme", light ? "light" : "dark");
     world.setTheme(light ? "light" : "dark");
   };
-  voiceMod.setVoice(settings.get("voice") || "lance");
+  voiceMod.setVoice(settings.get("voice") || "nathaniel");
   ctx.setCrew = (id, src) => switchCrew(id, src);
   ctx.onCheckin = onCheckin;
   ctx.openIntervention = openIntervention;
@@ -1121,6 +1121,18 @@ async function handleCommand(text, meta = {}) {
     if (m.local === "readiness") {
       try { const r = await api.readiness(view.crewId); say(r.summary.replace(/;/g, ",") + ".", { source: "local" }); } catch (e) { showNotice(e.message); }
       followUp(); return;
+    }
+    if (m.local === "voice") {   // switch Sentinel's voice and answer in the new one
+      const VOICES = { nathaniel: ["Nathaniel", "male"], jon: ["Jon", "male"], bri: ["Bri", "female"], samara: ["Samara", "female"] };
+      const cur = voiceMod.currentVoice();
+      let id = m.name && VOICES[m.name] ? m.name : null;
+      if (!id) {
+        const pool = Object.keys(VOICES).filter((k) => k !== cur && (!m.gender || VOICES[k][1] === m.gender));
+        id = pool[0] || cur;
+      }
+      settings.set("voice", id); voiceMod.setVoice(id);
+      say(`This is ${VOICES[id][0]}. Better?`, { source: "local" });
+      return;
     }
     if (m.local === "fullscreen") {
       const ok = await toggleFullscreen(m.on);

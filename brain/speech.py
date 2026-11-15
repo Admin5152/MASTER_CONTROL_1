@@ -30,25 +30,23 @@ DATA = ROOT / "data"
 CACHE = DATA / "tts_cache"
 USAGE = DATA / "tts_usage.json"
 
-# ElevenLabs premade voices, plus Lance, Bri and Samara X from the public voice library (Lance is Sentinel's voice, chosen by the team);
-# never the account's personal or cloned voices
+# Sentinel's four voices, chosen by the team from the ElevenLabs voice library: two male, two female.
+# Nathaniel (a calm, crisp British assistant) is the default. Never the account's personal or cloned voices, and never a
+# voice that imitates a real person.
 ELEVEN_VOICES = {
-    "lance": ("agL69Vji082CshT65Tcy", "Lance (British)"),
-    "bri": ("pzXYLespwi48YnRBYxIW", "Bri (calm, warm)"),
-    "samara": ("19STyYD15bswVz51nqLf", "Samara (British)"),
-    "river": ("SAz9YHcvj6GT2YYXdXww", "River"),
-    "eric": ("cjVigY5qzO86Huf0OWal", "Eric"),
-    "sarah": ("EXAVITQu4vr4xnSDxMaL", "Sarah"),
-    "daniel": ("onwK4e9ZLuTAKqWW03F9", "Daniel"),
+    "nathaniel": ("wiF43F1vngB3iRFsbWhJ", "Nathaniel (British assistant)", "male"),
+    "jon": ("JYUzXNeyCPmymMkfcicu", "Jon (warm, American)", "male"),
+    "bri": ("pzXYLespwi48YnRBYxIW", "Bri (calm, warm)", "female"),
+    "samara": ("19STyYD15bswVz51nqLf", "Samara (British)", "female"),
 }
 KOKORO_VOICES = {"af_heart": "Heart (Kokoro)", "af_nova": "Nova (Kokoro)", "am_michael": "Michael (Kokoro)", "bm_george": "George (Kokoro)"}
-DEFAULT_VOICE = "lance"
+DEFAULT_VOICE = "nathaniel"
 ELEVEN_MODEL = "eleven_flash_v2_5"
 MAX_TTS_CHARS = 400
 
 
-# how names are said aloud (the screen keeps the real spelling): "Eliah" is said "Aleah"
-PRONOUNCE = {"Eliah": "Aleah"}
+# how names are said aloud (the screen keeps the real spelling): "Eliah" is said "Elia"
+PRONOUNCE = {"Eliah": "Elia"}
 
 
 def say_as(text: str) -> str:
@@ -316,7 +314,7 @@ def tts(text: str, voice: str = DEFAULT_VOICE, engine: str = "auto") -> dict:
 def voices() -> dict:
     return {
         "default": DEFAULT_VOICE,
-        "elevenlabs": [{"id": k, "name": v[1]} for k, v in ELEVEN_VOICES.items()] if eleven_key() else [],
+        "elevenlabs": [{"id": k, "name": v[1], "gender": v[2]} for k, v in ELEVEN_VOICES.items()] if eleven_key() else [],
         "kokoro": [{"id": k, "name": v} for k, v in KOKORO_VOICES.items()] if (MODELS / "tts" / "kokoro-v1.0.onnx").exists() else [],
         "eleven_chars_used": usage().get("eleven_chars", 0),
         "eleven_budget": eleven_budget(),

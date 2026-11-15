@@ -601,13 +601,11 @@ function renderSettings(el, ctx) {
       const v = await api.json("../api/voices");
       const sel = el.querySelector("[data-voice]");
       const opt = (x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`;
-      sel.innerHTML = (v.elevenlabs.length ? `<optgroup label="ElevenLabs">${v.elevenlabs.map(opt).join("")}</optgroup>` : "") +
-        (v.kokoro.length ? `<optgroup label="On this laptop (Kokoro)">${v.kokoro.map(opt).join("")}</optgroup>` : "");
+      const group = (label, list) => (list.length ? `<optgroup label="${label}">${list.map(opt).join("")}</optgroup>` : "");
+      sel.innerHTML = group("Male voices", v.elevenlabs.filter((x) => x.gender === "male")) + group("Female voices", v.elevenlabs.filter((x) => x.gender === "female"));
       if (!sel.options.length) sel.innerHTML = "<option>Browser voice</option>";
       sel.value = st.get("voice") || v.default;
-      el.querySelector("[data-voice-note]").textContent = v.elevenlabs.length
-        ? "ElevenLabs speaks first; Kokoro on this laptop takes over offline; the browser voice is the last resort."
-        : "Kokoro runs on this laptop; the browser voice is the fallback.";
+      el.querySelector("[data-voice-note]").textContent = "Or say \"use a female voice\", \"switch to Jon\". If the voice service can't be reached, the browser's own voice reads the words.";
       sel.addEventListener("change", () => { st.set("voice", sel.value); ctx.setVoice?.(sel.value); });
     } catch { el.querySelector("[data-voice]").innerHTML = `<option>Browser voice</option>`; }
   })();

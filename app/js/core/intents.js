@@ -217,6 +217,14 @@ export function matchIntent(text, ctx = {}) {
   if (/^ (snooze( it| that| the reminder)?|remind me later|later|not now|in a bit) $/.test(t) || / (snooze|remind me later|remind me in) /.test(t)) {
     return { intent: "snooze", local: "snooze", commands: [] };
   }
+  // Sentinel's voice: "use a female voice", "switch to Jon", "change your voice"
+  const vName = t.match(/ (nathaniel|nate|jon|john|bri|bree|brie|samara)s? /);
+  const vGender = / (female|woman'?s?|women'?s|girl'?s?|lady'?s?) voice /.test(t) ? "female" : / (male|man'?s?|men'?s|guy'?s?) voice /.test(t) ? "male" : null;
+  if ((/ voice /.test(t) || vName) && / (use|switch|change|try|swap|give me|talk with|speak with|other|another|different) /.test(t) && (vName || vGender || / (change|switch|other|another|different) (your |the )?voice /.test(t))) {
+    const name = vName ? { john: "jon", bree: "bri", brie: "bri", nate: "nathaniel" }[vName[1]] || vName[1] : null;
+    return { intent: "voice", action: "control_app", local: "voice", name, gender: vGender, commands: [] };
+  }
+
   // environment (section 13.1): any sentence about where the crew is goes to the brain's matcher, then a confirmation
   if (/ (we re|we are|were|were now|i m|im|i am|now) (now )?(in|on|at|aboard|somewhere|arrived|landed|moved) /.test(t) && / (station|orbit|transit|spacecraft|cabin|cruise|base|habitat|moon|mars|surface|somewhere|module|place) /.test(t) || / (switch|change|set) (the )?environment /.test(t)) {
     return { intent: "environment", local: "environment", commands: [] };
