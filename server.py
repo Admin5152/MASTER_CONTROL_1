@@ -122,6 +122,17 @@ async def storm_dose_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Windows: a browser closing a connection makes asyncio print a ConnectionResetError traceback; it is harmless noise
+    loop = asyncio.get_running_loop()
+    _default = loop.get_exception_handler()
+    def _quiet_resets(lp, context):
+        if isinstance(context.get("exception"), ConnectionResetError):
+            return
+        if _default:
+            _default(lp, context)
+        else:
+            lp.default_exception_handler(context)
+    loop.set_exception_handler(_quiet_resets)
     tasks = []
     if os.getenv("SENTINEL_NO_NETWORK") != "1":
         tasks.append(asyncio.create_task(spaceweather_loop()))
