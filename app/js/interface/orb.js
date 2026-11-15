@@ -59,9 +59,9 @@ void main() {
   // each cube tumbles a little; size varies, drifters shrink
   vec3 ax = normalize(vec3(aSeed.z - 0.5, 0.7, aSeed.y - 0.5));
   mat3 R = rotAxis(ax, time * (0.3 + aSeed.y) + aSeed.z * 6.28);
-  float sz = uSize * (0.55 + aSeed.y * 0.9) * (1.0 - drift * 0.6) * (1.0 + uSmall * 1.6);
+  float sz = uSize * (0.55 + aSeed.y * 0.9) * (1.0 - drift * 0.6) * (1.0 + uSmall * 0.55);   // small: barely larger cubes, so it still reads as particles
   vec3 p = center + R * (position * sz);
-  vN = normalize(normalMatrix * mix(R * normal, d, uSmall * 0.85));   // small: lit like one smooth sphere
+  vN = normalize(normalMatrix * mix(R * normal, d, uSmall * 0.3));   // small: mostly lit per particle (texture stays visible)
   vec4 wp = modelViewMatrix * vec4(p, 1.0);
   vW = -wp.xyz;
   vEdge = aSeed.x; vSeed = aSeed.y;
@@ -81,11 +81,11 @@ void main() {
   vec3 navy = vec3(0.06, 0.10, 0.22), silver = vec3(0.46, 0.52, 0.60), ice = vec3(0.52, 0.72, 0.92);
   vec3 albedo = vSeed < 0.5 ? mix(navy, silver, vSeed * 2.0) : mix(silver, ice, (vSeed - 0.5) * 2.0);
   albedo = mix(albedo, uTint * 0.8, 0.3 + 0.25 * min(uGlow, 1.5));
-  albedo = mix(albedo, mix(silver, uTint, 0.55) * 1.15, uSmall * 0.85);   // small: one even tone, no speckle
+  albedo = mix(albedo, mix(silver, uTint, 0.55) * 1.15, uSmall * 0.3);   // small: a little calmer, speckle kept
   vec3 col = albedo * (0.1 + dif * 0.85) * occ;
   col += uTint * (fres * 0.45 + uGlow * 0.18) * occ;
   float spark = step(0.993, vSeed) * pow(0.5 + 0.5 * sin(time * 2.0 + vSeed * 900.0), 8.0);   // a few particles glint
-  col += vec3(0.8, 0.92, 1.0) * spark * 0.9 * (1.0 - uSmall) + uTint * vNear * 0.5;
+  col += vec3(0.8, 0.92, 1.0) * spark * 0.9 * (1.0 - uSmall * 0.5) + uTint * vNear * 0.5;
   gl_FragColor = vec4(col * uOpacity * vFade, uOpacity * vFade);
 }`;
 
@@ -203,7 +203,7 @@ export function createOrb() {
     const sz = world?.orbPlace?.size ?? 300;
     pU.uSmall.value += (Math.max(0, Math.min(1, (190 - sz) / 110)) - pU.uSmall.value) * Math.min(1, dt * 4);
     ped.visible = pU.uSmall.value < 0.6;
-    geo.instanceCount = pU.uSmall.value > 0.6 ? Math.round(N * 0.35) : N;   // docked small: a third of the particles is plenty
+    geo.instanceCount = pU.uSmall.value > 0.6 ? Math.round(N * 0.6) : N;   // docked small: enough particles for a fine, even grain
     pU.uBreath.value = p.breath; pU.uFrag.value = p.frag; pU.uGlow.value = p.glow;
     pU.uPulse.value = 0.94 + 0.06 * form + 0.008 * Math.sin(t * 1.2);
     pU.uTint.value.setHSL(p.hue / 360, p.sat, 0.6);

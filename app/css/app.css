@@ -843,3 +843,14 @@ body.is-fullscreen #callout, body.is-fullscreen #beam-layer, body.is-fullscreen 
   body[data-stage="body"] .banner { left: auto; transform: none; right: calc(var(--gutter) + clamp(300px, 27vw, 380px) + 16px);
     width: min(640px, calc(100vw - clamp(300px, 27vw, 380px) - 2 * var(--gutter) - 120px)); }
 }
+
+/* Sentinel's words beside the docked orb: a speech bubble rising from it (bottom-left), solid and calm */
+.bubble.is-beside { transform: none; text-align: left; padding: 12px 16px; border-radius: 18px 18px 18px 6px;
+  background: var(--surface-solid); border: 1px solid var(--rule); box-shadow: var(--shadow-float); font-size: 15px; line-height: 1.45;
+  animation: bubble-in .28s cubic-bezier(.2, .7, .2, 1); }
+.bubble.is-beside .src { margin-top: 6px; }
+@keyframes bubble-in { from { opacity: 0; transform: translateY(6px) scale(.98); transform-origin: bottom left; } }
+@media (prefers-reduced-motion: reduce) { .bubble.is-beside { animation: none; } }
+/* while Sentinel talks on the Body screen, the insights card under the bubble steps back */
+body.has-bubble[data-stage="body"] .insights { opacity: 0; pointer-events: none; }
+:root { --safe-b: env(safe-area-inset-bottom, 0px); }

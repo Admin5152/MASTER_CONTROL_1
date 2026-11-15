@@ -30,7 +30,8 @@ export function createStages({ world, space, orb }) {
     // listening makes it brighter and a little larger, but never tall enough to reach the cards above.
     const room = Math.max(40, (dock - 10) / 1.2);
     const s = Math.min(big ? 74 : 58, room);
-    return { x: g + 40, y: H - dock / 2 - 2, size: s };
+    const safe = css("--safe-b") || 0;
+    return { x: g + 40, y: H - dock / 2 - 6 - safe, size: s };
   }
 
   function placeOrb(seconds = 1.0) {

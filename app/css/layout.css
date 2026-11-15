@@ -71,7 +71,8 @@
 .care-list { list-style: none; padding: 0; display: grid; gap: 6px; }
 .care-list li { display: grid; grid-template-columns: auto 1fr auto; gap: var(--s-2); align-items: start; font-size: 12.5px; color: var(--ink-2); padding: 8px 10px; border-radius: 12px; background: var(--surface-sunk); }
 .care-list li strong { color: var(--ink); font-weight: var(--fw-semi); min-width: 44px; }
-.care-list li.is-now { box-shadow: inset 3px 0 0 var(--watch); }
+.care-list li.is-now { background: color-mix(in srgb, var(--watch) 11%, var(--surface-sunk)); }
+.care-list li.is-now strong { color: var(--watch); }
 .care-list li.caveat { background: transparent; font-size: 11.5px; }
 .care-list li:not(:has(strong)) { grid-template-columns: 1fr auto; }
 .sys-actions { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }

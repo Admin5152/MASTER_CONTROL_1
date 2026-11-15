@@ -30,9 +30,10 @@ DATA = ROOT / "data"
 CACHE = DATA / "tts_cache"
 USAGE = DATA / "tts_usage.json"
 
-# ElevenLabs premade voices, plus Samara X from the public voice library (chosen by the team as Sentinel's voice);
+# ElevenLabs premade voices, plus Bri and Samara X from the public voice library (Bri is Sentinel's voice, chosen by the team);
 # never the account's personal or cloned voices
 ELEVEN_VOICES = {
+    "bri": ("pzXYLespwi48YnRBYxIW", "Bri (calm, warm)"),
     "samara": ("19STyYD15bswVz51nqLf", "Samara (British)"),
     "river": ("SAz9YHcvj6GT2YYXdXww", "River"),
     "eric": ("cjVigY5qzO86Huf0OWal", "Eric"),
@@ -40,7 +41,7 @@ ELEVEN_VOICES = {
     "daniel": ("onwK4e9ZLuTAKqWW03F9", "Daniel"),
 }
 KOKORO_VOICES = {"af_heart": "Heart (Kokoro)", "af_nova": "Nova (Kokoro)", "am_michael": "Michael (Kokoro)", "bm_george": "George (Kokoro)"}
-DEFAULT_VOICE = "samara"
+DEFAULT_VOICE = "bri"
 ELEVEN_MODEL = "eleven_flash_v2_5"
 MAX_TTS_CHARS = 400
 

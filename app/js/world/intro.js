@@ -192,6 +192,7 @@ export function createIntro(world) {
     tlx.to(sparkU.amount, { value: 2.2, duration: short ? 0.3 : 0.9, ease: "power2.in" }, short ? 1.1 : 6.6);
     tlx.call(() => onForm?.(), null, short ? 1.4 : 7.4);
     tlx.to(sparkU.amount, { value: 0, duration: 1.0, ease: "power2.out" }, short ? 1.4 : 7.5);
+    if (!short) tlx.timeScale(1.55);   // the same choreography, quicker: Begin appears in about 5 s, not 9
     return {
       skip() { tlx.progress(1); },
       get done() { return tlx.progress() >= 1; },

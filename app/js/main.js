@@ -149,16 +149,20 @@ async function start() {
   requestWakeLock();
   introRun?.skip();
   const g = window.gsap;
-  if (g && !matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise((r) => g.to("#start-screen", { opacity: 0, duration: 0.5, onComplete: r }));
+  fetch("../api/warm", { method: "POST" }).catch(() => {});   // open the brain and voice connections before the first word
+  if (g && !matchMedia("(prefers-reduced-motion: reduce)").matches) await new Promise((r) => g.to("#start-screen", { opacity: 0, duration: 0.3, onComplete: r }));
   $("start-screen").hidden = true;
   $("app").hidden = false;
-  await mountApp();
-  if (settings.get("theme") === "light") ctx.setTheme("light");
-  ctx.setGlove(settings.get("glove") === "on");
-  await stages.go("assistant");
-  world.remove("intro");
-  fetch("../api/warm", { method: "POST" }).catch(() => {});   // open the brain and voice connections before the first word
-  openWho();   // straight away: choosing who you are never waits on the microphone prompt
+  // "Who's here?" first, at once: it covers the screen, so the app builds behind it instead of making Begin feel slow
+  appReady = (async () => {
+    await mountApp();
+    if (settings.get("theme") === "light") ctx.setTheme("light");
+    ctx.setGlove(settings.get("glove") === "on");
+    await stages.go("assistant");
+    world.remove("intro");
+  })();
+  openWho();   // straight away: choosing who you are never waits on the app or the microphone prompt
+  await appReady;
   if (navigator.mediaDevices?.getUserMedia) {
     try {
       const id = settings.get("mic");
@@ -188,7 +192,9 @@ function openWho() {
   }
   say("Who's here? Tap your name, or say it.", { source: "local" });
 }
-function chooseCrew(id) {
+let appReady = null;   // the app building behind "Who's here?"
+async function chooseCrew(id) {
+  if (appReady) await appReady;
   const c = view.crew.find((x) => x.crew_id === id);
   if (!c) return;
   switchCrew(id, "manual");
@@ -275,7 +281,7 @@ async function mountApp() {
     settings.set("theme", light ? "light" : "dark");
     world.setTheme(light ? "light" : "dark");
   };
-  voiceMod.setVoice(settings.get("voice") || "samara");
+  voiceMod.setVoice(settings.get("voice") || "bri");
   ctx.setCrew = (id, src) => switchCrew(id, src);
   ctx.onCheckin = onCheckin;
   ctx.openIntervention = openIntervention;
@@ -851,34 +857,43 @@ function caption(text, source) {
     // a reserved subtitle lane at the top of the centre column: never over a panel or a control
     b.innerHTML = `${esc(text)}${source ? `<span class="src">${esc(source)}</span>` : ""}`;
     b.hidden = false;
-    b.classList.add("is-subtitle");
+    b.classList.remove("is-subtitle");
+    b.classList.add("is-beside");
+    document.body.classList.add("has-bubble");
     placeSubtitle();
   }
   captionTimer = setTimeout(resetCaption, Math.min(16000, 5000 + text.length * 70));
 }
-/** The subtitle lane: centred over the 3D area that is actually visible, never over an open sheet. */
+/** Sentinel's words rise from the orb docked in the bottom-left corner, as a speech bubble beside it. */
 function placeSubtitle() {
   const b = $("bubble");
-  if (b.hidden || !b.classList.contains("is-subtitle")) return;
-  const host = stages.current === "body" ? $("body-host").getBoundingClientRect() : null;
-  let left = host && host.width > 50 ? host.left : 0, right = host && host.width > 50 ? host.right : window.innerWidth;
+  if (b.hidden || !b.classList.contains("is-beside")) return;
   const sh = $("sheet");
   if (!sh.hidden && !sh.classList.contains("is-full") && !sh.classList.contains("is-orb")) {
     const r = sh.getBoundingClientRect();
-    if (r.left > window.innerWidth * 0.3) right = Math.min(right, r.left - 12);   // a right sheet: use the area beside it
-    else { b.classList.add("is-tucked"); return; }                                  // a wide sheet leaves no room: speech and the log carry it
+    if (r.left <= window.innerWidth * 0.3) { b.classList.add("is-tucked"); return; }   // a wide sheet: speech and the log carry it
   }
   b.classList.remove("is-tucked");
-  if (right - left < 240) { b.classList.add("is-tucked"); return; }
-  b.style.left = `${(left + right) / 2}px`;
-  b.style.maxWidth = `${Math.min(560, right - left - 8)}px`;
-  b.style.right = "auto"; b.style.bottom = "auto"; b.style.top = "";
+  const cs = getComputedStyle(document.documentElement);
+  const dock = parseFloat(cs.getPropertyValue("--dock-h")) || 88, g = parseFloat(cs.getPropertyValue("--gutter")) || 24;
+  const safe = parseFloat(cs.getPropertyValue("--safe-b")) || 0;
+  const ox = g + 40, oy = window.innerHeight - dock / 2 - 6 - safe, r = 34;   // the docked orb (see stages.js)
+  let bottom = window.innerHeight - oy + r + 6;
+  if (stages.current === "body") {   // above the body tools (Full scan, X-ray...), never over them
+    const tools = document.querySelector("#stage-body .body-tools")?.getBoundingClientRect();
+    if (tools?.height) bottom = Math.max(bottom, window.innerHeight - tools.top + 10);
+  }
+  b.style.left = `${Math.round(ox + r * 0.35)}px`;
+  b.style.bottom = `${Math.round(bottom)}px`;
+  b.style.top = "auto"; b.style.right = "auto";
+  b.style.maxWidth = `${Math.min(420, window.innerWidth - ox - g)}px`;
 }
 ctx.placeSubtitle = placeSubtitle;
 
 function resetCaption() {
   if (voiceMod.voice.speaking) { captionTimer = setTimeout(resetCaption, 2000); return; }
   $("bubble").hidden = true;
+  document.body.classList.remove("has-bubble");
   const c = $("orb-caption");
   c.classList.remove("is-caption");
   c.textContent = "How can I help you today?";
