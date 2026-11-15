@@ -261,7 +261,9 @@ export function matchIntent(text, ctx = {}) {
   if (/ (seal|patch|fix|fixed|repair|clear|reset|stop) (the |my )?(suit|leak|breach|alarm|suit alarm) /.test(t) || has(t, "leak is fixed") || has(t, "leak fixed")) {
     return { intent: "suit_seal", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "seal" }] };
   }
-  if (/ (start|begin) (an |the )?(eva|spacewalk|space walk) / .test(t) || /^ (going outside|eva time|starting the eva) $/.test(t)) {
+  // "start / begin / run / do / launch / simulate an EVA" ("run an EVA" is often heard as "run on EVA")
+  if (/ (start|starting|begin|run|do|launch|simulate|go on|go for|time for) (an |a |the |on |my )?(eva|e v a|spacewalk|space walk) /.test(t)
+      || /^ (eva|going outside|eva time|starting the eva|let's do an eva|lets do an eva) $/.test(t)) {
     return { intent: "suit_eva", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "eva" }] };
   }
   if (/ (end|finish|stop|done with) (the |my )?(eva|spacewalk|space walk) / .test(t) || has(t, "back inside") || has(t, "repress")) {
