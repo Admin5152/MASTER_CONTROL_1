@@ -103,7 +103,7 @@ def stt_local(wav: bytes, timeout: float = 45.0) -> str:
 
 
 VOCABULARY_HINT = (
-    "Hey Sentinel, Sentinel, I'm Eliah, this is Annie, Seth, Sad, Stanley, Gadiel, "
+    "Hey Sentinel, Sentinel, I'm Eliah, Aleah, this is Annie, Seth, Sad, Stanley, Gadiel, "
     "Stillpoint, Slipstream, Red Harvest, grounding, "
     "radiation, vitals, vision, health log, trends, cognitive, orb calm, aurora run, "
     "race, greenhouse, hardware, sentinel skin, crew, wellbeing, cabin, mission, body, "

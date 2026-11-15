@@ -106,7 +106,8 @@ export function findZones(text) {
  *  bare: also accept the name on its own (used while the "Who are you?" chooser is open). Returns a crew_id or null. */
 // how speech recognition tends to spell each crew name (Whisper writes "Elijah" for Eliah, "Gabriel" for Gadiel)
 const NAME_ALIASES = {
-  eliah: ["elijah", "elia", "eliya", "eliyah", "ilya", "elya", "ilia", "eleah", "elyah", "aliyah", "eliahs", "airleah", "airlia", "aerlia", "erleah", "erlia", "arleah", "airlie", "ailia", "aleah", "earlier"],
+  eliah: ["elijah", "elia", "eliya", "eliyah", "ilya", "elya", "ilia", "eleah", "elyah", "aliyah", "eliahs", "airleah", "airlia", "aerlia", "erleah", "erlia", "arleah", "airlie", "ailia", "aleah", "earlier",
+          "amelia", "italia", "elyia", "alia", "aliya", "alea", "aleya", "alya", "alyah", "aleeah", "aleia", "eleia", "olia"],
   annie: ["anne", "ann", "anny", "ani", "annies"],
   seth: ["sett", "seths"],
   sad: ["saad", "sahd", "saud", "sa'ad"],
@@ -133,6 +134,19 @@ function canonicalNames(t, crew) {
   });
 }
 
+/** How a name sounds, roughly: vowels (and y, h) as one mark, doubled letters once. "Eliah", "Aleah", "Elyia" and
+ *  "Alia" all sound like V-l-V; so the name is found however speech recognition happens to spell it. */
+export function soundKey(w) {
+  return String(w || "").toLowerCase().replace(/[^a-z]/g, "").replace(/h/g, "").replace(/[aeiouy]+/g, "V").replace(/([a-z])\1+/g, "$1");
+}
+/** The crew member whose name sounds like `word`, only if exactly one does (never a guess between two). */
+function soundsLike(word, crew) {
+  const k = soundKey(word);
+  if (k.length < 3) return null;
+  const hits = (crew || []).filter((c) => soundKey(c.display_name) === k);
+  return hits.length === 1 ? hits[0].crew_id : null;
+}
+
 export function crewFromSpeech(text, crew, { bare = false } = {}) {
   const t = canonicalNames(` ${String(text || "").toLowerCase().replace(/[^a-z' ]+/g, " ").replace(/\s+/g, " ").trim()} `, crew);
   const COMMON = new Set(["sad", "will", "may", "mark", "grace", "joy", "hope"]);
@@ -143,6 +157,10 @@ export function crewFromSpeech(text, crew, { bare = false } = {}) {
     const loose = new RegExp(` (i'm|i am|im|it's|its) ${n} `);
     if (strict.test(t) || (!COMMON.has(n) && loose.test(t)) || (bare && t.trim() === n)) return c.crew_id;
   }
+  // an introduction whose name was spelled oddly ("I'm Elyia", "it's Alia", or the name alone on the chooser)
+  const m = t.match(/ (?:i'm|i am|im|it's|its|it is|this is|my name is|sign in as|log in as|switch to) ([a-z']+) /);
+  const word = m ? m[1] : bare && t.trim().split(" ").length <= 2 ? t.trim().split(" ").pop() : null;
+  if (word && !COMMON.has(word)) return soundsLike(word, crew);
   return null;
 }
 
