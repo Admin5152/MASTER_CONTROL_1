@@ -130,8 +130,8 @@ async def lifespan(app: FastAPI):
         apply_spaceweather(spaceweather.latest)
     tasks.append(asyncio.create_task(storm_dose_loop()))
     if os.getenv("SENTINEL_NO_WARM") != "1":
-        # load Kokoro once in the background and warm it with one short sentence (fallback voice ready)
-        threading.Thread(target=speech.warm_kokoro, daemon=True).start()
+        # the local speech recogniser loads its model once now, so the first words heard are not slow
+        threading.Thread(target=speech.warm_stt, daemon=True).start()
         threading.Thread(target=llm.warm_hsemotion, daemon=True).start()
         threading.Thread(target=llm.warm_llm, daemon=True).start()
         threading.Thread(target=speech.warm_speech, daemon=True).start()
@@ -1699,7 +1699,7 @@ async def face_emotion(request: Request):
 
 
 @app.post("/api/stt")
-async def stt(request: Request, prefer: str = "auto"):
+async def stt(request: Request, prefer: str = "auto", hint: str = ""):
     """16 kHz WAV of one utterance -> {text, source: "groq" | "local"}."""
     wav = await request.body()
     if len(wav) < 1000:
@@ -1708,7 +1708,7 @@ async def stt(request: Request, prefer: str = "auto"):
         raise HTTPException(413, "utterance longer than 20 s")
     loop = asyncio.get_running_loop()
     try:
-        out = await loop.run_in_executor(None, lambda: speech.stt(wav, prefer))
+        out = await loop.run_in_executor(None, lambda: speech.stt(wav, prefer, hint))
     except Exception as e:
         raise HTTPException(503, f"speech recognition unavailable: {type(e).__name__}")
     print(f"[sentinel heard] ({out.get('source')}) {out.get('text', '')!r}", flush=True)

@@ -6,6 +6,7 @@
 // only the last fallback, when /api/stt keeps failing. Talk time, pitch and speaker ID use the same audio.
 // Speaking: each sentence is fetched from /api/tts (ElevenLabs -> Kokoro) while the previous one plays,
 // played through Web Audio so the orb follows the real audio level; browser speech is the last fallback.
+// Speech goes to the cloud recogniser (Groq) for speed; the on-laptop Whisper is the fallback.
 // While Sentinel speaks, normal listening pauses so it never answers itself; a stricter barge-in detector keeps
 // listening, so a person can talk over it ("wait", "stop", a new question): the voice dips at once, the words are
 // transcribed, its own echo is ignored, and what was cut short is kept for "go on" (./bargein.js decides).
@@ -383,7 +384,8 @@ async function sttText(audio, addressed) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 20000);
   try {
-    const r = await fetch(`../api/stt${addressed ? "" : "?prefer=local"}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
+    const q = [addressed ? "" : "prefer=local", openMic() ? "hint=names" : ""].filter(Boolean).join("&");   // the chooser: expect a name
+    const r = await fetch(`../api/stt${q ? `?${q}` : ""}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: toWav16k(audio), signal: ctrl.signal });
     if (!r.ok) throw new Error(`stt ${r.status}`);
     const d = await r.json();
     return { text: (d.text || "").trim(), source: d.source };
@@ -396,10 +398,9 @@ async function transcribe(audio) {
   emit("voice:thinking", true);
   let text = "";
   try {
-    // privacy: until someone addresses Sentinel (wake word, mic tap, reply window), speech is transcribed on this
-    // laptop and nothing leaves it; addressed speech goes to the faster cloud service
-    const addressed = ptt || awaiting || openMic();
-    const d = await sttText(audio, addressed);
+    // speed (the team's choice): every utterance goes to the cloud recogniser (Groq, ~0.4 s), so "Hey Sentinel ..."
+    // is answered at once; the on-laptop recogniser (~3 s here) is the fallback when the cloud cannot be reached
+    const d = await sttText(audio, true);
     text = d.text;
     voice.sttSource = d.source;
     sttFails = 0;

@@ -1,12 +1,17 @@
-"""Local Whisper in its own process: reads WAV bytes on stdin, prints the transcript as JSON.
+"""Local Whisper in its own process, loaded once and kept warm.
 
-Run by brain.speech.stt_local so the CTranslate2 model never shares memory with Kokoro (onnxruntime)
-in the server process; on a laptop with little free commit memory the two did not fit together.
+The model lives in a separate process (CTranslate2 keeps its memory away from the server). It used to start fresh for
+every utterance (Python start, import, model load: 1.5-3 s each time); now the server starts it once and sends it
+utterances over stdin, so each one costs only the transcription.
+
+Protocol (--serve): for each request, 4-byte big-endian prompt length, the prompt (UTF-8), 4-byte big-endian WAV
+length, the WAV bytes; the reply is one JSON line {"text": ...}. Without --serve: one WAV on stdin, one JSON reply.
 """
 from __future__ import annotations
 
 import io
 import json
+import struct
 import sys
 from pathlib import Path
 
@@ -32,15 +37,49 @@ def pcm16k(wav: bytes):
     return x
 
 
-def main() -> None:
+def load():
     from faster_whisper import WhisperModel
-    from brain.speech import VOCABULARY_HINT
     path = ROOT / "models" / "whisper" / "base.en"
-    model = WhisperModel(str(path) if path.exists() else "base.en", device="cpu", compute_type="int8", cpu_threads=2,
-                         download_root=str(ROOT / "models" / "whisper"))
-    wav = sys.stdin.buffer.read()
-    segs, _ = model.transcribe(pcm16k(wav), language="en", beam_size=1, vad_filter=False, initial_prompt=VOCABULARY_HINT)
-    sys.stdout.write(json.dumps({"text": " ".join(s.text.strip() for s in segs).strip()}))
+    return WhisperModel(str(path) if path.exists() else "base.en", device="cpu", compute_type="int8", cpu_threads=2,
+                        download_root=str(ROOT / "models" / "whisper"))
+
+
+def transcribe(model, wav: bytes, prompt: str) -> str:
+    segs, _ = model.transcribe(pcm16k(wav), language="en", beam_size=1, vad_filter=False, initial_prompt=prompt or None)
+    return " ".join(s.text.strip() for s in segs).strip()
+
+
+def _read(n: int) -> bytes | None:
+    buf = b""
+    while len(buf) < n:
+        chunk = sys.stdin.buffer.read(n - len(buf))
+        if not chunk:
+            return None
+        buf += chunk
+    return buf
+
+
+def serve() -> None:
+    model = load()
+    sys.stdout.write(json.dumps({"ready": True}) + "\n"); sys.stdout.flush()
+    while True:
+        head = _read(4)
+        if head is None:
+            return
+        prompt = _read(struct.unpack(">I", head)[0]).decode("utf-8")
+        wav = _read(struct.unpack(">I", _read(4))[0])
+        try:
+            out = {"text": transcribe(model, wav, prompt)}
+        except Exception as e:   # one bad utterance never kills the worker
+            out = {"error": type(e).__name__}
+        sys.stdout.write(json.dumps(out) + "\n"); sys.stdout.flush()
+
+
+def main() -> None:
+    if "--serve" in sys.argv:
+        return serve()
+    from brain.speech import VOCABULARY_HINT
+    sys.stdout.write(json.dumps({"text": transcribe(load(), sys.stdin.buffer.read(), VOCABULARY_HINT)}))
 
 
 if __name__ == "__main__":

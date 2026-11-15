@@ -89,20 +89,57 @@ def _local_whisper():
         return _whisper
 
 
-def stt_local(wav: bytes, timeout: float = 45.0) -> str:
-    """Local faster-whisper (base.en, int8, CPU), run in a separate process (see brain/whisper_worker.py)."""
+_worker = None
+_worker_lock = threading.Lock()
+
+
+def _start_worker():
+    """Start the local Whisper worker once (brain/whisper_worker.py --serve) and wait until its model is loaded."""
     import subprocess
     import sys
+    global _worker
     env = dict(os.environ, OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="2")
-    r = subprocess.run([sys.executable, "-m", "brain.whisper_worker"], input=wav, capture_output=True, timeout=timeout,
-                       cwd=str(ROOT), env=env)
-    if r.returncode != 0:
-        raise RuntimeError("local whisper failed")
-    return json.loads(r.stdout.decode("utf-8") or "{}").get("text", "").strip()
+    _worker = subprocess.Popen([sys.executable, "-m", "brain.whisper_worker", "--serve"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL, cwd=str(ROOT), env=env)
+    line = _worker.stdout.readline()
+    if not line or not json.loads(line).get("ready"):
+        _worker.kill(); _worker = None
+        raise RuntimeError("local whisper did not start")
+
+
+def stt_local(wav: bytes, prompt: str | None = None, timeout: float = 20.0) -> str:
+    """Local faster-whisper (base.en, int8, CPU) in a warm worker process: the model loads once, not per utterance."""
+    import struct
+    p = (VOCABULARY_HINT if prompt is None else prompt).encode("utf-8")
+    with _worker_lock:
+        for attempt in (1, 2):   # a worker that died is restarted once
+            try:
+                if _worker is None or _worker.poll() is not None:
+                    _start_worker()
+                _worker.stdin.write(struct.pack(">I", len(p)) + p + struct.pack(">I", len(wav)) + wav)
+                _worker.stdin.flush()
+                result: dict = {}
+                t = threading.Thread(target=lambda: result.update(json.loads(_worker.stdout.readline() or "{}")), daemon=True)
+                t.start(); t.join(timeout)
+                if t.is_alive():   # stuck: kill it; the next call starts a fresh one
+                    _worker.kill()
+                    raise RuntimeError("local whisper timed out")
+                if "text" not in result:
+                    raise RuntimeError(result.get("error", "local whisper failed"))
+                return result["text"].strip()
+            except (OSError, ValueError, RuntimeError):
+                if attempt == 2:
+                    raise
+                try:
+                    if _worker:
+                        _worker.kill()
+                except OSError:
+                    pass
+    raise RuntimeError("local whisper failed")
 
 
 VOCABULARY_HINT = (
-    "Hey Sentinel, Sentinel, I'm Eliah, Aleah, this is Annie, Seth, Sad, Stanley, Gadiel, "
+    "Hey Sentinel, Sentinel, I'm Elia, this is Elia, Annie, Seth, Sad, Stanley, Gadiel, "
     "Stillpoint, Slipstream, Red Harvest, grounding, "
     "radiation, vitals, vision, health log, trends, cognitive, orb calm, aurora run, "
     "race, greenhouse, hardware, sentinel skin, crew, wellbeing, cabin, mission, body, "
@@ -112,6 +149,11 @@ VOCABULARY_HINT = (
     "Mars, Moon, Earth, Jupiter, Saturn, ISS, space station, NASA, Artemis, Apollo, orbit, astronaut, spacewalk, EVA, "
     "spacesuit, microgravity, oxygen, carbon dioxide, solar storm, light delay, rocket, launch, wait, hold on, go on"
 )
+
+
+# while the crew chooser is open, someone is saying their name: a short hint that lists only the crew, so the
+# recogniser expects a name ("Elia" was heard as "Liya" and "Aneia" with the long hint)
+NAMES_HINT = "Who's here? I'm Elia. This is Elia. I'm Annie. I'm Seth. I'm Sad. I'm Stanley. I'm Gadiel."
 
 
 _http: httpx.Client | None = None
@@ -134,7 +176,7 @@ def warm_speech() -> None:
             pass
 
 
-def stt_groq(wav: bytes, timeout: float = 8.0, post=None) -> str:
+def stt_groq(wav: bytes, timeout: float = 8.0, post=None, prompt: str | None = None) -> str:
     key = os.getenv("LLM_API_KEY", "").strip() or os.getenv("GROQ_API_KEY", "").strip()
     if not key:
         raise RuntimeError("no key")
@@ -147,7 +189,7 @@ def stt_groq(wav: bytes, timeout: float = 8.0, post=None) -> str:
         "language": "en",
         "response_format": "json",
         "temperature": "0",
-        "prompt": VOCABULARY_HINT
+        "prompt": VOCABULARY_HINT if prompt is None else prompt
     }
     if post is not None:
         r = post(f"{base}/audio/transcriptions", files, data)
@@ -158,19 +200,27 @@ def stt_groq(wav: bytes, timeout: float = 8.0, post=None) -> str:
     return (r.json().get("text") or "").strip()
 
 
-def stt(wav: bytes, prefer: str = "auto") -> dict:
-    """Transcribe a WAV utterance. Groq first (if a key is set), local Whisper on any failure."""
+def stt(wav: bytes, prefer: str = "auto", hint: str = "") -> dict:
+    """Transcribe a WAV utterance. Groq first (if a key is set), local Whisper on any failure. hint="names": the
+    crew chooser is open, so the recogniser is told to expect a crew name."""
     from brain.llm import normalize
+    prompt = NAMES_HINT if hint == "names" else None
     if prefer != "local":
         try:
-            return {"text": normalize(stt_groq(wav)), "source": "groq"}
+            return {"text": normalize(stt_groq(wav, prompt=prompt)), "source": "groq"}
         except Exception:
             pass
-    return {"text": normalize(stt_local(wav)), "source": "local"}
+    return {"text": normalize(stt_local(wav, prompt)), "source": "local"}
 
 
 def warm_stt() -> None:
-    """Nothing to warm: local Whisper runs in its own process per utterance."""
+    """Start the local Whisper worker and load its model now, so the first utterance is not slow."""
+    try:
+        with _worker_lock:
+            if _worker is None or _worker.poll() is not None:
+                _start_worker()
+    except Exception:
+        pass
 
 
 # ---------------- TTS ----------------

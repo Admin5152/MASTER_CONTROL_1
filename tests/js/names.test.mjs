@@ -6,7 +6,7 @@ import { crewFromSpeech, soundKey } from "../../app/js/core/intents.js";
 const crew = [["james", "Eliah"], ["amara", "Annie"], ["kenji", "Seth"], ["sad", "Sad"], ["stan", "Stanley"], ["gad", "Gadiel"]].map(([crew_id, display_name]) => ({ crew_id, display_name }));
 
 test("what Whisper actually wrote for 'I'm Eliah' finds Eliah", () => {
-  for (const t of ["Amelia.", "Sentinel, Italia", "Sentinel, it's Elyia.", "I'm Aleah", "I'm Alia", "It's Aliya", "This is Alea", "my name is Eliah", "I'm Elijah"]) {
+  for (const t of ["Amelia.", "Sentinel, Italia", "Sentinel, it's Elyia.", "I'm Aleah", "I'm Alia", "Liya.", "I'm Liya", "this is Elia", "It's Aliya", "This is Alea", "my name is Eliah", "I'm Elijah"]) {
     assert.equal(crewFromSpeech(t.replace(/^sentinel,?\s*/i, ""), crew, { bare: true }), "james", t);
   }
 });
