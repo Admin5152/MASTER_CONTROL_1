@@ -39,6 +39,7 @@ import { registerMissionMed } from "./experience/missionmed.js";
 import { registerProfile } from "./experience/profile.js";
 import { registerAudit } from "./experience/audit.js";
 import { registerPulse } from "./experience/pulse.js";
+import { registerEyeCheck } from "./experience/eyecheck.js";
 import * as reminders from "./core/reminders.js";
 import { auditBuf } from "./core/bus.js";
 import { registerSymptom } from "./systems/symptom.js";
@@ -299,6 +300,7 @@ async function mountApp() {
   registerProfile(registerScreen);
   registerAudit(registerScreen);
   registerPulse(registerScreen);
+  registerEyeCheck(registerScreen);
   registerSymptom(registerScreen);
   registerClinic(registerScreen);
   registerCare(registerScreen);
@@ -1160,7 +1162,7 @@ async function handleCommand(text, meta = {}) {
         trends: "your trends", health_log: "the health log", cognitive: "the reaction test", symptom: "the symptom map", crew: "the crew",
         hardware: "the hardware", vision: "the camera", cabin: "the cabin", interventions: "what helps you", exam: "the health exam",
         measures: "weekly measures", today: "your day", checkin: "the daily check-in", care: "care", alerts: "your alerts", mind: "how you're doing",
-        journal: "your journal", record: "your saved record", weekly: "the weekly review", kit: "the medical kit", environment: "environment and mode", ground: "messages to ground", evidence: "the NASA evidence", profile: "your health profile", audit: "the audit log", pulse: "the crew pulse" };
+        journal: "your journal", record: "your saved record", weekly: "the weekly review", kit: "the medical kit", environment: "environment and mode", ground: "messages to ground", evidence: "the NASA evidence", profile: "your health profile", audit: "the audit log", pulse: "the crew pulse", eyes: "the eye check" };
       const n = m.commands[0].name;
       if (NAMES[n]) say(`${["race", "greenhouse", "orb_calm", "grounding", "cognitive", "exam"].includes(n) ? "Starting" : "Opening"} ${NAMES[n]}.`, { source: "local" });
     }

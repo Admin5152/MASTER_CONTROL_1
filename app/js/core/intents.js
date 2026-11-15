@@ -217,6 +217,11 @@ export function matchIntent(text, ctx = {}) {
   if (/^ (snooze( it| that| the reminder)?|remind me later|later|not now|in a bit) $/.test(t) || / (snooze|remind me later|remind me in) /.test(t)) {
     return { intent: "snooze", local: "snooze", commands: [] };
   }
+  // the daily eye check (SANS screening): "eye check", "check my eyes", "scan my eyes", "SANS check"
+  if (/ (eye (check|exam|test|scan)|eyes (check|test|scan)|check (my |your |the )?eyes|scan (my |the )?eyes|test (my )?eyes|sans|daily eye) /.test(t)) {
+    return { intent: "eyes", action: "open_screen", commands: [{ cmd: "open_screen", name: "eyes" }] };
+  }
+
   // Sentinel's voice: "use a female voice", "switch to Jon", "change your voice"
   const vName = t.match(/ (nathaniel|nate|jon|john|bri|bree|brie|samara)s? /);
   const vGender = / (female|woman'?s?|women'?s|girl'?s?|lady'?s?) voice /.test(t) ? "female" : / (male|man'?s?|men'?s|guy'?s?) voice /.test(t) ? "male" : null;

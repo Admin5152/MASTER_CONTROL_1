@@ -394,5 +394,6 @@ export function createVision({ video, overlay, msg, badge, pulseValue, pulseQual
     ctx2d.shadowBlur = 0;
   }
 
-  return { start, stop, state, get fps() { return fps; } };
+  // the eye check reads the same camera and face mesh (fresh: landmarks from the last third of a second)
+  return { start, stop, state, get fps() { return fps; }, get video() { return video; }, get landmarks() { return performance.now() - lastFace < 300 ? lastFaceLm : null; } };
 }

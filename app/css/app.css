@@ -862,3 +862,27 @@ body.has-bubble[data-stage="body"] .insights, body.has-bubble[data-stage="body"]
 
 /* face scan: once tracking runs, the canvas shows the exact frame the face was found on (mesh never lags) */
 .cam-stage.is-synced .cam-video { opacity: 0; }
+
+/* daily eye check */
+.eyecheck { display: grid; gap: 14px; }
+.ec-live { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ec-live canvas, .ec-pair img { width: 100%; height: auto; aspect-ratio: 36 / 22; border-radius: 14px; background: var(--surface-sunk); object-fit: cover; }
+.ec-caps { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; color: var(--ink-3); text-align: center; margin-top: -6px; }
+.ec-step { min-height: 1.4em; color: var(--ink-2); font-size: 15px; }
+.ec-body h3 { margin: 4px 0 6px; font-size: 17px; font-weight: 500; }
+.ec-near { font-size: 11px; line-height: 1.4; color: var(--ink); padding: 14px; border-radius: 12px; background: var(--surface-sunk); }
+.ec-grid { width: min(260px, 70%); display: block; margin: 8px auto; background: #fff; border-radius: 6px; }
+.ec-grid line { stroke: #111; stroke-width: .6; } .ec-grid circle { fill: #111; }
+.ec-ans { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+.ec-result { padding: 14px 16px; border-radius: 14px; background: var(--surface-sunk); border: 1px solid var(--rule); }
+.ec-result.is-watch { border-color: color-mix(in srgb, var(--watch) 55%, transparent); }
+.ec-result.is-act { border-color: color-mix(in srgb, var(--alert) 60%, transparent); }
+.ec-verdict { margin: 0; font-size: 16px; line-height: 1.45; color: var(--ink); }
+.ec-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ec-photos figure { margin: 0; display: grid; gap: 6px; }
+.ec-pair { display: grid; gap: 4px; }
+.ec-pair figcaption { font-size: 11px; color: var(--ink-3); margin-top: -2px; }
+.ec-metrics { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.ec-metrics li { display: flex; justify-content: space-between; padding: 8px 12px; border-radius: 10px; background: var(--surface-sunk); font-size: 13.5px; color: var(--ink-2); }
+.ec-metrics li b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.ec-metrics li.is-flag b { color: var(--watch); }

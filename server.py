@@ -35,6 +35,7 @@ from brain.audit import Audit  # noqa: E402
 from brain import environment as envmod  # noqa: E402
 from brain.clinic import Clinic, CLINICAL_MODES, DAY_BLOCKS  # noqa: E402
 from brain.crew_pulse import CrewPulse  # noqa: E402
+from brain.eyes import EyeChecks  # noqa: E402
 from brain.wellbeing import wellbeing, TOOLKIT, CLINICAL_SCALES  # noqa: E402
 from brain.care import care  # noqa: E402
 from brain.plan import plan  # noqa: E402
@@ -63,6 +64,7 @@ store.sensitivity = alerts.feedback_adjustments   # "not useful" feedback reache
 suits = Suits()
 audit = Audit()
 pulse = CrewPulse()
+eyes = EyeChecks()
 ops = Ops()
 clinic = Clinic()
 spaceweather = SpaceWeather()
@@ -674,6 +676,28 @@ def pulse_answer(cid: str, body: dict = Body(...)):
         raise HTTPException(400, str(e))
     audit.record("brain", "pulse.answered", cid)   # that someone answered, never what
     return r
+
+
+# ---- daily eye check (SANS screening aid; never a diagnosis: see brain/eyes.py) ----
+@app.get("/api/eyes/{cid}")
+def eyes_get(cid: str):
+    _need(cid)
+    return eyes.summary(cid)
+
+
+@app.post("/api/eyes/{cid}")
+def eyes_save(cid: str, body: dict = Body(...)):
+    _need(cid)
+    r = eyes.add(cid, body)
+    audit.record("brain", "eyes.checked", cid, {"verdict": r["verdict"]})   # the verdict, never the photos
+    return r
+
+
+@app.delete("/api/eyes/{cid}")
+def eyes_forget(cid: str):
+    _need(cid)
+    audit.record("brain", "eyes.forgotten", cid)
+    return eyes.forget(cid)
 
 
 @app.get("/api/clinic/{cid}")
