@@ -145,7 +145,8 @@ export function renderRadiation(el, ctx) {
 
     const sc = sw.scenario;
 
-    const level = sc ? sc.level : sw.level;
+    // a replay that has just ended, or a partial response, must never show "S undefined": fall back to the feed, then to 0
+    const level = Number.isFinite(sc?.level) ? sc.level : Number.isFinite(sw?.level) ? sw.level : 0;
 
     ctx.space?.setStorm(level);
 
@@ -169,7 +170,8 @@ export function renderRadiation(el, ctx) {
 
     document.getElementById("rad-lede").textContent = sc ? sc.label : `Protons at or above 10 MeV, measured by NOAA GOES near Earth. ${sw.source === "live" ? "Live feed." : `Saved snapshot from ${sw.time}.`}`;
 
-    const pts = sc ? sc.series.map((p) => ({ x: `+${p.t}s`, y: p.flux })) : sw.series.slice(-288).map((p) => ({ x: p.t.slice(11, 16), y: p.flux }));
+    const pts = sc && Array.isArray(sc.series) ? sc.series.map((p) => ({ x: `+${p.t}s`, y: p.flux }))
+      : (Array.isArray(sw?.series) ? sw.series : []).slice(-288).map((p) => ({ x: String(p.t || "").slice(11, 16), y: p.flux }));
 
     if (!Chart) return;
 

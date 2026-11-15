@@ -582,7 +582,7 @@ function renderAlerts(el, ctx) {
     try { d = await api.alerts(cid); } catch { if (alive) offline(el); return; }
     if (!alive) return;
     const s = ctx.view.state || {}, a = s.action || {};
-    const list = [...d.alerts].sort((x, y) => y.created_at - x.created_at);
+    const list = [...(Array.isArray(d?.alerts) ? d.alerts : [])].sort((x, y) => y.created_at - x.created_at);   // a partial response shows no alerts instead of failing
     const open = (x) => !["resolved", "expired"].includes(x.state);
     el.innerHTML = `<p class="note">One alert per cause, with a cool-down so it does not repeat. Each keeps the readings, the rule and the source that raised it. Urgent alerts cannot be snoozed.</p>
       ${a.type && a.type !== "none" ? `<article class="card cl-card"><span class="label">Right now</span><h3>${esc(a.detail || "")}</h3>
