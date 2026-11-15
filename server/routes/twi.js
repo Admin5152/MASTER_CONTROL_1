@@ -143,7 +143,11 @@ async function handleSpeak(req, res) {
     }
 
     // Step 1: Translate Sentinel's English text to Twi (fast-path rules or Khaya API)
-    let twiText = looksTwi(text) || body.lang === "tw" ? text.trim() : getFastPathTwi(text);
+    // Already Twi: spoken as it is. An exact known phrase: its fixed Twi (no call). Anything else: Khaya translates the
+    // whole reply (the loose patterns in twi_rules matched part of a reply and dropped the rest, so they are now only
+    // the offline fallback).
+    const exact = TWI_SYSTEM_RULES.phrases?.[text.trim().toLowerCase().replace(/[.,!?;:]/g, "")];
+    let twiText = looksTwi(text) || body.lang === "tw" ? text.trim() : (exact || null);
     if (!twiText) {
       try {
         twiText = await withTimeout(

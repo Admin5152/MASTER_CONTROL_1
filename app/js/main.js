@@ -1641,6 +1641,23 @@ function updateSuit(suit) {
   }
 }
 async function suitCommand(c) {
+  if (c.action === "ready") {          // EVA readiness: pulse, sleep, open alerts, cabin air, the suit if one is out
+    try {
+      const r = await api.readiness(view.crewId);
+      say(r.ready ? `${r.summary.replace(/;/g, ",")}.` : `Not yet. ${r.summary.replace(/^Hold the EVA: /, "Hold the EVA: ").replace(/;/g, ",")}.`, { source: "local" });
+    } catch (e) { showNotice(`EVA readiness: ${e.message}`); }
+    return;
+  }
+  if (c.action === "status") {         // suit check: pressure and integrity during an EVA, or stowed
+    const st = view.aux?.suit;
+    if (!st || st.mode !== "eva") { say("Your suit is stowed: no EVA in progress. Say \"start an EVA\" and I'll run the readiness check and watch your suit.", { source: "local" }); return; }
+    const where = st.region_label ? ` near the ${st.region_label}` : "";
+    say(st.integrity === "ok" ? `Suit pressure is ${st.pressure_psi} psi and holding. Everything looks normal.`
+      : st.integrity === "watch" ? `Your suit is losing pressure slowly${where}: ${st.pressure_psi} psi. Check it now.`
+      : `Suit breach${where}. ${st.pressure_psi} psi and falling. Head back to the airlock.`, { source: "local", priority: st.integrity !== "ok" });
+    if (st.integrity !== "ok") stages.go?.("body");
+    return;
+  }
   try {
     const st = await api.suit(view.crewId, { action: c.action, region: c.region, text: c.text, size: c.size });
     if (view.aux) view.aux.suit = st;

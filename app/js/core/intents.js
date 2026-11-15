@@ -258,6 +258,18 @@ export function matchIntent(text, ctx = {}) {
   if (suitWord && / (leak|leaking|breach|puncture|punctured|tear|torn|crack|cracked|damage|damaged|hole|losing pressure) /.test(t) && !/ (how|is my|what|status|check) /.test(t)) {
     return { intent: "suit_leak", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "leak", text: String(text).slice(0, 120) }] };
   }
+  // "simulate a leak", "trigger a breach", "demo a puncture" (no suit word needed)
+  if (/ (simulate|trigger|demo|show me|cause|create|start) (a |an )?(suit |slow |big |major )?(leak|breach|puncture|pressure leak|depress(urisation|urization)?) /.test(t)) {
+    return { intent: "suit_leak", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "leak", text: String(text).slice(0, 120) }] };
+  }
+  // EVA readiness: "am I ready for an EVA", "EVA readiness", "can I go outside", "pre-EVA check"
+  if (/ (ready for (an |the |a )?(eva|spacewalk|space walk)|eva readiness|readiness check|can i (go on |do )?(an |a )?(eva|spacewalk|go outside)|pre ?eva|eva check|cleared for (an |the )?eva|go no go|go for eva) /.test(t)) {
+    return { intent: "eva_ready", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "ready" }] };
+  }
+  // suit status: "suit check", "check my suit", "how is my suit", "suit pressure", "is my suit leaking"
+  if (suitWord && / (check|status|how is|how's|hows|okay|ok|pressure|integrity|holding|leaking|fine|report|reading|readings) /.test(t)) {
+    return { intent: "suit_status", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "status" }] };
+  }
   if (/ (seal|patch|fix|fixed|repair|clear|reset|stop) (the |my )?(suit|leak|breach|alarm|suit alarm) /.test(t) || has(t, "leak is fixed") || has(t, "leak fixed")) {
     return { intent: "suit_seal", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "seal" }] };
   }
@@ -266,7 +278,7 @@ export function matchIntent(text, ctx = {}) {
       || /^ (eva|going outside|eva time|starting the eva|let's do an eva|lets do an eva) $/.test(t)) {
     return { intent: "suit_eva", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "eva" }] };
   }
-  if (/ (end|finish|stop|done with) (the |my )?(eva|spacewalk|space walk) / .test(t) || has(t, "back inside") || has(t, "repress")) {
+  if (/ (end|ending|finish|stop|done with|abort|cancel|terminate|wrap up|close out) (the |my |this )?(eva|spacewalk|space walk) /.test(t) || / (come|coming|go|going|head|heading) back (in|inside|to the airlock) /.test(t) || has(t, "back inside") || has(t, "repress")) {
     return { intent: "suit_iva", action: "control_suit", target: "suit", commands: [{ cmd: "suit", action: "iva" }] };
   }
 
